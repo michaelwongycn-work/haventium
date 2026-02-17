@@ -57,6 +57,7 @@ import {
   ToolsIcon,
 } from "@hugeicons/core-free-icons";
 import { formatDate } from "@/lib/format";
+import { Pagination } from "@/components/pagination";
 
 type MaintenanceRequestStatus = "OPEN" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
 type MaintenanceRequestPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
@@ -123,6 +124,10 @@ export default function MaintenanceRequestsClient() {
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const [propertyFilter, setPropertyFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -140,7 +145,7 @@ export default function MaintenanceRequestsClient() {
     fetchRequests();
     fetchProperties();
     fetchTenants();
-  }, []);
+  }, [currentPage, pageSize]);
 
   useEffect(() => {
     filterRequests();
@@ -157,7 +162,11 @@ export default function MaintenanceRequestsClient() {
   const fetchRequests = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch("/api/maintenance-requests");
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: pageSize.toString(),
+      });
+      const response = await fetch(`/api/maintenance-requests?${params}`);
 
       if (!response.ok) {
         throw new Error("Failed to fetch maintenance requests");
@@ -165,6 +174,8 @@ export default function MaintenanceRequestsClient() {
 
       const data = await response.json();
       setRequests(data.items || data);
+      setTotalItems(data.pagination?.total || 0);
+      setTotalPages(data.pagination?.totalPages || 0);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load requests");
     } finally {
@@ -574,6 +585,19 @@ export default function MaintenanceRequestsClient() {
               )}
             </TableBody>
           </Table>
+          {!isLoading && filteredRequests.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              pageSize={pageSize}
+              onPageChange={(page) => setCurrentPage(page)}
+              onPageSizeChange={(size) => {
+                setPageSize(size);
+                setCurrentPage(1);
+              }}
+            />
+          )}
         </CardContent>
       </Card>
 

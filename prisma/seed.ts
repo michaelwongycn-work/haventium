@@ -822,10 +822,17 @@ async function main() {
     "CASH" | "BANK_TRANSFER" | "VIRTUAL_ACCOUNT" | "QRIS"
   > = ["CASH", "BANK_TRANSFER", "VIRTUAL_ACCOUNT", "QRIS"];
 
+  // Weight payment cycles to be more realistic (mostly MONTHLY, some ANNUAL, few DAILY)
   const paymentCycles: Array<"DAILY" | "MONTHLY" | "ANNUAL"> = [
-    "DAILY",
+    "MONTHLY",
+    "MONTHLY",
+    "MONTHLY",
+    "MONTHLY",
+    "MONTHLY",
     "MONTHLY",
     "ANNUAL",
+    "ANNUAL",
+    "DAILY",
   ];
 
   // Track which units are occupied during which periods
@@ -862,166 +869,449 @@ async function main() {
   const bookedTenants = tenants.filter((t) => t.status === "BOOKED");
   const leadTenants = tenants.filter((t) => t.status === "LEAD");
 
-  // Create historical leases (2024 - ended)
-  console.log("  Creating historical leases (2024)...");
-  for (let i = 0; i < 150; i++) {
-    const unit = allUnits[Math.floor(Math.random() * allUnits.length)];
-    const tenant = expiredTenants[i % expiredTenants.length];
+  // Define today and twoMonthsFromNow here (used across all lease creation)
+  const today = new Date();
+  const twoMonthsFromNow = addMonths(today, 2);
 
-    const startMonth = Math.floor(Math.random() * 8) + 1; // Jan-Aug 2024
-    const startDate = createDate(
-      2024,
-      startMonth,
-      Math.floor(Math.random() * 28) + 1,
-    );
-    const leaseDuration =
-      Math.random() > 0.3 ? 12 : Math.random() > 0.5 ? 6 : 3; // Mostly 12 months
-    const endDate = addMonths(startDate, leaseDuration);
+  // Create historical leases (2024 - ended) - Simpler approach with fewer leases
+  console.log("  Creating historical leases (2024 - ended)...");
 
-    if (!isUnitAvailable(unit.id, startDate, endDate)) continue;
+  const historicalLeases: any[] = [];
 
-    const paymentCycle = leaseDuration >= 12 ? "ANNUAL" : "MONTHLY";
-    const rentAmount = Number(
-      paymentCycle === "ANNUAL" ? unit.annualRate : unit.monthlyRate,
-    );
-    const depositAmount = Math.round(rentAmount * (Math.random() * 0.5 + 1)); // 1-1.5x rent
+  // Each unit gets 3-8 historical ENDED leases (not every single month)
+  for (const unit of allUnits) {
+    const tenant = expiredTenants[Math.floor(Math.random() * expiredTenants.length)];
+    const paymentCycle = paymentCycles[Math.floor(Math.random() * paymentCycles.length)];
 
-    await prisma.leaseAgreement.create({
-      data: {
+    const numHistoricalLeases = Math.floor(Math.random() * 6) + 3; // 3-8 leases
+    let currentStartDate = createDate(2024, 1, Math.floor(Math.random() * 28) + 1);
+
+    for (let i = 0; i < numHistoricalLeases; i++) {
+      // Each lease is ONE payment period
+      let endDate: Date;
+      if (paymentCycle === "DAILY") {
+        endDate = addDays(currentStartDate, 1);
+      } else if (paymentCycle === "MONTHLY") {
+        endDate = addMonths(currentStartDate, 1);
+        endDate = addDays(endDate, -1);
+      } else {
+        // ANNUAL
+        endDate = addMonths(currentStartDate, 12);
+        endDate = addDays(endDate, -1);
+      }
+
+      // Stop if end date is beyond today
+      if (endDate >= today) break;
+
+      const rentAmount = Number(
+        paymentCycle === "ANNUAL"
+          ? unit.annualRate
+          : paymentCycle === "MONTHLY"
+            ? unit.monthlyRate
+            : unit.dailyRate,
+      );
+      const depositAmount = i === 0
+        ? Math.round(rentAmount * (Math.random() * 0.5 + 1))
+        : null; // Only first lease has deposit
+
+      historicalLeases.push({
         tenantId: tenant.id,
         unitId: unit.id,
         organizationId: org.id,
-        startDate,
+        startDate: currentStartDate,
         endDate,
         paymentCycle,
         rentAmount,
         depositAmount,
-        depositStatus: Math.random() > 0.3 ? "RETURNED" : "HELD",
+        depositStatus: depositAmount ? (Math.random() > 0.3 ? "RETURNED" : "HELD") : null,
         status: "ENDED",
-        paidAt: startDate,
+        paidAt: currentStartDate,
         paymentMethod:
           paymentMethods[Math.floor(Math.random() * paymentMethods.length)],
         paymentStatus: "COMPLETED",
         isAutoRenew: false,
-      },
-    });
+      });
 
-    markUnitOccupied(unit.id, startDate, endDate);
-    leaseCount++;
+      markUnitOccupied(unit.id, currentStartDate, endDate);
+
+      // Next lease starts after a gap
+      if (paymentCycle === "DAILY") {
+        // Daily leases: 3-7 days gap between rentals (not every single day)
+        currentStartDate = addDays(endDate, Math.floor(Math.random() * 5) + 3);
+      } else {
+        // Monthly/Annual: 1-3 days gap
+        currentStartDate = addDays(endDate, Math.floor(Math.random() * 3) + 1);
+      }
+    }
   }
 
-  // Create active leases (started in 2024-2025, still ongoing)
-  console.log("  Creating active leases (2024-2025)...");
-  for (let i = 0; i < 200; i++) {
-    const unit = allUnits[Math.floor(Math.random() * allUnits.length)];
-    const tenant = activeTenants[i % activeTenants.length];
+  // Bulk insert historical leases
+  await prisma.leaseAgreement.createMany({
+    data: historicalLeases,
+  });
+  leaseCount += historicalLeases.length;
+  console.log(`  ✓ Created ${historicalLeases.length} historical leases`);
 
-    const startYear = Math.random() > 0.5 ? 2024 : 2025;
-    const startMonth =
-      startYear === 2024
-        ? Math.floor(Math.random() * 12) + 1
-        : Math.floor(Math.random() * 12) + 1;
-    const startDate = createDate(
-      startYear,
-      startMonth,
-      Math.floor(Math.random() * 28) + 1,
-    );
-    const leaseDuration =
-      Math.random() > 0.3 ? 12 : Math.random() > 0.5 ? 6 : 3;
-    const endDate = addMonths(startDate, leaseDuration);
+  // Create active leases (current payment period, ending within 2 months from now)
+  console.log("  Creating active leases (current payment period)...");
 
-    // Only create if lease would still be active today
-    const today = new Date();
-    if (endDate < today) continue;
-    if (!isUnitAvailable(unit.id, startDate, endDate)) continue;
+  const activeLeases: any[] = [];
 
-    const paymentCycle = leaseDuration >= 12 ? "ANNUAL" : "MONTHLY";
+  // 70% of units should have an active lease
+  const unitsForActiveLease = allUnits
+    .sort(() => Math.random() - 0.5)
+    .slice(0, Math.floor(allUnits.length * 0.7));
+
+  for (const unit of unitsForActiveLease) {
+    const tenant = activeTenants[leaseCount % activeTenants.length];
+    const paymentCycle = paymentCycles[leaseCount % paymentCycles.length];
+
+    // Get the last occupation date for this unit
+    const occupancies = unitOccupancy.get(unit.id) || [];
+    let currentStartDate: Date;
+
+    if (occupancies.length > 0) {
+      // Continue from where historical leases left off
+      const lastEnd = occupancies[occupancies.length - 1].end;
+      currentStartDate = addDays(lastEnd, 1);
+    } else {
+      // Random start date that ensures lease is still active
+      // Start 1-6 months ago
+      const monthsAgo = Math.floor(Math.random() * 6) + 1;
+      currentStartDate = addMonths(today, -monthsAgo);
+    }
+
+    // Calculate end date for ACTIVE lease (between today and 2 months from now)
+    let endDate: Date;
+    if (paymentCycle === "DAILY") {
+      endDate = addDays(currentStartDate, 1);
+    } else if (paymentCycle === "MONTHLY") {
+      endDate = addMonths(currentStartDate, 1);
+      endDate = addDays(endDate, -1);
+    } else {
+      // ANNUAL
+      endDate = addMonths(currentStartDate, 12);
+      endDate = addDays(endDate, -1);
+    }
+
+    // Ensure it's still active (ends after today)
+    while (endDate < today) {
+      currentStartDate = addDays(endDate, 1);
+      if (paymentCycle === "DAILY") {
+        endDate = addDays(currentStartDate, 1);
+      } else if (paymentCycle === "MONTHLY") {
+        endDate = addMonths(currentStartDate, 1);
+        endDate = addDays(endDate, -1);
+      } else {
+        endDate = addMonths(currentStartDate, 12);
+        endDate = addDays(endDate, -1);
+      }
+    }
+
+    // Cap at 2 months from now
+    if (endDate > twoMonthsFromNow) {
+      endDate = twoMonthsFromNow;
+    }
+
     const rentAmount = Number(
-      paymentCycle === "ANNUAL" ? unit.annualRate : unit.monthlyRate,
+      paymentCycle === "ANNUAL"
+        ? unit.annualRate
+        : paymentCycle === "MONTHLY"
+          ? unit.monthlyRate
+          : unit.dailyRate,
     );
     const depositAmount = Math.round(rentAmount * (Math.random() * 0.5 + 1));
     const isAutoRenew = Math.random() > 0.6;
 
-    await prisma.leaseAgreement.create({
-      data: {
-        tenantId: tenant.id,
-        unitId: unit.id,
-        organizationId: org.id,
-        startDate,
-        endDate,
-        paymentCycle,
-        rentAmount,
-        depositAmount,
-        depositStatus: "HELD",
-        status: "ACTIVE",
-        paidAt: startDate,
-        paymentMethod:
-          paymentMethods[Math.floor(Math.random() * paymentMethods.length)],
-        paymentStatus: "COMPLETED",
-        isAutoRenew,
-        gracePeriodDays: isAutoRenew ? Math.floor(Math.random() * 5) + 3 : null,
-        autoRenewalNoticeDays: isAutoRenew
-          ? Math.floor(Math.random() * 20) + 10
-          : null,
-      },
+    activeLeases.push({
+      tenantId: tenant.id,
+      unitId: unit.id,
+      organizationId: org.id,
+      startDate: currentStartDate,
+      endDate,
+      paymentCycle,
+      rentAmount,
+      depositAmount,
+      depositStatus: "HELD",
+      status: "ACTIVE",
+      paidAt: currentStartDate,
+      paymentMethod:
+        paymentMethods[Math.floor(Math.random() * paymentMethods.length)],
+      paymentStatus: "COMPLETED",
+      isAutoRenew,
+      gracePeriodDays: isAutoRenew ? Math.floor(Math.random() * 5) + 3 : null,
+      autoRenewalNoticeDays: isAutoRenew
+        ? Math.floor(Math.random() * 20) + 10
+        : null,
     });
 
-    markUnitOccupied(unit.id, startDate, endDate);
+    markUnitOccupied(unit.id, currentStartDate, endDate);
     leaseCount++;
   }
 
-  // Create booked/draft leases (future leases)
-  console.log("  Creating booked/draft leases (2026)...");
-  for (let i = 0; i < 50; i++) {
-    const unit = allUnits[Math.floor(Math.random() * allUnits.length)];
+  // Bulk insert active leases
+  await prisma.leaseAgreement.createMany({
+    data: activeLeases,
+  });
+  console.log(`  ✓ Created ${activeLeases.length} active leases`);
+
+  // Create booked/draft leases (future leases - starting within next 2 months)
+  console.log(
+    "  Creating booked/draft leases (future - within next 2 months)...",
+  );
+
+  const draftLeases: any[] = [];
+
+  // Get units that don't have active leases (remaining 30%)
+  const unitsWithoutActive = allUnits.filter(
+    unit => !unitsForActiveLease.includes(unit)
+  );
+
+  // ALL units without active leases get draft leases (100% instead of 50%)
+  const unitsForDraft = unitsWithoutActive;
+
+  for (const unit of unitsForDraft) {
     const tenant =
-      i < bookedTenants.length
-        ? bookedTenants[i]
-        : leadTenants[i % leadTenants.length];
+      leaseCount < bookedTenants.length
+        ? bookedTenants[leaseCount % bookedTenants.length]
+        : leadTenants[leaseCount % leadTenants.length];
 
-    const startDate = createDate(
-      2026,
-      Math.floor(Math.random() * 6) + 3,
-      Math.floor(Math.random() * 28) + 1,
-    );
-    const leaseDuration = Math.random() > 0.3 ? 12 : 6;
-    const endDate = addMonths(startDate, leaseDuration);
+    // Get the last occupation date for this unit
+    const occupancies = unitOccupancy.get(unit.id) || [];
+    let startDate: Date;
 
-    if (!isUnitAvailable(unit.id, startDate, endDate)) continue;
+    if (occupancies.length > 0) {
+      // Start after the last lease ended (plus 1-7 days gap)
+      const lastEnd = occupancies[occupancies.length - 1].end;
+      startDate = addDays(lastEnd, Math.floor(Math.random() * 7) + 1);
+    } else {
+      // Random start date within next 2 months
+      const daysUntilStart = Math.floor(Math.random() * 60);
+      startDate = addDays(today, daysUntilStart);
+    }
 
-    const paymentCycle = leaseDuration >= 12 ? "ANNUAL" : "MONTHLY";
+    // Ensure start date is within next 2 months
+    if (startDate > twoMonthsFromNow) {
+      startDate = addDays(today, Math.floor(Math.random() * 60));
+    }
+
+    const paymentCycle = paymentCycles[leaseCount % paymentCycles.length];
+
+    // Each lease is ONE payment period
+    let endDate: Date;
+    if (paymentCycle === "DAILY") {
+      endDate = addDays(startDate, 1);
+    } else if (paymentCycle === "MONTHLY") {
+      endDate = addMonths(startDate, 1);
+      endDate = addDays(endDate, -1);
+    } else {
+      endDate = addMonths(startDate, 12);
+      endDate = addDays(endDate, -1);
+    }
+
     const rentAmount = Number(
-      paymentCycle === "ANNUAL" ? unit.annualRate : unit.monthlyRate,
+      paymentCycle === "ANNUAL"
+        ? unit.annualRate
+        : paymentCycle === "MONTHLY"
+          ? unit.monthlyRate
+          : unit.dailyRate,
     );
     const depositAmount = Math.round(rentAmount * (Math.random() * 0.5 + 1));
-    const isPaid = Math.random() > 0.7;
 
-    await prisma.leaseAgreement.create({
-      data: {
-        tenantId: tenant.id,
-        unitId: unit.id,
-        organizationId: org.id,
-        startDate,
-        endDate,
-        paymentCycle,
-        rentAmount,
-        depositAmount,
-        status: isPaid ? "DRAFT" : "DRAFT",
-        paidAt: isPaid ? new Date() : null,
-        paymentMethod: isPaid
-          ? paymentMethods[Math.floor(Math.random() * paymentMethods.length)]
-          : null,
-        paymentStatus: isPaid ? "COMPLETED" : "PENDING",
-      },
+    // DRAFT leases can't have paidAt - that would make them ACTIVE
+    // Add grace period to some draft leases (50% chance)
+    const hasGracePeriod = Math.random() > 0.5;
+    draftLeases.push({
+      tenantId: tenant.id,
+      unitId: unit.id,
+      organizationId: org.id,
+      startDate,
+      endDate,
+      paymentCycle,
+      rentAmount,
+      depositAmount,
+      status: "DRAFT",
+      paidAt: null,
+      paymentMethod: null,
+      paymentStatus: "PENDING",
+      gracePeriodDays: hasGracePeriod ? Math.floor(Math.random() * 7) + 3 : null, // 3-9 days grace period
     });
 
     markUnitOccupied(unit.id, startDate, endDate);
     leaseCount++;
   }
+
+  // Bulk insert draft leases
+  await prisma.leaseAgreement.createMany({
+    data: draftLeases,
+  });
+  console.log(`  ✓ Created ${draftLeases.length} draft leases`);
+
+  // Create additional DRAFT leases for units that already have active leases
+  // These represent future bookings (next month/period)
+  console.log(
+    "  Creating additional draft leases (future bookings for currently occupied units)...",
+  );
+
+  const additionalDraftLeases: any[] = [];
+
+  // 40% of units with active leases get a future draft lease
+  const unitsForAdditionalDraft = unitsForActiveLease
+    .sort(() => Math.random() - 0.5)
+    .slice(0, Math.floor(unitsForActiveLease.length * 0.4));
+
+  for (const unit of unitsForAdditionalDraft) {
+    const tenant =
+      leaseCount < bookedTenants.length
+        ? bookedTenants[leaseCount % bookedTenants.length]
+        : leadTenants[leaseCount % leadTenants.length];
+
+    // Get the last occupation date for this unit
+    const occupancies = unitOccupancy.get(unit.id) || [];
+    let startDate: Date;
+
+    if (occupancies.length > 0) {
+      // Start after the last lease ends (plus 1-3 days gap)
+      const lastEnd = occupancies[occupancies.length - 1].end;
+      startDate = addDays(lastEnd, Math.floor(Math.random() * 3) + 1);
+    } else {
+      // Random start date within next 2 months
+      const daysUntilStart = Math.floor(Math.random() * 60);
+      startDate = addDays(today, daysUntilStart);
+    }
+
+    const paymentCycle = paymentCycles[leaseCount % paymentCycles.length];
+
+    // Each lease is ONE payment period
+    let endDate: Date;
+    if (paymentCycle === "DAILY") {
+      endDate = addDays(startDate, 1);
+    } else if (paymentCycle === "MONTHLY") {
+      endDate = addMonths(startDate, 1);
+      endDate = addDays(endDate, -1);
+    } else {
+      endDate = addMonths(startDate, 12);
+      endDate = addDays(endDate, -1);
+    }
+
+    const rentAmount = Number(
+      paymentCycle === "ANNUAL"
+        ? unit.annualRate
+        : paymentCycle === "MONTHLY"
+          ? unit.monthlyRate
+          : unit.dailyRate,
+    );
+    const depositAmount = Math.round(rentAmount * (Math.random() * 0.5 + 1));
+
+    // Add grace period to 60% of these draft leases
+    const hasGracePeriod = Math.random() > 0.4;
+    additionalDraftLeases.push({
+      tenantId: tenant.id,
+      unitId: unit.id,
+      organizationId: org.id,
+      startDate,
+      endDate,
+      paymentCycle,
+      rentAmount,
+      depositAmount,
+      status: "DRAFT",
+      paidAt: null,
+      paymentMethod: null,
+      paymentStatus: "PENDING",
+      gracePeriodDays: hasGracePeriod ? Math.floor(Math.random() * 7) + 3 : null, // 3-9 days grace period
+    });
+
+    markUnitOccupied(unit.id, startDate, endDate);
+    leaseCount++;
+  }
+
+  // Bulk insert additional draft leases
+  await prisma.leaseAgreement.createMany({
+    data: additionalDraftLeases,
+  });
+  console.log(`  ✓ Created ${additionalDraftLeases.length} additional draft leases for future bookings`);
+
+  // Create some DRAFT leases with payment due in the PAST (overdue) and spread across the next 60 days
+  console.log(
+    "  Creating draft leases spread across calendar (including overdue)...",
+  );
+
+  const spreadDraftLeases: any[] = [];
+
+  // Create 30 draft leases spread from -15 days to +60 days
+  for (let i = 0; i < 30; i++) {
+    // Random unit
+    const unit = allUnits[Math.floor(Math.random() * allUnits.length)];
+
+    // Random tenant from booked or lead
+    const tenant =
+      Math.random() > 0.5
+        ? bookedTenants[Math.floor(Math.random() * bookedTenants.length)]
+        : leadTenants[Math.floor(Math.random() * leadTenants.length)];
+
+    // Spread start dates from 15 days ago to 60 days in the future
+    // This creates a mix of overdue and upcoming payments
+    const daysOffset = Math.floor(Math.random() * 75) - 15; // -15 to +60
+    const startDate = addDays(today, daysOffset);
+
+    const paymentCycle = paymentCycles[Math.floor(Math.random() * paymentCycles.length)];
+
+    // Each lease is ONE payment period
+    let endDate: Date;
+    if (paymentCycle === "DAILY") {
+      endDate = addDays(startDate, 1);
+    } else if (paymentCycle === "MONTHLY") {
+      endDate = addMonths(startDate, 1);
+      endDate = addDays(endDate, -1);
+    } else {
+      endDate = addMonths(startDate, 12);
+      endDate = addDays(endDate, -1);
+    }
+
+    // Check if unit is available (skip if overlap)
+    if (!isUnitAvailable(unit.id, startDate, endDate)) continue;
+
+    const rentAmount = Number(
+      paymentCycle === "ANNUAL"
+        ? unit.annualRate
+        : paymentCycle === "MONTHLY"
+          ? unit.monthlyRate
+          : unit.dailyRate,
+    );
+    const depositAmount = Math.round(rentAmount * (Math.random() * 0.5 + 1));
+
+    // 70% have grace periods
+    const hasGracePeriod = Math.random() > 0.3;
+    spreadDraftLeases.push({
+      tenantId: tenant.id,
+      unitId: unit.id,
+      organizationId: org.id,
+      startDate,
+      endDate,
+      paymentCycle,
+      rentAmount,
+      depositAmount,
+      status: "DRAFT",
+      paidAt: null,
+      paymentMethod: null,
+      paymentStatus: "PENDING",
+      gracePeriodDays: hasGracePeriod ? Math.floor(Math.random() * 7) + 3 : null, // 3-9 days grace period
+    });
+
+    markUnitOccupied(unit.id, startDate, endDate);
+  }
+
+  // Bulk insert spread draft leases
+  await prisma.leaseAgreement.createMany({
+    data: spreadDraftLeases,
+  });
+  console.log(`  ✓ Created ${spreadDraftLeases.length} spread draft leases (including overdue payments)`);
 
   // Create some cancelled leases
   console.log("  Creating cancelled leases...");
-  for (let i = 0; i < 30; i++) {
+  const cancelledLeases: any[] = [];
+
+  for (let i = 0; i < 50; i++) {
     const unit = allUnits[Math.floor(Math.random() * allUnits.length)];
     const tenant = tenants[Math.floor(Math.random() * tenants.length)];
 
@@ -1031,27 +1321,34 @@ async function main() {
       Math.floor(Math.random() * 12) + 1,
       Math.floor(Math.random() * 28) + 1,
     );
-    const endDate = addMonths(startDate, 6);
 
-    if (!isUnitAvailable(unit.id, startDate, endDate)) continue;
+    // One payment period
+    const endDate = addMonths(startDate, 1);
+    const finalEndDate = addDays(endDate, -1);
 
-    await prisma.leaseAgreement.create({
-      data: {
-        tenantId: tenant.id,
-        unitId: unit.id,
-        organizationId: org.id,
-        startDate,
-        endDate,
-        paymentCycle: "MONTHLY",
-        rentAmount: Number(unit.monthlyRate),
-        status: "CANCELLED",
-      },
+    if (!isUnitAvailable(unit.id, startDate, finalEndDate)) continue;
+
+    cancelledLeases.push({
+      tenantId: tenant.id,
+      unitId: unit.id,
+      organizationId: org.id,
+      startDate,
+      endDate: finalEndDate,
+      paymentCycle: "MONTHLY",
+      rentAmount: Number(unit.monthlyRate),
+      status: "CANCELLED",
     });
 
     leaseCount++;
   }
 
-  console.log(`✓ Created ${leaseCount} leases spanning 2024-2026`);
+  // Bulk insert cancelled leases
+  await prisma.leaseAgreement.createMany({
+    data: cancelledLeases,
+  });
+  console.log(`  ✓ Created ${cancelledLeases.length} cancelled leases`);
+
+  console.log(`\n✓ Created ${leaseCount} total leases`);
 
   // ===========================================
   // Create Additional Test Users with Different Roles
@@ -1442,8 +1739,8 @@ async function main() {
   }
 
   // Create maintenance for active leases (mix of statuses)
-  const activeLeases = allLeases.filter((l) => l.status === "ACTIVE");
-  for (const lease of activeLeases) {
+  const activeLeasesForMaintenance = allLeases.filter((l) => l.status === "ACTIVE");
+  for (const lease of activeLeasesForMaintenance) {
     // 40% chance of having maintenance issues
     if (Math.random() > 0.6) {
       const issueCount = Math.floor(Math.random() * 2) + 1; // 1-2 issues per lease
@@ -1513,6 +1810,19 @@ async function main() {
 
   let notificationCount = 0;
 
+  // Fetch all leases with relations for notifications
+  const allLeasesWithRelations = await prisma.leaseAgreement.findMany({
+    where: { organizationId: org.id },
+    include: {
+      tenant: true,
+      unit: {
+        include: {
+          property: true,
+        },
+      },
+    },
+  });
+
   // Create notification logs for various triggers
   const notificationTriggers: Array<
     | "PAYMENT_REMINDER"
@@ -1537,7 +1847,8 @@ async function main() {
   ];
 
   // Create notifications for ended leases
-  for (const lease of endedLeases.slice(0, 100)) {
+  const endedLeasesWithRelations = allLeasesWithRelations.filter((l) => l.status === "ENDED");
+  for (const lease of endedLeasesWithRelations.slice(0, 100)) {
     // Limit to first 100 to avoid too many
     // Payment reminder sent before lease started
     const reminderDate = new Date(
@@ -1620,7 +1931,8 @@ async function main() {
   }
 
   // Create notifications for active leases
-  for (const lease of activeLeases.slice(0, 80)) {
+  const activeLeasesWithRelations = allLeasesWithRelations.filter((l) => l.status === "ACTIVE");
+  for (const lease of activeLeasesWithRelations.slice(0, 80)) {
     // Limit to first 80
     // Payment reminder
     const reminderDate = new Date(
@@ -1688,7 +2000,7 @@ async function main() {
   // Create some pending notifications
   for (let i = 0; i < 20; i++) {
     const randomLease =
-      activeLeases[Math.floor(Math.random() * activeLeases.length)];
+      activeLeasesWithRelations[Math.floor(Math.random() * activeLeasesWithRelations.length)];
     await prisma.notificationLog.create({
       data: {
         organizationId: org.id,

@@ -74,10 +74,11 @@ type AnalyticsData = {
     revenue: number;
   }>;
 
-  // Upcoming Expirations
-  upcomingExpirations: Array<{
+  // Upcoming Lease Changes
+  upcomingLeaseChanges: Array<{
     month: string;
-    count: number;
+    expiring: number;
+    new: number;
   }>;
 };
 
@@ -329,34 +330,52 @@ export default function AnalyticsClient() {
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={analyticsData.propertyPerformance}>
+                <BarChart data={analyticsData.propertyPerformance.map(p => {
+                  // Calculate occupancy percentage (0-100)
+                  const occupancyPercentage = p.totalUnits > 0
+                    ? (p.occupiedUnits / p.totalUnits) * 100
+                    : 0;
+
+                  return {
+                    ...p,
+                    capacityBaseline: 100, // All properties show 100% baseline
+                    occupancyPercentage: occupancyPercentage,
+                  };
+                })}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" />
-                  <YAxis yAxisId="left" />
+                  <YAxis yAxisId="left" domain={[0, 100]} />
                   <YAxis yAxisId="right" orientation="right" />
                   <Tooltip
-                    formatter={(value, name) => {
-                      if (name === "revenue") return formatCurrency(Number(value));
+                    formatter={(value, name, props: any) => {
+                      if (name === "Revenue") return formatCurrency(Number(value));
+                      if (typeof name === "string" && name.includes("Capacity")) {
+                        return `${props.payload.totalUnits} units`;
+                      }
+                      if (typeof name === "string" && name.includes("Occupancy")) {
+                        return `${props.payload.occupiedUnits} units`;
+                      }
                       return value;
                     }}
                   />
                   <Legend />
                   <Bar
                     yAxisId="left"
-                    dataKey="occupiedUnits"
-                    fill="#8884d8"
-                    name="Occupied Units"
+                    dataKey="capacityBaseline"
+                    fill="#fbbf24"
+                    name="Capacity"
+                    label={(props: any) => `${props?.payload?.totalUnits || ''} units`}
                   />
                   <Bar
                     yAxisId="left"
-                    dataKey="totalUnits"
-                    fill="#82ca9d"
-                    name="Total Units"
+                    dataKey="occupancyPercentage"
+                    fill="#10b981"
+                    name="Occupancy"
                   />
                   <Bar
                     yAxisId="right"
                     dataKey="revenue"
-                    fill="#ffc658"
+                    fill="#3b82f6"
                     name="Revenue"
                   />
                 </BarChart>
@@ -364,22 +383,24 @@ export default function AnalyticsClient() {
             </CardContent>
           </Card>
 
-          {/* Upcoming Expirations */}
+          {/* Upcoming Lease Changes */}
           <Card>
             <CardHeader>
-              <CardTitle>Upcoming Lease Expirations</CardTitle>
+              <CardTitle>Upcoming Lease Changes</CardTitle>
               <CardDescription>
-                Number of leases expiring in upcoming months
+                New and expiring leases in upcoming months (excluding renewals)
               </CardDescription>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={analyticsData.upcomingExpirations}>
+                <BarChart data={analyticsData.upcomingLeaseChanges}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
                   <YAxis />
                   <Tooltip />
-                  <Bar dataKey="count" fill="#ff8042" name="Expiring Leases" />
+                  <Legend />
+                  <Bar dataKey="expiring" fill="#ef4444" name="Expiring" />
+                  <Bar dataKey="new" fill="#10b981" name="New" />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>

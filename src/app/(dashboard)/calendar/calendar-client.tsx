@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { Calendar, dateFnsLocalizer, View } from "react-big-calendar";
-import { format, parse, startOfWeek, getDay } from "date-fns";
+import { format, parse, startOfWeek, getDay, addMonths, subMonths } from "date-fns";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import {
   formatDateLong,
@@ -26,7 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Calendar03Icon } from "@hugeicons/core-free-icons";
+import { Calendar03Icon, ArrowLeft01Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons";
 
 const locales = {
   "en-US": require("date-fns/locale/en-US"),
@@ -87,6 +87,7 @@ export default function CalendarClient() {
   const [selectedEvent, setSelectedEvent] = useState<LeaseEvent | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [currentView, setCurrentView] = useState<View>("month");
+  const [currentDate, setCurrentDate] = useState(new Date());
 
   useEffect(() => {
     fetchLeases();
@@ -120,7 +121,7 @@ export default function CalendarClient() {
       // 1. Lease Start Date
       allEvents.push({
         id: `${lease.id}-start`,
-        title: `🏠 Lease Start: ${tenantName}`,
+        title: `Lease Start: ${tenantName}`,
         start: new Date(lease.startDate),
         end: new Date(lease.startDate),
         allDay: true,
@@ -143,7 +144,7 @@ export default function CalendarClient() {
 
         allEvents.push({
           id: `${lease.id}-grace`,
-          title: `⏰ Grace Period Ends: ${tenantName}`,
+          title: `Grace Period Ends: ${tenantName}`,
           start: graceEndDate,
           end: graceEndDate,
           allDay: true,
@@ -169,7 +170,7 @@ export default function CalendarClient() {
 
         allEvents.push({
           id: `${lease.id}-payment`,
-          title: `💵 Payment Due: ${tenantName}`,
+          title: `Payment Due: ${tenantName}`,
           start: paymentDueDate,
           end: paymentDueDate,
           allDay: true,
@@ -190,7 +191,7 @@ export default function CalendarClient() {
       if (lease.status === "ACTIVE") {
         allEvents.push({
           id: `${lease.id}-expiration`,
-          title: `🏁 Lease Expires: ${tenantName}`,
+          title: `Lease Expires: ${tenantName}`,
           start: new Date(lease.endDate),
           end: new Date(lease.endDate),
           allDay: true,
@@ -279,11 +280,6 @@ export default function CalendarClient() {
             View all lease agreements in a calendar view
           </p>
         </div>
-        <HugeiconsIcon
-          icon={Calendar03Icon}
-          strokeWidth={2}
-          className="h-8 w-8 text-muted-foreground"
-        />
       </div>
 
       {/* Legend */}
@@ -298,28 +294,28 @@ export default function CalendarClient() {
                 className="h-4 w-4 rounded"
                 style={{ backgroundColor: "#10b981" }}
               />
-              <span className="text-sm">🏠 Lease Start</span>
+              <span className="text-sm">Lease Start</span>
             </div>
             <div className="flex items-center gap-2">
               <div
                 className="h-4 w-4 rounded"
                 style={{ backgroundColor: "#f59e0b" }}
               />
-              <span className="text-sm">💵 Payment Due</span>
+              <span className="text-sm">Payment Due</span>
             </div>
             <div className="flex items-center gap-2">
               <div
                 className="h-4 w-4 rounded"
                 style={{ backgroundColor: "#ef4444" }}
               />
-              <span className="text-sm">⏰ Grace Period Ends</span>
+              <span className="text-sm">Grace Period Ends</span>
             </div>
             <div className="flex items-center gap-2">
               <div
                 className="h-4 w-4 rounded"
                 style={{ backgroundColor: "#8b5cf6" }}
               />
-              <span className="text-sm">🏁 Lease Expires</span>
+              <span className="text-sm">Lease Expires</span>
             </div>
           </div>
         </CardContent>
@@ -327,7 +323,34 @@ export default function CalendarClient() {
 
       {/* Calendar */}
       <Card>
-        <CardContent className="pt-6">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>{format(currentDate, "MMMM yyyy")}</CardTitle>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setCurrentDate(subMonths(currentDate, 1))}
+              >
+                <HugeiconsIcon icon={ArrowLeft01Icon} className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setCurrentDate(new Date())}
+              >
+                Current Month
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setCurrentDate(addMonths(currentDate, 1))}
+              >
+                <HugeiconsIcon icon={ArrowRight01Icon} className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
           {isLoading ? (
             <div className="space-y-4">
               <Skeleton className="h-[600px] w-full" />
@@ -342,9 +365,11 @@ export default function CalendarClient() {
                 style={{ height: "100%" }}
                 onSelectEvent={handleSelectEvent}
                 eventPropGetter={eventStyleGetter}
-                view={currentView}
-                onView={setCurrentView}
-                views={["month", "week", "day", "agenda"]}
+                view="month"
+                date={currentDate}
+                onNavigate={setCurrentDate}
+                views={["month"]}
+                toolbar={false}
                 popup
                 tooltipAccessor={(event) => event.title}
               />
@@ -377,13 +402,13 @@ export default function CalendarClient() {
                 </label>
                 <p className="text-base font-semibold">
                   {selectedEvent.resource.eventType === "start" &&
-                    "🏠 Lease Start"}
+                    "Lease Start"}
                   {selectedEvent.resource.eventType === "payment" &&
-                    "💵 Payment Due"}
+                    "Payment Due"}
                   {selectedEvent.resource.eventType === "grace_end" &&
-                    "⏰ Grace Period Ends"}
+                    "Grace Period Ends"}
                   {selectedEvent.resource.eventType === "expiration" &&
-                    "🏁 Lease Expires"}
+                    "Lease Expires"}
                 </p>
               </div>
               <div>

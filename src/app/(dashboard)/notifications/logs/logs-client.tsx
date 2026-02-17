@@ -32,6 +32,7 @@ import {
   ArrowLeft01Icon,
   ArrowRight01Icon,
 } from "@hugeicons/core-free-icons";
+import { Pagination } from "@/components/pagination";
 
 type NotificationTrigger =
   | "PAYMENT_REMINDER"
@@ -305,69 +306,17 @@ export default function NotificationLogsClient() {
                 </TableBody>
               </Table>
 
-              {pagination.totalPages > 1 && (
-                <div className="flex items-center justify-between pt-4">
-                  <div className="text-sm text-muted-foreground">
-                    Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
-                    {Math.min(
-                      pagination.page * pagination.limit,
-                      pagination.total,
-                    )}{" "}
-                    of {pagination.total} logs
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => goToPage(pagination.page - 1)}
-                      disabled={pagination.page === 1}
-                    >
-                      <HugeiconsIcon
-                        icon={ArrowLeft01Icon}
-                        className="h-4 w-4"
-                      />
-                    </Button>
-                    <div className="flex items-center gap-1">
-                      {Array.from(
-                        { length: pagination.totalPages },
-                        (_, i) => i + 1,
-                      )
-                        .filter(
-                          (p) =>
-                            p === 1 ||
-                            p === pagination.totalPages ||
-                            Math.abs(p - pagination.page) <= 1,
-                        )
-                        .map((p, i, arr) => (
-                          <div key={p}>
-                            {i > 0 && arr[i - 1] !== p - 1 && (
-                              <span className="px-2">...</span>
-                            )}
-                            <Button
-                              variant={
-                                p === pagination.page ? "default" : "outline"
-                              }
-                              size="sm"
-                              onClick={() => goToPage(p)}
-                            >
-                              {p}
-                            </Button>
-                          </div>
-                        ))}
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => goToPage(pagination.page + 1)}
-                      disabled={pagination.page === pagination.totalPages}
-                    >
-                      <HugeiconsIcon
-                        icon={ArrowRight01Icon}
-                        className="h-4 w-4"
-                      />
-                    </Button>
-                  </div>
-                </div>
+              {pagination.totalPages > 0 && (
+                <Pagination
+                  currentPage={pagination.page}
+                  totalPages={pagination.totalPages}
+                  totalItems={pagination.total}
+                  pageSize={pagination.limit}
+                  onPageChange={(page) => goToPage(page)}
+                  onPageSizeChange={(size) => {
+                    setPagination((prev) => ({ ...prev, limit: size, page: 1 }));
+                  }}
+                />
               )}
             </>
           )}

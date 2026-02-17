@@ -64,6 +64,7 @@ import {
   downloadExcelTemplate,
   formatDateForExcel,
 } from "@/lib/excel-utils";
+import { Pagination } from "@/components/pagination";
 
 type LeaseStatus = "DRAFT" | "ACTIVE" | "ENDED";
 type PaymentCycle = "DAILY" | "MONTHLY" | "ANNUAL";
@@ -138,6 +139,12 @@ export default function LeasesClient() {
   const [createdLease, setCreatedLease] = useState<Lease | null>(null);
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+
   const [formData, setFormData] = useState({
     tenantId: "",
     propertyId: "",
@@ -156,23 +163,35 @@ export default function LeasesClient() {
     fetchLeases();
     fetchTenants();
     fetchProperties();
-  }, []);
-
-  useEffect(() => {
-    filterLeases();
-  }, [leases, statusFilter, searchQuery]);
+  }, [currentPage, pageSize, statusFilter, searchQuery]);
 
   const fetchLeases = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch("/api/leases");
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: pageSize.toString(),
+      });
+
+      // Add filters to API request
+      if (statusFilter !== "all") {
+        params.append("status", statusFilter);
+      }
+      if (searchQuery) {
+        params.append("search", searchQuery);
+      }
+
+      const response = await fetch(`/api/leases?${params}`);
 
       if (!response.ok) {
-        throw new Error("Failed to fetch leases");
+        throw new Error("Failed to leases");
       }
 
       const data = await response.json();
-      setLeases(data.items || data);
+      setLeases(data.items || []);
+      setFilteredLeases(data.items || []); // Set filtered leases from API response
+      setTotalItems(data.pagination?.total || 0);
+      setTotalPages(data.pagination?.totalPages || 0);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load leases");
     } finally {
@@ -223,27 +242,6 @@ export default function LeasesClient() {
     }
   };
 
-  const filterLeases = () => {
-    let filtered = leases;
-
-    // Filter by status
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((lease) => lease.status === statusFilter);
-    }
-
-    // Filter by search query
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (lease) =>
-          lease.tenant.fullName.toLowerCase().includes(query) ||
-          lease.unit.name.toLowerCase().includes(query) ||
-          lease.unit.property.name.toLowerCase().includes(query),
-      );
-    }
-
-    setFilteredLeases(filtered);
-  };
 
   const selectedProperty = properties.find((p) => p.id === formData.propertyId);
   const availableUnits = selectedProperty?.units || [];
@@ -662,11 +660,20 @@ export default function LeasesClient() {
                 <Input
                   placeholder="Search leases..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setCurrentPage(1); // Reset to page 1 when search changes
+                  }}
                   className="pl-8 w-[250px]"
                 />
               </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <Select
+                value={statusFilter}
+                onValueChange={(value) => {
+                  setStatusFilter(value);
+                  setCurrentPage(1); // Reset to page 1 when filter changes
+                }}
+              >
                 <SelectTrigger className="w-[150px]">
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
@@ -882,6 +889,21 @@ export default function LeasesClient() {
                 ))}
               </TableBody>
             </Table>
+          )}
+
+          {/* Pagination */}
+          {!isLoading && filteredLeases.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              pageSize={pageSize}
+              onPageChange={(page) => setCurrentPage(page)}
+              onPageSizeChange={(size) => {
+                setPageSize(size);
+                setCurrentPage(1);
+              }}
+            />
           )}
         </CardContent>
       </Card>

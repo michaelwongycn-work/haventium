@@ -56,6 +56,7 @@ import {
   File01Icon,
 } from "@hugeicons/core-free-icons";
 import { formatDate } from "@/lib/format";
+import { Pagination } from "@/components/pagination";
 
 type Document = {
   id: string;
@@ -99,6 +100,10 @@ export default function DocumentsClient() {
   const [isSaving, setIsSaving] = useState(false);
   const [entityTypeFilter, setEntityTypeFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   const [formData, setFormData] = useState({
     file: null as File | null,
@@ -110,7 +115,7 @@ export default function DocumentsClient() {
     fetchDocuments();
     fetchProperties();
     fetchTenants();
-  }, []);
+  }, [currentPage, pageSize]);
 
   useEffect(() => {
     filterDocuments();
@@ -119,7 +124,11 @@ export default function DocumentsClient() {
   const fetchDocuments = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch("/api/documents");
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: pageSize.toString(),
+      });
+      const response = await fetch(`/api/documents?${params}`);
 
       if (!response.ok) {
         throw new Error("Failed to fetch documents");
@@ -127,6 +136,8 @@ export default function DocumentsClient() {
 
       const data = await response.json();
       setDocuments(data.items || data);
+      setTotalItems(data.pagination?.total || 0);
+      setTotalPages(data.pagination?.totalPages || 0);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load documents");
     } finally {
@@ -450,6 +461,19 @@ export default function DocumentsClient() {
               )}
             </TableBody>
           </Table>
+          {!isLoading && filteredDocuments.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              pageSize={pageSize}
+              onPageChange={(page) => setCurrentPage(page)}
+              onPageSizeChange={(size) => {
+                setPageSize(size);
+                setCurrentPage(1);
+              }}
+            />
+          )}
         </CardContent>
       </Card>
 

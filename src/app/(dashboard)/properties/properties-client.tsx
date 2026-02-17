@@ -52,6 +52,7 @@ import {
 import { BulkImportDialog } from "@/components/bulk-import-dialog";
 import { downloadExcelFile, downloadExcelTemplate } from "@/lib/excel-utils";
 import { formatDate } from "@/lib/format";
+import { Pagination } from "@/components/pagination";
 
 type Property = {
   id: string;
@@ -76,15 +77,23 @@ export default function PropertiesClient({ roles }: { roles: UserRole[] }) {
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   useEffect(() => {
     fetchProperties();
-  }, []);
+  }, [currentPage, pageSize]);
 
   const fetchProperties = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch("/api/properties");
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: pageSize.toString(),
+      });
+      const response = await fetch(`/api/properties?${params}`);
 
       if (!response.ok) {
         throw new Error("Failed to fetch properties");
@@ -92,6 +101,8 @@ export default function PropertiesClient({ roles }: { roles: UserRole[] }) {
 
       const data = await response.json();
       setProperties(data.items || data);
+      setTotalItems(data.pagination?.total || 0);
+      setTotalPages(data.pagination?.totalPages || 0);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to load properties",
@@ -465,6 +476,19 @@ export default function PropertiesClient({ roles }: { roles: UserRole[] }) {
                 ))}
               </TableBody>
             </Table>
+          )}
+          {!isLoading && properties.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              pageSize={pageSize}
+              onPageChange={(page) => setCurrentPage(page)}
+              onPageSizeChange={(size) => {
+                setPageSize(size);
+                setCurrentPage(1);
+              }}
+            />
           )}
         </CardContent>
       </Card>

@@ -124,12 +124,13 @@ export async function GET(request: NextRequest) {
         take: 10,
       }),
 
-      // Earliest to expire (all active leases sorted by end date)
+      // Upcoming payments (unpaid DRAFT/ACTIVE leases sorted by start date)
       prisma.leaseAgreement.findMany({
         where: {
           organizationId,
-          status: "ACTIVE",
-          endDate: { gte: now },
+          status: { in: ["DRAFT", "ACTIVE"] },
+          paidAt: null,
+          startDate: { gte: now },
         },
         include: {
           tenant: { select: { fullName: true } },
@@ -140,7 +141,7 @@ export async function GET(request: NextRequest) {
           },
         },
         orderBy: {
-          endDate: "asc",
+          startDate: "asc",
         },
         take: 10,
       }),
@@ -171,7 +172,7 @@ export async function GET(request: NextRequest) {
         totalUnits: unitCount,
       },
       expiringSoon,
-      earliestToExpire,
+      upcomingPayments: earliestToExpire,
     });
   } catch (error) {
     return handleApiError(error, "fetch dashboard overview");

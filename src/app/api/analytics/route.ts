@@ -27,20 +27,20 @@ export async function GET(request: Request) {
     }
 
     // 1. Monthly Revenue (Expected vs Collected)
+    // Note: One lease = one payment. Payment is due when lease starts.
     const monthlyRevenueData = await Promise.all(
       monthLabels.map(async (monthLabel, index) => {
         const date = subMonths(now, months - 1 - index);
         const monthStart = startOfMonth(date);
         const monthEnd = endOfMonth(date);
 
-        // Expected: sum of rentAmount for ACTIVE leases overlapping this month
+        // Expected: sum of rentAmount for leases STARTING in this month (payment due)
         const expectedResult = await prisma.leaseAgreement.aggregate({
           _sum: { rentAmount: true },
           where: {
             organizationId,
-            status: "ACTIVE",
-            startDate: { lte: monthEnd },
-            endDate: { gte: monthStart },
+            status: { in: ["ACTIVE", "DRAFT"] }, // Include DRAFT for unpaid expected revenue
+            startDate: { gte: monthStart, lte: monthEnd },
           },
         });
 
@@ -176,7 +176,7 @@ export async function GET(request: Request) {
       })
     );
 
-    // 7. Upcoming Expirations (next 6 months)
+    // 7. Upcoming Lease Changes (next 6 months) - Expiring and New leases
     const upcomingMonths = [];
     for (let i = 0; i < 6; i++) {
       const date = addMonths(now, i);
@@ -187,9 +187,10 @@ export async function GET(request: Request) {
       });
     }
 
-    const upcomingExpirations = await Promise.all(
+    const upcomingLeaseChanges = await Promise.all(
       upcomingMonths.map(async (month) => {
-        const count = await prisma.leaseAgreement.count({
+        // Count expiring leases (ACTIVE leases ending, excluding auto-renewed ones)
+        const expiringCount = await prisma.leaseAgreement.count({
           where: {
             organizationId,
             status: "ACTIVE",
@@ -197,12 +198,27 @@ export async function GET(request: Request) {
               gte: month.start,
               lte: month.end,
             },
+            renewedTo: null, // Exclude leases that have been renewed
+          },
+        });
+
+        // Count new/starting leases (ACTIVE and DRAFT leases starting in this month)
+        const newCount = await prisma.leaseAgreement.count({
+          where: {
+            organizationId,
+            status: { in: ["ACTIVE", "DRAFT"] },
+            startDate: {
+              gte: month.start,
+              lte: month.end,
+            },
+            renewedFromId: null, // Exclude renewed leases
           },
         });
 
         return {
           month: month.label,
-          count,
+          expiring: expiringCount,
+          new: newCount,
         };
       })
     );
@@ -215,7 +231,7 @@ export async function GET(request: Request) {
       tenantStatusDistribution,
       paymentCycleDistribution,
       propertyPerformance,
-      upcomingExpirations,
+      upcomingLeaseChanges,
     });
   } catch (error) {
     return handleApiError(error, "fetch analytics");

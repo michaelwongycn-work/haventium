@@ -52,7 +52,7 @@ type OverviewData = {
     totalUnits: number;
   };
   expiringSoon: Lease[];
-  earliestToExpire: Lease[];
+  upcomingPayments: Lease[];
 };
 
 
@@ -365,22 +365,22 @@ export function OverviewClient({ userName }: { userName: string }) {
 
         <Card>
           <CardHeader>
-            <CardTitle>Earliest to Expire</CardTitle>
+            <CardTitle>Upcoming Payments ({data.upcomingPayments?.length || 0})</CardTitle>
             <CardDescription>
-              Active leases sorted by earliest end date
+              Unpaid leases sorted by payment due date
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {data.earliestToExpire.length === 0 ? (
+            {!data.upcomingPayments || data.upcomingPayments.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">
-                No active leases
+                No upcoming payments
               </p>
             ) : (
               <div className="space-y-3">
-                {data.earliestToExpire.map((lease) => {
-                  const endDate = new Date(lease.endDate);
-                  const daysLeft = Math.ceil(
-                    (endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+                {data.upcomingPayments.map((lease) => {
+                  const startDate = new Date(lease.startDate);
+                  const daysUntil = Math.ceil(
+                    (startDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
                   );
                   return (
                     <Link
@@ -397,9 +397,11 @@ export function OverviewClient({ userName }: { userName: string }) {
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-medium">{daysLeft}d left</p>
+                        <p className="text-sm font-medium">
+                          {formatCurrency(lease.rentAmount)}
+                        </p>
                         <p className="text-xs text-muted-foreground">
-                          {formatDateShort(endDate)}
+                          Due in {daysUntil}d
                         </p>
                       </div>
                     </Link>

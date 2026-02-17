@@ -60,6 +60,7 @@ import {
 import { BulkImportDialog } from "@/components/bulk-import-dialog";
 import { downloadExcelFile, downloadExcelTemplate } from "@/lib/excel-utils";
 import { formatDate } from "@/lib/format";
+import { Pagination } from "@/components/pagination";
 
 type TenantStatus = "LEAD" | "BOOKED" | "ACTIVE" | "EXPIRED";
 
@@ -92,6 +93,10 @@ export default function TenantsClient() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -105,7 +110,7 @@ export default function TenantsClient() {
 
   useEffect(() => {
     fetchTenants();
-  }, []);
+  }, [currentPage, pageSize]);
 
   useEffect(() => {
     filterTenants();
@@ -114,7 +119,11 @@ export default function TenantsClient() {
   const fetchTenants = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch("/api/tenants");
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: pageSize.toString(),
+      });
+      const response = await fetch(`/api/tenants?${params}`);
 
       if (!response.ok) {
         throw new Error("Failed to fetch tenants");
@@ -122,6 +131,8 @@ export default function TenantsClient() {
 
       const data = await response.json();
       setTenants(data.items || data);
+      setTotalItems(data.pagination?.total || 0);
+      setTotalPages(data.pagination?.totalPages || 0);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load tenants");
     } finally {
@@ -574,6 +585,19 @@ export default function TenantsClient() {
                 ))}
               </TableBody>
             </Table>
+          )}
+          {!isLoading && filteredTenants.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              pageSize={pageSize}
+              onPageChange={(page) => setCurrentPage(page)}
+              onPageSizeChange={(size) => {
+                setPageSize(size);
+                setCurrentPage(1);
+              }}
+            />
           )}
         </CardContent>
       </Card>
