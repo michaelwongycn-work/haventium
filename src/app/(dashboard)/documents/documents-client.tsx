@@ -52,7 +52,7 @@ import {
   PlusSignIcon,
   Delete02Icon,
   Search01Icon,
-  FileDownload01Icon,
+  ViewIcon,
   File01Icon,
 } from "@hugeicons/core-free-icons";
 
@@ -125,7 +125,7 @@ export default function DocumentsClient() {
       }
 
       const data = await response.json();
-      setDocuments(data.data || data);
+      setDocuments(data.items || data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load documents");
     } finally {
@@ -138,7 +138,7 @@ export default function DocumentsClient() {
       const response = await fetch("/api/properties");
       if (response.ok) {
         const data = await response.json();
-        setProperties(data.data || data);
+        setProperties(data.items || data);
       }
     } catch (err) {
       console.error("Failed to fetch properties:", err);
@@ -150,7 +150,7 @@ export default function DocumentsClient() {
       const response = await fetch("/api/tenants");
       if (response.ok) {
         const data = await response.json();
-        setTenants(data.data || data);
+        setTenants(data.items || data);
       }
     } catch (err) {
       console.error("Failed to fetch tenants:", err);
@@ -404,7 +404,7 @@ export default function DocumentsClient() {
                             size="sm"
                             onClick={() => window.open(doc.fileUrl, "_blank")}
                           >
-                            <HugeiconsIcon icon={FileDownload01Icon} size={16} />
+                            <HugeiconsIcon icon={ViewIcon} size={16} />
                           </Button>
                           <Button
                             variant="ghost"

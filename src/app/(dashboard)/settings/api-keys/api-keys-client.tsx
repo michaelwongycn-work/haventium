@@ -131,7 +131,7 @@ export default function ApiKeysClient() {
         throw new Error("Failed to fetch API keys");
       }
       const data = await response.json();
-      setApiKeys(data.data || []);
+      setApiKeys(data.items || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch API keys");
     } finally {
@@ -425,6 +425,7 @@ export default function ApiKeysClient() {
                 onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
                 }
+                autoComplete="off"
               />
             </div>
 
@@ -478,6 +479,7 @@ export default function ApiKeysClient() {
                   }
                   rows={4}
                   className="font-mono text-xs"
+                  autoComplete="off"
                 />
               ) : (
                 <Input
@@ -494,6 +496,7 @@ export default function ApiKeysClient() {
                   onChange={(e) =>
                     setFormData({ ...formData, value: e.target.value })
                   }
+                  autoComplete="off"
                 />
               )}
             </div>

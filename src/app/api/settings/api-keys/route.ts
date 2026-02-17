@@ -60,7 +60,7 @@ export async function GET() {
         : `••••••••${key.lastFourChars}`,
     }));
 
-    return apiSuccess(maskedKeys);
+    return apiSuccess({ items: maskedKeys });
   } catch (error) {
     return handleApiError(error, "fetch API keys");
   }

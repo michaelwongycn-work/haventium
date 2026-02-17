@@ -24,7 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   Delete02Icon,
-  FileDownload01Icon,
+  ViewIcon,
   PlusSignIcon,
 } from "@hugeicons/core-free-icons";
 import { DocumentUpload } from "./document-upload";
@@ -166,7 +166,7 @@ export function DocumentList({ entityType, entityId }: DocumentListProps) {
                         size="sm"
                         onClick={() => window.open(doc.fileUrl, "_blank")}
                       >
-                        <HugeiconsIcon icon={FileDownload01Icon} size={16} />
+                        <HugeiconsIcon icon={ViewIcon} size={16} />
                       </Button>
                       <Button
                         variant="ghost"

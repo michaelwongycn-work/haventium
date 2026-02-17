@@ -114,7 +114,7 @@ export default function TenantsClient() {
       }
 
       const data = await response.json();
-      setTenants(data);
+      setTenants(data.items || data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load tenants");
     } finally {

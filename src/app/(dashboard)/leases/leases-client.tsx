@@ -161,7 +161,7 @@ export default function LeasesClient() {
       }
 
       const data = await response.json();
-      setLeases(data);
+      setLeases(data.items || data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load leases");
     } finally {
@@ -174,7 +174,7 @@ export default function LeasesClient() {
       const response = await fetch("/api/tenants");
       if (response.ok) {
         const data = await response.json();
-        setTenants(data);
+        setTenants(data.items || data);
       }
     } catch (err) {
       // Silent fail - not critical
@@ -186,10 +186,11 @@ export default function LeasesClient() {
       const response = await fetch("/api/properties");
       if (response.ok) {
         const data = await response.json();
+        const properties = data.items || data;
 
         // Fetch units for each property
         const propertiesWithUnits = await Promise.all(
-          data.map(async (property: Property) => {
+          properties.map(async (property: Property) => {
             const unitsResponse = await fetch(
               `/api/properties/${property.id}/units`,
             );

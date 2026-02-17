@@ -165,9 +165,18 @@ export default function SettingsClient() {
         fetch("/api/accesses"),
       ]);
 
-      if (rolesRes.ok) setRoles(await rolesRes.json());
-      if (usersRes.ok) setUsers(await usersRes.json());
-      if (accessesRes.ok) setAccesses(await accessesRes.json());
+      if (rolesRes.ok) {
+        const rolesData = await rolesRes.json();
+        setRoles(rolesData.items || rolesData);
+      }
+      if (usersRes.ok) {
+        const usersData = await usersRes.json();
+        setUsers(usersData.items || usersData);
+      }
+      if (accessesRes.ok) {
+        const accessesData = await accessesRes.json();
+        setAccesses(accessesData.items || accessesData);
+      }
     } catch {
       // silently fail, data will be empty
     } finally {

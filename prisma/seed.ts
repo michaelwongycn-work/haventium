@@ -13,17 +13,16 @@ async function main() {
 
   // Cleanup existing data to avoid duplicates when using .create()
   console.log("🧹 Cleaning up existing data...");
-  // await prisma.notificationLog.deleteMany({})
-  // await prisma.notificationRule.deleteMany({})
-  // await prisma.notificationTemplate.deleteMany({})
-  // await prisma.apiKey.deleteMany({})
-  // await prisma.document.deleteMany({})
-  // await prisma.maintenanceRequest.deleteMany({})
-  // await prisma.leaseAgreement.deleteMany({})
-  // await prisma.activity.deleteMany({})
-  // await prisma.tenant.deleteMany({})
-  // await prisma.unit.deleteMany({})
-  // await prisma.property.deleteMany({})
+  await prisma.notificationLog.deleteMany({})
+  await prisma.notificationRule.deleteMany({})
+  await prisma.notificationTemplate.deleteMany({})
+  await prisma.document.deleteMany({})
+  await prisma.maintenanceRequest.deleteMany({})
+  await prisma.leaseAgreement.deleteMany({})
+  await prisma.activity.deleteMany({})
+  await prisma.tenant.deleteMany({})
+  await prisma.unit.deleteMany({})
+  await prisma.property.deleteMany({})
   console.log("✓ Cleanup finished");
 
   // Create subscription tiers
@@ -856,6 +855,111 @@ Haventium Property Management`,
   });
 
   console.log("✓ Created notification rules");
+
+  // Create maintenance requests
+  const maintenanceReq1 = await prisma.maintenanceRequest.create({
+    data: {
+      organizationId: org.id,
+      propertyId: grandView.id,
+      unitId: unit101.id,
+      tenantId: johnDoe.id,
+      title: "Leaking Faucet in Kitchen",
+      description:
+        "The kitchen faucet has been leaking for the past few days. Water drips constantly even when fully closed.",
+      status: "OPEN",
+      priority: "MEDIUM",
+      estimatedCost: 150,
+    },
+  });
+
+  const maintenanceReq2 = await prisma.maintenanceRequest.create({
+    data: {
+      organizationId: org.id,
+      propertyId: grandView.id,
+      unitId: unit102.id,
+      tenantId: janeSmith.id,
+      title: "Air Conditioning Not Working",
+      description:
+        "The AC unit stopped working completely. Unit is getting very hot, especially at night.",
+      status: "IN_PROGRESS",
+      priority: "URGENT",
+      estimatedCost: 500,
+      actualCost: 450,
+    },
+  });
+
+  const maintenanceReq3 = await prisma.maintenanceRequest.create({
+    data: {
+      organizationId: org.id,
+      propertyId: sunsetVillas.id,
+      unitId: villa1.id,
+      title: "Replace Air Filter",
+      description: "Routine air filter replacement for HVAC system.",
+      status: "COMPLETED",
+      priority: "LOW",
+      estimatedCost: 50,
+      actualCost: 45,
+      completedAt: daysFromNow(-5),
+    },
+  });
+
+  const maintenanceReq4 = await prisma.maintenanceRequest.create({
+    data: {
+      organizationId: org.id,
+      propertyId: grandView.id,
+      title: "Common Area Light Fixtures",
+      description:
+        "Several light fixtures in the hallway need bulb replacements.",
+      status: "OPEN",
+      priority: "LOW",
+    },
+  });
+
+  console.log("✓ Created 4 maintenance requests");
+
+  // Create documents (Note: we can't upload actual files to Vercel Blob in seed, so we'll create placeholder metadata)
+  // In real usage, these would be created via the upload endpoint
+  const doc1 = await prisma.document.create({
+    data: {
+      organizationId: org.id,
+      propertyId: grandView.id,
+      unitId: unit101.id,
+      leaseId: case3Lease.id,
+      tenantId: johnDoe.id,
+      filename: "lease-agreement-unit-101.pdf",
+      fileType: "application/pdf",
+      fileSize: 245678,
+      fileUrl: "https://example.com/placeholder/lease-agreement.pdf",
+      storageKey: "seed-placeholder-lease-agreement",
+    },
+  });
+
+  const doc2 = await prisma.document.create({
+    data: {
+      organizationId: org.id,
+      propertyId: grandView.id,
+      tenantId: johnDoe.id,
+      filename: "tenant-id-proof.pdf",
+      fileType: "application/pdf",
+      fileSize: 189432,
+      fileUrl: "https://example.com/placeholder/id-proof.pdf",
+      storageKey: "seed-placeholder-id-proof",
+    },
+  });
+
+  const doc3 = await prisma.document.create({
+    data: {
+      organizationId: org.id,
+      propertyId: sunsetVillas.id,
+      filename: "property-insurance.pdf",
+      fileType: "application/pdf",
+      fileSize: 456789,
+      fileUrl: "https://example.com/placeholder/insurance.pdf",
+      storageKey: "seed-placeholder-insurance",
+    },
+  });
+
+  console.log("✓ Created 3 documents");
 
   console.log("🎉 Seed completed successfully!");
 }

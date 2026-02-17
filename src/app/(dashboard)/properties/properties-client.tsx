@@ -84,7 +84,7 @@ export default function PropertiesClient({ roles }: { roles: UserRole[] }) {
       }
 
       const data = await response.json();
-      setProperties(data);
+      setProperties(data.items || data);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to load properties",

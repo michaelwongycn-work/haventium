@@ -1,12 +1,11 @@
-import { checkPageAccess } from "@/lib/guards";
-import { AccessDenied } from "@/components/access-denied";
+import { checkPageAccess, AccessDenied } from "@/lib/guards";
 import DocumentsClient from "./documents-client";
 
 export default async function DocumentsPage() {
   const { authorized } = await checkPageAccess("documents", "read");
 
   if (!authorized) {
-    return <AccessDenied />;
+    return <AccessDenied resource="documents" />;
   }
 
   return <DocumentsClient />;

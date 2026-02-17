@@ -163,7 +163,7 @@ export default function MaintenanceRequestsClient() {
       }
 
       const data = await response.json();
-      setRequests(data.data || data);
+      setRequests(data.items || data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load requests");
     } finally {
@@ -176,7 +176,7 @@ export default function MaintenanceRequestsClient() {
       const response = await fetch("/api/properties");
       if (response.ok) {
         const data = await response.json();
-        setProperties(data.data || data);
+        setProperties(data.items || data);
       }
     } catch (err) {
       console.error("Failed to fetch properties:", err);
@@ -200,7 +200,7 @@ export default function MaintenanceRequestsClient() {
       const response = await fetch("/api/tenants");
       if (response.ok) {
         const data = await response.json();
-        setTenants(data.data || data);
+        setTenants(data.items || data);
       }
     } catch (err) {
       console.error("Failed to fetch tenants:", err);

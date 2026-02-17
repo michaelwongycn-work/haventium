@@ -1,5 +1,4 @@
-import { checkPageAccess } from "@/lib/guards";
-import { AccessDenied } from "@/components/access-denied";
+import { checkPageAccess, AccessDenied } from "@/lib/guards";
 import MaintenanceRequestDetailClient from "./maintenance-request-detail-client";
 
 export default async function MaintenanceRequestDetailPage({
@@ -10,7 +9,7 @@ export default async function MaintenanceRequestDetailPage({
   const { authorized } = await checkPageAccess("maintenance", "read");
 
   if (!authorized) {
-    return <AccessDenied />;
+    return <AccessDenied resource="maintenance request" />;
   }
 
   const { id } = await params;

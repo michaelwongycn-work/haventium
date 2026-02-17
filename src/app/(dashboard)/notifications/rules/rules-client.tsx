@@ -160,7 +160,7 @@ export default function NotificationRulesClient() {
       const response = await fetch("/api/notifications/rules");
       if (!response.ok) throw new Error("Failed to fetch rules");
       const data = await response.json();
-      setRules(data);
+      setRules(data.items || data);
     } catch (err) {
       setError("Failed to load notification rules");
     } finally {
@@ -173,7 +173,7 @@ export default function NotificationRulesClient() {
       const response = await fetch("/api/users");
       if (!response.ok) throw new Error("Failed to fetch users");
       const data = await response.json();
-      setUsers(data);
+      setUsers(data.items || data);
     } catch (err) {
       // Silent fail - not critical
     }
@@ -184,7 +184,7 @@ export default function NotificationRulesClient() {
       const response = await fetch("/api/roles");
       if (!response.ok) throw new Error("Failed to fetch roles");
       const data = await response.json();
-      setRoles(data);
+      setRoles(data.items || data);
     } catch (err) {
       // Silent fail - not critical
     }
