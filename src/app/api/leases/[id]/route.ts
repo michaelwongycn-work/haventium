@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
-import { auth } from "@/lib/auth"
+import { checkAccess } from "@/lib/guards"
 import { prisma } from "@/lib/prisma"
 
 const updateLeaseSchema = z.object({
@@ -24,14 +24,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth()
-
-    if (!session?.user?.organizationId) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
-    }
+    const { authorized, response, session } = await checkAccess("leases", "read")
+    if (!authorized) return response
 
     const { id } = await params
 
@@ -99,14 +93,8 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth()
-
-    if (!session?.user?.organizationId) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
-    }
+    const { authorized, response, session } = await checkAccess("leases", "update")
+    if (!authorized) return response
 
     const { id } = await params
     const body = await request.json()
@@ -444,14 +432,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth()
-
-    if (!session?.user?.organizationId) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
-    }
+    const { authorized, response, session } = await checkAccess("leases", "delete")
+    if (!authorized) return response
 
     const { id } = await params
 

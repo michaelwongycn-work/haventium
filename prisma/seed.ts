@@ -237,9 +237,10 @@ async function main() {
         name: "Owner",
       },
     },
-    update: {},
+    update: { isSystem: true },
     create: {
       name: "Owner",
+      isSystem: true,
       organizationId: org.id,
     },
   })

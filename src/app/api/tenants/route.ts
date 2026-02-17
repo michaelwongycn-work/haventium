@@ -1,7 +1,17 @@
-import { NextResponse } from "next/server"
 import { z } from "zod"
-import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import {
+  requireAccess,
+  checkSubscriptionLimit,
+  ActivityLogger,
+  apiSuccess,
+  apiCreated,
+  apiError,
+  handleApiError,
+  validateRequest,
+  sanitizeSearchInput,
+  parseEnumParam,
+} from "@/lib/api"
 
 const createTenantSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
@@ -18,27 +28,23 @@ const createTenantSchema = z.object({
   path: ["email"],
 })
 
+const TENANT_STATUSES = ["LEAD", "BOOKED", "ACTIVE", "EXPIRED"] as const
+
 // GET /api/tenants - List all tenants for the organization
 export async function GET(request: Request) {
   try {
-    const session = await auth()
-
-    if (!session?.user?.organizationId) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
-    }
+    const { authorized, response, session } = await requireAccess("tenants", "read")
+    if (!authorized) return response
 
     const { searchParams } = new URL(request.url)
-    const status = searchParams.get("status")
-    const search = searchParams.get("search")
+    const status = parseEnumParam(searchParams.get("status"), TENANT_STATUSES)
+    const search = sanitizeSearchInput(searchParams.get("search"))
 
     const where: Record<string, unknown> = {
       organizationId: session.user.organizationId,
     }
 
-    if (status && ["LEAD", "BOOKED", "ACTIVE", "EXPIRED"].includes(status)) {
+    if (status) {
       where.status = status
     }
 
@@ -64,47 +70,23 @@ export async function GET(request: Request) {
       },
     })
 
-    return NextResponse.json(tenants)
+    return apiSuccess(tenants)
   } catch (error) {
-    console.error("Error fetching tenants:", error)
-    return NextResponse.json(
-      { error: "Failed to fetch tenants" },
-      { status: 500 }
-    )
+    return handleApiError(error, "fetch tenants")
   }
 }
 
 // POST /api/tenants - Create new tenant
 export async function POST(request: Request) {
   try {
-    const session = await auth()
+    const { authorized, response, session } = await requireAccess("tenants", "create")
+    if (!authorized) return response
 
-    if (!session?.user?.organizationId) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
-    }
-
-    const body = await request.json()
-    const validatedData = createTenantSchema.parse(body)
+    const validatedData = await validateRequest(request, createTenantSchema)
 
     // Check subscription limits
-    const subscription = session.user.subscription
-    if (subscription?.tier) {
-      const currentTenantCount = await prisma.tenant.count({
-        where: {
-          organizationId: session.user.organizationId,
-        },
-      })
-
-      if (currentTenantCount >= subscription.tier.maxTenants) {
-        return NextResponse.json(
-          { error: `Tenant limit reached. Your ${subscription.tier.name} plan allows ${subscription.tier.maxTenants} tenants.` },
-          { status: 403 }
-        )
-      }
-    }
+    const limitCheck = await checkSubscriptionLimit(session, "tenants")
+    if (!limitCheck.allowed) return limitCheck.error!
 
     // Check if email already exists in organization
     const existingTenant = await prisma.tenant.findFirst({
@@ -115,10 +97,7 @@ export async function POST(request: Request) {
     })
 
     if (existingTenant) {
-      return NextResponse.json(
-        { error: "A tenant with this email already exists" },
-        { status: 400 }
-      )
+      return apiError("A tenant with this email already exists", 400)
     }
 
     const tenant = await prisma.tenant.create({
@@ -134,29 +113,14 @@ export async function POST(request: Request) {
     })
 
     // Log activity
-    await prisma.activity.create({
-      data: {
-        type: "TENANT_CREATED",
-        description: `Created tenant: ${tenant.fullName} (${tenant.email})`,
-        userId: session.user.id,
-        organizationId: session.user.organizationId,
-        tenantId: tenant.id,
-      },
+    await ActivityLogger.tenantCreated(session, {
+      id: tenant.id,
+      fullName: tenant.fullName,
+      email: tenant.email,
     })
 
-    return NextResponse.json(tenant, { status: 201 })
+    return apiCreated(tenant)
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: error.issues[0].message },
-        { status: 400 }
-      )
-    }
-
-    console.error("Error creating tenant:", error)
-    return NextResponse.json(
-      { error: "Failed to create tenant" },
-      { status: 500 }
-    )
+    return handleApiError(error, "create tenant")
   }
 }

@@ -3,6 +3,7 @@ import Credentials from "next-auth/providers/credentials"
 import { authConfig } from "./auth.config"
 import { prisma } from "./prisma"
 import { comparePassword } from "./password"
+import { SUBSCRIPTION_STATUS } from "./constants"
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
@@ -22,9 +23,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           where: {
             email: credentials.email as string,
           },
-          include: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            hashedPassword: true,
+            organizationId: true,
             organization: {
-              include: {
+              select: {
                 subscription: {
                   include: {
                     tier: true,
@@ -33,7 +39,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               },
             },
             userRoles: {
-              include: {
+              select: {
                 role: {
                   include: {
                     roleAccesses: {
@@ -62,22 +68,39 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
 
         // Check subscription status
+        const subscription = user.organization.subscription
         if (
-          user.organization.subscription?.status === "EXPIRED" ||
-          user.organization.subscription?.status === "CANCELLED"
+          subscription?.status === SUBSCRIPTION_STATUS.EXPIRED ||
+          subscription?.status === SUBSCRIPTION_STATUS.CANCELLED
         ) {
           throw new Error("Subscription expired or cancelled")
         }
 
-      const subscription = user.organization.subscription ? JSON.parse(JSON.stringify(user.organization.subscription)) : null
+        // Map roles directly without JSON hacks
+        // We ensure we maintain the structure needed by access-utils
+        const roles = user.userRoles.map((ur) => ({
+          ...ur.role,
+          // Ensure dates are strings if needed by NextAuth, though standard adapters handle Date
+          createdAt: ur.role.createdAt.toISOString(),
+          updatedAt: ur.role.updatedAt.toISOString(),
+        }))
+        
+        // Prepare subscription object safely
+        const safeSubscription = subscription ? {
+          ...subscription,
+          startDate: subscription.startDate.toISOString(),
+          endDate: subscription.endDate?.toISOString() || null,
+          createdAt: subscription.createdAt.toISOString(),
+          updatedAt: subscription.updatedAt.toISOString(),
+        } : null
 
         return {
           id: user.id,
           email: user.email,
           name: user.name,
           organizationId: user.organizationId,
-          subscription: subscription,
-          roles: JSON.parse(JSON.stringify(user.userRoles.map((ur: any) => ur.role))),
+          subscription: safeSubscription,
+          roles: roles,
         }
       },
     }),

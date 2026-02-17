@@ -17,6 +17,7 @@ export default async function DashboardLayout({
   }
 
   const tierName = session.user.subscription?.tier?.name || "Free Plan"
+  const roles = session.user.roles || []
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -28,12 +29,12 @@ export default async function DashboardLayout({
           </Link>
 
           <nav className="flex flex-1 items-center gap-4 ml-8">
-            <NavLinks />
+            <NavLinks roles={roles} />
           </nav>
 
           <div className="flex items-center gap-4">
             <Badge variant="secondary">{tierName}</Badge>
-            <UserNav user={session.user} />
+            <UserNav user={session.user} roles={roles} />
           </div>
         </div>
       </header>
@@ -43,4 +44,3 @@ export default async function DashboardLayout({
     </div>
   )
 }
-

@@ -1,4 +1,5 @@
 import { DefaultSession } from "next-auth"
+import { UserRole } from "@/lib/access-utils"
 
 declare module "next-auth" {
   interface Session {
@@ -6,14 +7,14 @@ declare module "next-auth" {
       id: string
       organizationId: string
       subscription: any
-      roles: any[]
+      roles: UserRole[]
     } & DefaultSession["user"]
   }
 
   interface User {
     organizationId: string
     subscription: any
-    roles: any[]
+    roles: UserRole[]
   }
 }
 
@@ -22,6 +23,6 @@ declare module "next-auth/jwt" {
     id: string
     organizationId: string
     subscription: any
-    roles: any[]
+    roles: UserRole[]
   }
 }

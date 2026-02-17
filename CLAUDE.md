@@ -2,6 +2,10 @@
 
 Rental property management CRM. Multi-tenant SaaS where every piece of data is scoped to an organization — every Prisma query must include `organizationId` in its `where` clause.
 
+## Development Rules
+
+- **Never run Prisma migrations** (`prisma migrate dev`, `prisma db push`, etc.) — the developer handles all migrations manually.
+
 ## Product
 
 ### Properties & Units
@@ -85,7 +89,28 @@ Schema is fully modeled (NotificationTemplate, NotificationRule, NotificationLog
 
 ### RBAC
 
-Roles, accesses, and user-role associations are modeled in the schema and seeded (Owner role with 16 default access entries like `tenants/create`, `leases/update`). Role data is loaded into the JWT at login. However, **no route-level permission checks are implemented yet** — only org ownership is enforced.
+**Fully implemented** throughout API and UI. Roles, accesses, and user-role associations are modeled in the schema. The Owner role is system-protected (`isSystem: true`) and cannot be edited or deleted.
+
+**Permission model:**
+
+| Resource | Actions |
+|---|---|
+| properties | read, create, update, delete |
+| tenants | read, create, update, delete |
+| leases | read, create, update, delete |
+| settings | manage (roles/accesses) |
+| users | manage |
+
+**API enforcement:** All route handlers use `checkAccess(resource, action)` from `src/lib/guards.ts`. It returns `{ authorized, response, session }` — handlers check `!authorized` and return the response (403 with error message). Session data is returned for convenience.
+
+**UI enforcement:** All pages use `checkPageAccess(resource, action)` from `src/lib/guards.tsx` in a server component wrapper. If unauthorized, renders `<AccessDenied />` component; otherwise renders the client component (e.g. `<PropertiesClient />`).
+
+**Navigation filtering:** `nav-links.tsx` uses `hasAccess()` helper to conditionally show links based on user permissions. Settings link only appears if user has `settings/manage` or `users/manage`.
+
+**Protected operations:**
+- Owner role: cannot be edited or deleted (enforced in API and UI)
+- User mutations (invite/edit/delete): require `currentPassword` field for confirmation
+- Signup: automatically creates Owner role with `isSystem: true` for new organizations
 
 ## Technical Conventions
 
@@ -118,11 +143,19 @@ Password requirements: min 8 chars, lowercase, uppercase, digit, special char (`
 ### API Patterns
 
 Route handlers in `src/app/api/`. Every handler:
-1. Calls `auth()` and returns 401 if no session
-2. Extracts `organizationId` from `session.user.organizationId`
-3. Validates input with inline Zod schemas
-4. Scopes all queries by `organizationId`
-5. Returns Zod validation errors as `{ error: issues[0].message }` with status 400
+1. Calls `checkAccess(resource, action)` from `src/lib/guards.ts` for RBAC enforcement
+2. If `!authorized`, returns the 403 response immediately
+3. Extracts `organizationId` from `session.user.organizationId` (session returned by `checkAccess`)
+4. Validates input with inline Zod schemas
+5. Scopes all queries by `organizationId`
+6. Returns Zod validation errors as `{ error: issues[0].message }` with status 400
+
+**Example pattern:**
+```typescript
+const { authorized, response, session } = await checkAccess('properties', 'create');
+if (!authorized) return response;
+const organizationId = session.user.organizationId;
+```
 
 Business rules are always enforced server-side — never trust the client.
 
@@ -139,11 +172,12 @@ Defined in `vercel.json`. Both are POST endpoints protected by optional `CRON_SE
 
 - shadcn/ui components in `src/components/ui/`, icons from `@hugeicons/react` + `@hugeicons/core-free-icons`
 - `cn()` utility from `clsx` + `tailwind-merge` for class merging
+- **Page structure:** Server component wrapper that calls `checkPageAccess(resource, action)` → renders client component (e.g. `<PropertiesClient />`) if authorized, otherwise `<AccessDenied />`
 - List pages and detail pages are client components (`"use client"`) that fetch on mount. Dashboard is a server component.
 - Skeleton placeholders for loading states
 - `Dialog` for create/edit modals, `AlertDialog` for destructive confirmations
 - Activity timeline on detail pages with color-coded icons (blue=lease, violet=tenant, emerald=property, amber=payment)
-- Top-bar navigation with active state via `usePathname`, tier badge, user dropdown
+- Top-bar navigation with active state via `usePathname`, tier badge, user dropdown, links filtered by `hasAccess()` helper
 
 ### Seed Data
 

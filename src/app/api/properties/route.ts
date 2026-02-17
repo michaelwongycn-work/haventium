@@ -1,7 +1,14 @@
-import { NextResponse } from "next/server"
 import { z } from "zod"
-import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import {
+  requireAccess,
+  checkSubscriptionLimit,
+  ActivityLogger,
+  apiSuccess,
+  apiCreated,
+  handleApiError,
+  validateRequest,
+} from "@/lib/api"
 
 const createPropertySchema = z.object({
   name: z.string().min(1, "Property name is required"),
@@ -10,14 +17,8 @@ const createPropertySchema = z.object({
 // GET /api/properties - List all properties for the organization
 export async function GET() {
   try {
-    const session = await auth()
-
-    if (!session?.user?.organizationId) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
-    }
+    const { authorized, response, session } = await requireAccess("properties", "read")
+    if (!authorized) return response
 
     const properties = await prisma.property.findMany({
       where: {
@@ -35,47 +36,23 @@ export async function GET() {
       },
     })
 
-    return NextResponse.json(properties)
+    return apiSuccess(properties)
   } catch (error) {
-    console.error("Error fetching properties:", error)
-    return NextResponse.json(
-      { error: "Failed to fetch properties" },
-      { status: 500 }
-    )
+    return handleApiError(error, "fetch properties")
   }
 }
 
 // POST /api/properties - Create new property
 export async function POST(request: Request) {
   try {
-    const session = await auth()
+    const { authorized, response, session } = await requireAccess("properties", "create")
+    if (!authorized) return response
 
-    if (!session?.user?.organizationId) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
-    }
-
-    const body = await request.json()
-    const validatedData = createPropertySchema.parse(body)
+    const validatedData = await validateRequest(request, createPropertySchema)
 
     // Check subscription limits
-    const subscription = session.user.subscription
-    if (subscription?.tier) {
-      const currentPropertyCount = await prisma.property.count({
-        where: {
-          organizationId: session.user.organizationId,
-        },
-      })
-
-      if (currentPropertyCount >= subscription.tier.maxProperties) {
-        return NextResponse.json(
-          { error: `Property limit reached. Your ${subscription.tier.name} plan allows ${subscription.tier.maxProperties} properties.` },
-          { status: 403 }
-        )
-      }
-    }
+    const limitCheck = await checkSubscriptionLimit(session, "properties")
+    if (!limitCheck.allowed) return limitCheck.error!
 
     const property = await prisma.property.create({
       data: {
@@ -92,29 +69,13 @@ export async function POST(request: Request) {
     })
 
     // Log activity
-    await prisma.activity.create({
-      data: {
-        type: "PROPERTY_CREATED",
-        description: `Created property: ${property.name}`,
-        userId: session.user.id,
-        organizationId: session.user.organizationId,
-        propertyId: property.id,
-      },
+    await ActivityLogger.propertyCreated(session, {
+      id: property.id,
+      name: property.name,
     })
 
-    return NextResponse.json(property, { status: 201 })
+    return apiCreated(property)
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: error.issues[0].message },
-        { status: 400 }
-      )
-    }
-
-    console.error("Error creating property:", error)
-    return NextResponse.json(
-      { error: "Failed to create property" },
-      { status: 500 }
-    )
+    return handleApiError(error, "create property")
   }
 }

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { auth } from "@/lib/auth"
+import { checkAccess } from "@/lib/guards"
 import { prisma } from "@/lib/prisma"
 
 export async function GET(
@@ -7,14 +7,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth()
-
-    if (!session?.user?.organizationId) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
-    }
+    const { authorized, response, session } = await checkAccess("leases", "read")
+    if (!authorized) return response
 
     const { id } = await params
 

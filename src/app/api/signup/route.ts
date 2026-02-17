@@ -104,6 +104,7 @@ export async function POST(request: NextRequest) {
       const ownerRole = await tx.role.create({
         data: {
           name: "Owner",
+          isSystem: true,
           organizationId: organization.id,
         },
       })

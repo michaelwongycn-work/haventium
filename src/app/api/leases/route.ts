@@ -1,7 +1,19 @@
-import { NextResponse } from "next/server"
 import { z } from "zod"
-import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import {
+  requireAccess,
+  ActivityLogger,
+  validateLeaseAvailability,
+  LEASE_WITH_RELATIONS,
+  apiSuccess,
+  apiCreated,
+  apiNotFound,
+  apiError,
+  handleApiError,
+  validateRequest,
+  sanitizeSearchInput,
+  parseEnumParam,
+} from "@/lib/api"
 
 const createLeaseSchema = z.object({
   tenantId: z.string().min(1, "Tenant is required"),
@@ -16,30 +28,26 @@ const createLeaseSchema = z.object({
   depositAmount: z.number().min(0, "Deposit amount must be positive").optional().nullable(),
 })
 
+const LEASE_STATUSES = ["DRAFT", "ACTIVE", "ENDED"] as const
+
 // GET /api/leases - List all leases for the organization
 export async function GET(request: Request) {
   try {
-    const session = await auth()
-
-    if (!session?.user?.organizationId) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
-    }
+    const { authorized, response, session } = await requireAccess("leases", "read")
+    if (!authorized) return response
 
     const { searchParams } = new URL(request.url)
-    const status = searchParams.get("status")
+    const status = parseEnumParam(searchParams.get("status"), LEASE_STATUSES)
     const tenantId = searchParams.get("tenantId")
     const unitId = searchParams.get("unitId")
     const propertyId = searchParams.get("propertyId")
-    const search = searchParams.get("search")
+    const search = sanitizeSearchInput(searchParams.get("search"))
 
     const where: Record<string, unknown> = {
       organizationId: session.user.organizationId,
     }
 
-    if (status && ["DRAFT", "ACTIVE", "ENDED"].includes(status)) {
+    if (status) {
       where.status = status
     }
 
@@ -74,43 +82,25 @@ export async function GET(request: Request) {
 
     const leases = await prisma.leaseAgreement.findMany({
       where,
-      include: {
-        tenant: true,
-        unit: {
-          include: {
-            property: true,
-          },
-        },
-      },
+      ...LEASE_WITH_RELATIONS,
       orderBy: {
         startDate: "desc",
       },
     })
 
-    return NextResponse.json(leases)
+    return apiSuccess(leases)
   } catch (error) {
-    console.error("Error fetching leases:", error)
-    return NextResponse.json(
-      { error: "Failed to fetch leases" },
-      { status: 500 }
-    )
+    return handleApiError(error, "fetch leases")
   }
 }
 
 // POST /api/leases - Create new lease agreement
 export async function POST(request: Request) {
   try {
-    const session = await auth()
+    const { authorized, response, session } = await requireAccess("leases", "create")
+    if (!authorized) return response
 
-    if (!session?.user?.organizationId) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
-    }
-
-    const body = await request.json()
-    const validatedData = createLeaseSchema.parse(body)
+    const validatedData = await validateRequest(request, createLeaseSchema)
 
     // Verify tenant belongs to organization
     const tenant = await prisma.tenant.findFirst({
@@ -121,10 +111,7 @@ export async function POST(request: Request) {
     })
 
     if (!tenant) {
-      return NextResponse.json(
-        { error: "Tenant not found" },
-        { status: 404 }
-      )
+      return apiNotFound("Tenant not found")
     }
 
     // Verify unit belongs to organization and get property info
@@ -141,71 +128,26 @@ export async function POST(request: Request) {
     })
 
     if (!unit) {
-      return NextResponse.json(
-        { error: "Unit not found" },
-        { status: 404 }
-      )
+      return apiNotFound("Unit not found")
     }
 
     // Check if unit is unavailable
     if (unit.isUnavailable) {
-      return NextResponse.json(
-        { error: "This unit is marked as unavailable" },
-        { status: 400 }
-      )
+      return apiError("This unit is marked as unavailable", 400)
     }
 
-    // Validate dates
+    // Validate dates and check for overlaps
     const startDate = new Date(validatedData.startDate)
     const endDate = new Date(validatedData.endDate)
 
-    if (startDate >= endDate) {
-      return NextResponse.json(
-        { error: "End date must be after start date" },
-        { status: 400 }
-      )
-    }
+    const availabilityCheck = await validateLeaseAvailability(
+      validatedData.unitId,
+      startDate,
+      endDate
+    )
 
-    // Check for overlapping active leases on this unit
-    // First, check if there's an auto-renewal lease that would block this
-    const autoRenewalLease = await prisma.leaseAgreement.findFirst({
-      where: {
-        unitId: validatedData.unitId,
-        status: {
-          in: ["DRAFT", "ACTIVE"],
-        },
-        isAutoRenew: true,
-        startDate: { lte: endDate }, // Auto-renewal lease starts before or during our end date
-      },
-    })
-
-    if (autoRenewalLease) {
-      return NextResponse.json(
-        { error: "Unit has an active auto-renewal lease. The lease must be ended before booking future dates." },
-        { status: 400 }
-      )
-    }
-
-    // Check for regular overlapping leases (non-auto-renewal)
-    const overlappingLease = await prisma.leaseAgreement.findFirst({
-      where: {
-        unitId: validatedData.unitId,
-        status: {
-          in: ["DRAFT", "ACTIVE"],
-        },
-        isAutoRenew: false,
-        AND: [
-          { startDate: { lte: endDate } },
-          { endDate: { gte: startDate } },
-        ],
-      },
-    })
-
-    if (overlappingLease) {
-      return NextResponse.json(
-        { error: "Unit already has an overlapping lease for these dates" },
-        { status: 400 }
-      )
+    if (!availabilityCheck.valid) {
+      return availabilityCheck.error!
     }
 
     // Create lease agreement
@@ -224,14 +166,7 @@ export async function POST(request: Request) {
         depositAmount: validatedData.depositAmount,
         status: "DRAFT",
       },
-      include: {
-        tenant: true,
-        unit: {
-          include: {
-            property: true,
-          },
-        },
-      },
+      ...LEASE_WITH_RELATIONS,
     })
 
     // Update tenant status to BOOKED
@@ -241,32 +176,23 @@ export async function POST(request: Request) {
     })
 
     // Log activity
-    await prisma.activity.create({
-      data: {
-        type: "LEASE_CREATED",
-        description: `Created lease agreement for ${tenant.fullName} at ${unit.property.name} - ${unit.name}`,
-        userId: session.user.id,
-        organizationId: session.user.organizationId,
-        tenantId: tenant.id,
-        propertyId: unit.propertyId,
-        leaseId: lease.id,
-        unitId: unit.id,
+    await ActivityLogger.leaseCreated(
+      session,
+      {
+        id: lease.id,
+        tenantId: lease.tenantId,
+        unitId: lease.unitId,
       },
-    })
-
-    return NextResponse.json(lease, { status: 201 })
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: error.issues[0].message },
-        { status: 400 }
-      )
-    }
-
-    console.error("Error creating lease:", error)
-    return NextResponse.json(
-      { error: "Failed to create lease" },
-      { status: 500 }
+      {
+        tenantName: tenant.fullName,
+        propertyName: unit.property.name,
+        unitName: unit.name,
+        propertyId: unit.propertyId,
+      }
     )
+
+    return apiCreated(lease)
+  } catch (error) {
+    return handleApiError(error, "create lease")
   }
 }

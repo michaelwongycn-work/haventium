@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { verifyCronAuth, isLeaseOverdue, apiSuccess, handleApiError } from "@/lib/api"
 
 /**
  * Cron job to cancel draft leases that have passed their grace period unpaid
@@ -15,15 +15,8 @@ import { prisma } from "@/lib/prisma"
  */
 export async function POST(request: Request) {
   try {
-    const authHeader = request.headers.get("authorization")
-    const cronSecret = process.env.CRON_SECRET
-
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
-    }
+    const authCheck = verifyCronAuth(request)
+    if (!authCheck.authorized) return authCheck.response!
 
     const now = new Date()
 
@@ -49,10 +42,10 @@ export async function POST(request: Request) {
     for (const lease of draftLeases) {
       if (lease.gracePeriodDays === null) continue
 
-      const gracePeriodDeadline = new Date(lease.startDate)
-      gracePeriodDeadline.setDate(gracePeriodDeadline.getDate() + lease.gracePeriodDays)
+      if (isLeaseOverdue(lease.startDate, lease.gracePeriodDays)) {
+        const gracePeriodDeadline = new Date(lease.startDate)
+        gracePeriodDeadline.setDate(gracePeriodDeadline.getDate() + lease.gracePeriodDays)
 
-      if (now > gracePeriodDeadline) {
         const updatedLease = await prisma.leaseAgreement.update({
           where: { id: lease.id },
           data: { status: "CANCELLED" },
@@ -88,17 +81,13 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json({
+    return apiSuccess({
       success: true,
       message: `Processed ${draftLeases.length} draft leases, cancelled ${cancelledLeases.length}`,
       cancelledLeases,
       processedAt: now.toISOString(),
     })
   } catch (error) {
-    console.error("Error in cancel-unpaid-leases cron:", error)
-    return NextResponse.json(
-      { error: "Failed to process unpaid leases" },
-      { status: 500 }
-    )
+    return handleApiError(error, "process unpaid leases")
   }
 }
