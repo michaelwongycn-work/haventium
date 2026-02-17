@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { checkAccess } from "@/lib/guards";
+import { requireAccess } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 
 const updatePropertySchema = z.object({
@@ -13,7 +13,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { authorized, response, session } = await checkAccess(
+    const { authorized, response, session } = await requireAccess(
       "properties",
       "read",
     );
@@ -68,7 +68,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { authorized, response, session } = await checkAccess(
+    const { authorized, response, session } = await requireAccess(
       "properties",
       "update",
     );
@@ -143,7 +143,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { authorized, response, session } = await checkAccess(
+    const { authorized, response, session } = await requireAccess(
       "properties",
       "delete",
     );

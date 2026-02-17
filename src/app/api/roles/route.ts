@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { checkAccess } from "@/lib/guards";
+import { requireAccess } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 
@@ -12,7 +12,7 @@ const createRoleSchema = z.object({
 // GET /api/roles - List all roles for the organization
 export async function GET() {
   try {
-    const { authorized, response, session } = await checkAccess(
+    const { authorized, response, session } = await requireAccess(
       "settings",
       "manage",
     );
@@ -52,7 +52,7 @@ export async function GET() {
 // POST /api/roles - Create a new role
 export async function POST(request: Request) {
   try {
-    const { authorized, response, session } = await checkAccess(
+    const { authorized, response, session } = await requireAccess(
       "settings",
       "manage",
     );

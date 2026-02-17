@@ -14,11 +14,6 @@ import { AlertCircleIcon } from "@hugeicons/core-free-icons";
 // Re-export for convenience
 export { hasAccess, type UserRole };
 
-// ========================================
-// DEPRECATED: API logic moved to @/lib/api/auth-middleware
-// Re-export for backward compatibility
-export { checkAccess } from "@/lib/api/auth-middleware";
-
 /**
  * Server-side access control for page components
  * Checks if the authenticated user has permission to view a page

@@ -89,7 +89,7 @@ export async function POST(
         message: testResult.message,
       });
     } else {
-      return apiError(testResult.message, 400, { error: testResult.error });
+      return apiError(testResult.message, 400);
     }
   } catch (error) {
     return handleApiError(error, "test API key");

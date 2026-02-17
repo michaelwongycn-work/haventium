@@ -158,11 +158,11 @@ export async function POST(request: Request) {
     const startDate = new Date(validatedData.startDate);
     const endDate = new Date(validatedData.endDate);
 
-    const availabilityCheck = await validateLeaseAvailability(
-      validatedData.unitId,
+    const availabilityCheck = await validateLeaseAvailability({
+      unitId: validatedData.unitId,
       startDate,
       endDate,
-    );
+    });
 
     if (!availabilityCheck.valid) {
       return availabilityCheck.error!;

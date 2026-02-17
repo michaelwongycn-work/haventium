@@ -310,6 +310,8 @@ model LeaseAgreement {
   @@index([status])
   @@index([startDate])
   @@index([endDate])
+  @@index([organizationId, status, startDate]) // Composite for filtered lease queries
+  @@index([unitId, status, startDate, endDate]) // Composite for overlap validation
 }
 
 // ========================================
@@ -448,6 +450,7 @@ model NotificationLog {
   @@index([organizationId])
   @@index([status])
   @@index([createdAt])
+  @@index([organizationId, status, createdAt]) // Composite for filtered pagination
 }
 
 // ========================================
@@ -548,6 +551,8 @@ model Activity {
   @@index([leaseId])
   @@index([unitId])
   @@index([createdAt])
+  @@index([organizationId, type]) // Composite for filtered activity logs
+  @@index([organizationId, createdAt]) // Composite for recent activities
 }
 
 // ========================================

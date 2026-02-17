@@ -31,7 +31,6 @@ export async function requireAuth() {
 
 /**
  * Require specific resource access
- * Re-implementation of checkAccess with standardized responses
  */
 export async function requireAccess(resource: string, action: string) {
   const session = await auth();
@@ -62,11 +61,6 @@ export async function requireAccess(resource: string, action: string) {
     session,
   };
 }
-
-/**
- * @deprecated Use requireAccess instead
- */
-export const checkAccess = requireAccess;
 
 /**
  * Verify cron job authorization

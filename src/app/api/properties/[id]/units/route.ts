@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { checkAccess } from "@/lib/guards";
+import { requireAccess } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 
 const createUnitSchema = z.object({
@@ -28,7 +28,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { authorized, response, session } = await checkAccess(
+    const { authorized, response, session } = await requireAccess(
       "properties",
       "read",
     );
@@ -76,7 +76,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { authorized, response, session } = await checkAccess(
+    const { authorized, response, session } = await requireAccess(
       "properties",
       "create",
     );
