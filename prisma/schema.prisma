@@ -1,0 +1,492 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ========================================
+// ORGANIZATION & USER MANAGEMENT
+// ========================================
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users                 User[]
+  properties            Property[]
+  tenants               Tenant[]
+  leaseAgreements       LeaseAgreement[]
+  notificationTemplates NotificationTemplate[]
+  notificationRules     NotificationRule[]
+  notificationLogs      NotificationLog[]
+  activities            Activity[]
+  roles                 Role[]
+}
+
+model User {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  name           String
+  emailVerified  DateTime?
+  image          String?
+  hashedPassword String?
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  accounts          Account[]
+  sessions          Session[]
+  userRoles         UserRole[]
+  activities        Activity[]
+  notificationRules NotificationRule[]
+
+  @@index([organizationId])
+  @@index([email])
+}
+
+// ========================================
+// ROLE-BASED ACCESS CONTROL (RBAC)
+// ========================================
+
+model Role {
+  id             String       @id @default(cuid())
+  name           String
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userRoles         UserRole[]
+  roleAccesses      RoleAccess[]
+  notificationRules NotificationRule[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+}
+
+model UserRole {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roleId String
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+}
+
+model Access {
+  id       String @id @default(cuid())
+  resource String
+  action   String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  roleAccesses RoleAccess[]
+
+  @@unique([resource, action])
+  @@index([resource])
+}
+
+model RoleAccess {
+  id       String @id @default(cuid())
+  roleId   String
+  role     Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  accessId String
+  access   Access @relation(fields: [accessId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([roleId, accessId])
+  @@index([roleId])
+  @@index([accessId])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ========================================
+// PROPERTY & UNIT MANAGEMENT
+// ========================================
+
+model Property {
+  id   String @id @default(cuid())
+  name String
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  units      Unit[]
+  activities Activity[]
+
+  @@index([organizationId])
+}
+
+model Unit {
+  id            String  @id @default(cuid())
+  name          String
+  isUnavailable Boolean @default(false)
+
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  dailyRate   Decimal  @db.Decimal(12, 2)
+  monthlyRate Decimal  @db.Decimal(12, 2)
+  annualRate  Decimal? @db.Decimal(12, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  leaseAgreements LeaseAgreement[]
+
+  @@index([propertyId])
+  @@index([isUnavailable])
+}
+
+// ========================================
+// TENANT & CONTACT MANAGEMENT
+// ========================================
+
+enum TenantStatus {
+  LEAD
+  BOOKED
+  ACTIVE
+  EXPIRED
+}
+
+model Tenant {
+  id String @id @default(cuid())
+
+  fullName String
+  email    String
+  phone    String
+
+  status TenantStatus @default(LEAD)
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  preferEmail    Boolean @default(true)
+  preferWhatsapp Boolean @default(false)
+  preferTelegram Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  leaseAgreements LeaseAgreement[]
+  activities      Activity[]
+
+  @@index([organizationId])
+  @@index([status])
+  @@index([email])
+}
+
+// ========================================
+// LEASE & CONTRACT MANAGEMENT
+// ========================================
+
+enum LeaseStatus {
+  DRAFT
+  ACTIVE
+  ENDED
+}
+
+enum PaymentCycle {
+  DAILY
+  MONTHLY
+  ANNUAL
+}
+
+model LeaseAgreement {
+  id String @id @default(cuid())
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  unitId String
+  unit   Unit   @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  startDate       DateTime
+  endDate         DateTime
+  paymentCycle    PaymentCycle @default(MONTHLY)
+  rentAmount      Decimal      @db.Decimal(12, 2)
+  gracePeriodDays Int          @default(3)
+  isAutoRenew     Boolean      @default(false)
+
+  status LeaseStatus @default(DRAFT)
+
+  paymentDate      DateTime?
+  paymentMethod    PaymentMethod?
+  paymentStatus    PaymentStatus  @default(PENDING)
+  externalId       String?
+  externalResponse Json?
+  paymentNotes     String?        @db.Text
+
+  depositAmount Decimal?       @db.Decimal(12, 2)
+  depositStatus DepositStatus? @default(HELD)
+
+  renewedFromId String?
+  renewedFrom   LeaseAgreement? @relation("LeaseRenewal", fields: [renewedFromId], references: [id], onDelete: SetNull)
+  renewedTo     LeaseAgreement? @relation("LeaseRenewal")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([renewedFromId])
+  @@index([tenantId])
+  @@index([unitId])
+  @@index([organizationId])
+  @@index([status])
+  @@index([startDate])
+  @@index([endDate])
+}
+
+// ========================================
+// PAYMENT MANAGEMENT
+// ========================================
+
+enum DepositStatus {
+  HELD
+  RETURNED
+  FORFEITED
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  VIRTUAL_ACCOUNT
+  QRIS
+
+  MANUAL
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+// ========================================
+// NOTIFICATION SYSTEM
+// ========================================
+
+enum NotificationChannel {
+  EMAIL
+  WHATSAPP
+  TELEGRAM
+}
+
+enum NotificationTrigger {
+  PAYMENT_REMINDER
+  PAYMENT_LATE
+  PAYMENT_CONFIRMED
+  LEASE_EXPIRING
+  LEASE_EXPIRED
+  MANUAL
+}
+
+enum NotificationRecipient {
+  TENANT
+  USER
+  ROLE
+}
+
+model NotificationTemplate {
+  id String @id @default(cuid())
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  name    String
+  trigger NotificationTrigger
+  channel NotificationChannel
+
+  subject String? // For email
+  body    String  @db.Text
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([trigger])
+  @@index([channel])
+}
+
+model NotificationRule {
+  id String @id @default(cuid())
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  name    String
+  trigger NotificationTrigger
+
+  daysOffset Int
+
+  channels NotificationChannel[]
+
+  recipientType   NotificationRecipient @default(TENANT)
+  recipientUserId String?
+  recipientUser   User?                 @relation(fields: [recipientUserId], references: [id], onDelete: SetNull)
+  recipientRoleId String?
+  recipientRole   Role?                 @relation(fields: [recipientRoleId], references: [id], onDelete: SetNull)
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([trigger])
+  @@index([recipientUserId])
+  @@index([recipientRoleId])
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+model NotificationLog {
+  id String @id @default(cuid())
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  recipientEmail String?
+  recipientPhone String?
+
+  trigger NotificationTrigger
+  channel NotificationChannel
+
+  subject String?
+  body    String  @db.Text
+
+  status       NotificationStatus @default(PENDING)
+  sentAt       DateTime?
+  failedReason String?            @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// ========================================
+// ACTIVITY & AUDIT LOG
+// ========================================
+
+enum ActivityType {
+  TENANT_CREATED
+  TENANT_UPDATED
+  TENANT_STATUS_CHANGED
+  LEASE_CREATED
+  LEASE_UPDATED
+  LEASE_TERMINATED
+  PAYMENT_RECORDED
+  PAYMENT_UPDATED
+  DEPOSIT_CREATED
+  DEPOSIT_RETURNED
+  NOTIFICATION_SENT
+  PROPERTY_CREATED
+  PROPERTY_UPDATED
+  UNIT_CREATED
+  UNIT_UPDATED
+  USER_LOGIN
+  OTHER
+}
+
+model Activity {
+  id String @id @default(cuid())
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  type        ActivityType
+  description String
+
+  // Related entities
+  tenantId String?
+  tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+
+  propertyId String?
+  property   Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([organizationId])
+  @@index([userId])
+  @@index([tenantId])
+  @@index([createdAt])
+}
