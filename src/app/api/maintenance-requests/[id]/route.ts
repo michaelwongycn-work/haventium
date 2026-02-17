@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import { z } from "zod";
 import {
   requireAccess,
@@ -220,9 +219,6 @@ export async function PATCH(
           status: updatedRequest.status,
           propertyId: updatedRequest.propertyId,
         },
-        {
-          propertyName: existingRequest.property.name,
-        },
       );
     }
 
@@ -284,9 +280,6 @@ export async function DELETE(
         title: existingRequest.title,
         status: "DELETED",
         propertyId: existingRequest.propertyId,
-      },
-      {
-        propertyName: existingRequest.property.name,
       },
     );
 

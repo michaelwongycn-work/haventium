@@ -220,9 +220,6 @@ async function processPaymentLate(organizationId: string, now: Date) {
 
   if (rules.length === 0) return results;
 
-  // Use the daysOffset from rules to determine how late is "late"
-  const maxDaysOffset = Math.max(...rules.map((r) => r.daysOffset));
-
   // Find DRAFT leases where grace period has passed (unpaid bookings)
   const unpaidDraftLeases = await prisma.leaseAgreement.findMany({
     where: {

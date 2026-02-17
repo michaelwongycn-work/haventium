@@ -26,7 +26,7 @@ export function DashboardClient({ userName }: { userName: string }) {
         </TabsList>
 
         <TabsContent value="overview" className="mt-6">
-          <OverviewClient userName={userName} />
+          <OverviewClient />
         </TabsContent>
 
         <TabsContent value="analytics" className="mt-6">

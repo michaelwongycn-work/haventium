@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -187,11 +187,7 @@ function SettingsContent({
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  useEffect(() => {
-    fetchAll();
-  }, [rolesPage, rolesPageSize, usersPage, usersPageSize]);
-
-  const fetchAll = async () => {
+  const fetchAll = useCallback(async () => {
     setIsLoading(true);
     try {
       const rolesParams = new URLSearchParams({
@@ -230,7 +226,11 @@ function SettingsContent({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [rolesPage, rolesPageSize, usersPage, usersPageSize]);
+
+  useEffect(() => {
+    fetchAll();
+  }, [fetchAll]);
 
   // ========================================
   // Role Handlers

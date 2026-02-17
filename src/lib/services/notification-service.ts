@@ -14,7 +14,6 @@ import {
 import {
   sendTelegramMessage,
   type SendTelegramParams,
-  type TelegramResponse,
 } from "./telegram-service"
 
 export interface SendEmailParams {

@@ -237,7 +237,6 @@ export const ActivityLogger = {
   maintenanceRequestUpdated: (
     session: Session,
     request: { id: string; title: string; status: string; propertyId: string },
-    details: { propertyName: string },
   ) =>
     logActivity(session, {
       type: "MAINTENANCE_REQUEST_UPDATED",

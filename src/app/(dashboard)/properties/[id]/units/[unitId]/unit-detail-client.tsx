@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -209,19 +209,16 @@ export default function UnitDetailClient({
   const canUpdate = hasAccess(roles, "properties", "update");
   const canDelete = hasAccess(roles, "properties", "delete");
 
-  useEffect(() => {
-    fetchUnitData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.unitId]);
-
-  const fetchUnitData = async () => {
+  const fetchUnitData = useCallback(async () => {
     try {
       setIsLoading(true);
       const response = await fetch(`/api/units/${params.unitId}`);
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`Failed to fetch unit data: ${response.status} - ${errorText}`);
+        throw new Error(
+          `Failed to fetch unit data: ${response.status} - ${errorText}`,
+        );
       }
 
       const result = await response.json();
@@ -232,7 +229,11 @@ export default function UnitDetailClient({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [params.unitId]);
+
+  useEffect(() => {
+    fetchUnitData();
+  }, [fetchUnitData]);
 
   const handleEditClick = () => {
     if (!data) return;

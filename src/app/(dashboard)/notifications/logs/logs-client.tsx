@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { useEffect, useState, useCallback } from "react";
 import {
   Card,
   CardContent,
@@ -29,8 +28,6 @@ import { Badge } from "@/components/ui/badge";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   Notification03Icon,
-  ArrowLeft01Icon,
-  ArrowRight01Icon,
 } from "@hugeicons/core-free-icons";
 import { Pagination } from "@/components/pagination";
 
@@ -106,11 +103,7 @@ export default function NotificationLogsClient() {
   const [triggerFilter, setTriggerFilter] = useState<string>("all");
   const [channelFilter, setChannelFilter] = useState<string>("all");
 
-  useEffect(() => {
-    fetchLogs();
-  }, [pagination.page, statusFilter, triggerFilter, channelFilter]);
-
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     try {
       setIsLoading(true);
       const params = new URLSearchParams({
@@ -128,12 +121,16 @@ export default function NotificationLogsClient() {
       const data: PaginatedResponse = await response.json();
       setLogs(data.logs || []);
       setPagination(data.pagination || { page: 1, limit: 50, total: 0, totalPages: 0 });
-    } catch (err) {
+    } catch {
       setError("Failed to load notification logs");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [pagination.page, pagination.limit, statusFilter, triggerFilter, channelFilter]);
+
+  useEffect(() => {
+    fetchLogs();
+  }, [fetchLogs]);
 
   const goToPage = (page: number) => {
     setPagination((prev) => ({ ...prev, page }));

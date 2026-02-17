@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { DocumentList } from "@/components/document-list";
@@ -209,13 +209,7 @@ export default function LeaseDetailClient({
     });
   }, [params]);
 
-  useEffect(() => {
-    if (leaseId) {
-      fetchLease();
-    }
-  }, [leaseId]);
-
-  const fetchLease = async () => {
+  const fetchLease = useCallback(async () => {
     try {
       setIsLoading(true);
       const response = await fetch(`/api/leases/${leaseId}`);
@@ -231,8 +225,13 @@ export default function LeaseDetailClient({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [leaseId]);
 
+  useEffect(() => {
+    if (leaseId) {
+      fetchLease();
+    }
+  }, [leaseId, fetchLease]);
 
   const getDaysRemaining = () => {
     if (!lease) return 0;

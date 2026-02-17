@@ -22,7 +22,7 @@ export function parseExcelFile<T = Record<string, unknown>>(
         const jsonData = XLSX.utils.sheet_to_json<T>(worksheet);
 
         resolve(jsonData);
-      } catch (error) {
+      } catch {
         reject(new Error("Failed to parse Excel file"));
       }
     };

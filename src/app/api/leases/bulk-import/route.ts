@@ -5,15 +5,12 @@ import {
   ActivityLogger,
   apiSuccess,
   apiError,
-  checkSubscriptionLimit,
 } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import {
   validateBulkData,
-  checkDuplicates,
-  addDuplicateErrors,
 } from "@/lib/bulk-validation";
-import { parseBooleanField, trimString, parseDateFromExcel } from "@/lib/excel-utils";
+import { parseBooleanField, parseDateFromExcel } from "@/lib/excel-utils";
 
 // Zod schema for bulk lease import
 const bulkLeaseSchema = z.object({

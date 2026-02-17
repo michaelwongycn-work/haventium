@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -52,11 +52,7 @@ export function DocumentList({ entityType, entityId }: DocumentListProps) {
   const [deletingDocument, setDeletingDocument] = useState<Document | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchDocuments();
-  }, [entityType, entityId]);
-
-  const fetchDocuments = async () => {
+  const fetchDocuments = useCallback(async () => {
     try {
       setIsLoading(true);
       const response = await fetch(
@@ -74,7 +70,11 @@ export function DocumentList({ entityType, entityId }: DocumentListProps) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [entityType, entityId]);
+
+  useEffect(() => {
+    fetchDocuments();
+  }, [fetchDocuments]);
 
   const handleDeleteDocument = async () => {
     if (!deletingDocument) return;

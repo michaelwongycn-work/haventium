@@ -228,7 +228,7 @@ export const logger = {
 export function safeStringify(obj: unknown): string {
   try {
     return JSON.stringify(obj, null, 2);
-  } catch (error) {
+  } catch {
     return "[Unable to stringify object]";
   }
 }

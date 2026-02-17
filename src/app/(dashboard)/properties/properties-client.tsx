@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { hasAccess, type UserRole } from "@/lib/access-utils";
 import {
@@ -82,11 +82,7 @@ export default function PropertiesClient({ roles }: { roles: UserRole[] }) {
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
-  useEffect(() => {
-    fetchProperties();
-  }, [currentPage, pageSize]);
-
-  const fetchProperties = async () => {
+  const fetchProperties = useCallback(async () => {
     try {
       setIsLoading(true);
       const params = new URLSearchParams({
@@ -110,7 +106,11 @@ export default function PropertiesClient({ roles }: { roles: UserRole[] }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [currentPage, pageSize]);
+
+  useEffect(() => {
+    fetchProperties();
+  }, [fetchProperties]);
 
   const handleOpenDialog = (property?: Property) => {
     if (property) {
@@ -568,7 +568,7 @@ export default function PropertiesClient({ roles }: { roles: UserRole[] }) {
         description="Upload an Excel file (.xlsx or .xls) with property and unit data. Download the template for the correct format."
         apiEndpoint="/api/properties/bulk-import"
         onImportComplete={fetchProperties}
-        renderPreview={(data, index) => {
+        renderPreview={(data) => {
           const propertyName = (data["Property Name"] || data.propertyName) as string;
           const unitName = (data["Unit Name"] || data.unitName) as string;
           return (

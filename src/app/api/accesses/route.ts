@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 // GET /api/accesses - List all access permissions
 export async function GET() {
   try {
-    const { authorized, response, session } = await requireAccess(
+    const { authorized, response } = await requireAccess(
       "settings",
       "manage",
     );

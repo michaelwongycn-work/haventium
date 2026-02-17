@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { Calendar, dateFnsLocalizer, View } from "react-big-calendar";
+import { Calendar, dateFnsLocalizer } from "react-big-calendar";
 import { format, parse, startOfWeek, getDay, addMonths, subMonths } from "date-fns";
 import { enUS } from "date-fns/locale/en-US";
 import "react-big-calendar/lib/css/react-big-calendar.css";
@@ -12,7 +12,6 @@ import {
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -23,11 +22,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Calendar03Icon, ArrowLeft01Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons";
+import { ArrowLeft01Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons";
 
 const locales = {
   "en-US": enUS,
@@ -87,7 +85,6 @@ export default function CalendarClient() {
   const [error, setError] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<LeaseEvent | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [currentView, setCurrentView] = useState<View>("month");
   const [currentDate, setCurrentDate] = useState(new Date());
 
   useEffect(() => {
@@ -117,7 +114,6 @@ export default function CalendarClient() {
 
     leases.forEach((lease) => {
       const tenantName = lease.tenant.fullName;
-      const location = `${lease.unit.property.name} / ${lease.unit.name}`;
 
       // 1. Lease Start Date
       allEvents.push({
@@ -247,20 +243,6 @@ export default function CalendarClient() {
     };
   };
 
-  const getStatusBadgeVariant = (status: string) => {
-    switch (status) {
-      case "DRAFT":
-        return "secondary";
-      case "ACTIVE":
-        return "default";
-      case "ENDED":
-        return "outline";
-      case "CANCELLED":
-        return "destructive";
-      default:
-        return "default";
-    }
-  };
 
   if (error) {
     return (

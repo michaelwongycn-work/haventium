@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -108,11 +108,7 @@ export default function TenantsClient() {
     preferTelegram: false,
   });
 
-  useEffect(() => {
-    fetchTenants();
-  }, [currentPage, pageSize, statusFilter, searchQuery]);
-
-  const fetchTenants = async () => {
+  const fetchTenants = useCallback(async () => {
     try {
       setIsLoading(true);
       const params = new URLSearchParams({
@@ -144,7 +140,11 @@ export default function TenantsClient() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [currentPage, pageSize, statusFilter, searchQuery]);
+
+  useEffect(() => {
+    fetchTenants();
+  }, [fetchTenants]);
 
   const handleOpenDialog = (tenant?: Tenant) => {
     if (tenant) {
@@ -753,7 +753,7 @@ export default function TenantsClient() {
         description="Upload an Excel file (.xlsx or .xls) with tenant data. Download the template for the correct format."
         apiEndpoint="/api/tenants/bulk-import"
         onImportComplete={fetchTenants}
-        renderPreview={(data, index) => {
+        renderPreview={(data) => {
           const fullName = (data["Full Name"] || data.fullName) as string;
           const email = (data.Email || data.email) as string;
           return (

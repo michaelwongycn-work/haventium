@@ -40,8 +40,6 @@ const bulkTenantSchema = z.object({
     .default(false),
 });
 
-type BulkTenantInput = z.infer<typeof bulkTenantSchema>;
-
 // Request schema
 const requestSchema = z.object({
   dryRun: z.boolean().default(false),
@@ -53,7 +51,7 @@ export async function POST(request: Request) {
   try {
     const { authorized, response, session } = await requireAccess(
       "tenants",
-      "create"
+      "create",
     );
     if (!authorized) return response;
 
@@ -74,21 +72,21 @@ export async function POST(request: Request) {
     // Check for duplicate emails within the import file
     const duplicateEmails = checkDuplicates(
       validationResult.valid.map((v) => v.data),
-      (row) => row.Email
+      (row) => row.Email,
     );
 
     if (duplicateEmails.size > 0) {
       validationResult = addDuplicateErrors(
         validationResult,
         duplicateEmails,
-        "Email"
+        "Email",
       );
     }
 
     // Check for existing emails in database (only for valid rows)
     if (validationResult.valid.length > 0) {
       const emails = validationResult.valid.map((v) =>
-        v.data.Email.toLowerCase().trim()
+        v.data.Email.toLowerCase().trim(),
       );
 
       const existingTenants = await prisma.tenant.findMany({
@@ -104,19 +102,19 @@ export async function POST(request: Request) {
       });
 
       const existingEmailsSet = new Set(
-        existingTenants.map((t) => t.email.toLowerCase())
+        existingTenants.map((t) => t.email.toLowerCase()),
       );
 
       // Move rows with existing emails to invalid
       const newValid = validationResult.valid.filter(
-        (v) => !existingEmailsSet.has(v.data.Email.toLowerCase().trim())
+        (v) => !existingEmailsSet.has(v.data.Email.toLowerCase().trim()),
       );
 
       const newInvalid = [
         ...validationResult.invalid,
         ...validationResult.valid
           .filter((v) =>
-            existingEmailsSet.has(v.data.Email.toLowerCase().trim())
+            existingEmailsSet.has(v.data.Email.toLowerCase().trim()),
           )
           .map((v) => ({
             ...v,

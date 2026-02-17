@@ -71,7 +71,7 @@ const MONTH_NAMES = [
   "December",
 ];
 
-export function OverviewClient({ userName }: { userName: string }) {
+export function OverviewClient() {
   const currentDate = new Date();
   const [data, setData] = useState<OverviewData | null>(null);
   const [loading, setLoading] = useState(true);

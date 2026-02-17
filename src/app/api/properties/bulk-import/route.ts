@@ -249,7 +249,7 @@ export async function POST(request: Request) {
     });
 
     // Create/find properties and add units
-    for (const [propertyNameKey, units] of propertiesByName.entries()) {
+    for (const [, units] of propertiesByName.entries()) {
       const propertyName = units[0]["Property Name"]; // Use original casing from first row
 
       // Find or create property

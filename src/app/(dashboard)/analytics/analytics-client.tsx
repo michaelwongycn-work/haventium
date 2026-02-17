@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   Card,
   CardContent,
@@ -90,11 +90,7 @@ export default function AnalyticsClient() {
   const [error, setError] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState<string>("6"); // Last 6 months
 
-  useEffect(() => {
-    fetchAnalytics();
-  }, [timeRange]);
-
-  const fetchAnalytics = async () => {
+  const fetchAnalytics = useCallback(async () => {
     try {
       setIsLoading(true);
       const response = await fetch(`/api/analytics?months=${timeRange}`);
@@ -110,7 +106,11 @@ export default function AnalyticsClient() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [timeRange]);
+
+  useEffect(() => {
+    fetchAnalytics();
+  }, [fetchAnalytics]);
 
 
   if (error) {

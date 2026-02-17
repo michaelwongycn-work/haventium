@@ -36,7 +36,7 @@ export function zodResolver<T extends z.ZodType<any, any, any>>(
         values: {},
         errors,
       };
-    } catch (error) {
+    } catch {
       return {
         values: {},
         errors: {

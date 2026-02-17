@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { apiError } from "./response";
 import type { PrismaClient } from "@prisma/client";
-import type { Prisma } from "@prisma/client";
 
 /**
  * Lease Validation Service

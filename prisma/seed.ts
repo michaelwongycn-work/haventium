@@ -758,12 +758,6 @@ async function main() {
   ];
 
   const tenants = [];
-  const tenantStatuses: Array<"LEAD" | "BOOKED" | "ACTIVE" | "EXPIRED"> = [
-    "LEAD",
-    "BOOKED",
-    "ACTIVE",
-    "EXPIRED",
-  ];
 
   for (let i = 0; i < 500; i++) {
     const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
@@ -883,11 +877,17 @@ async function main() {
 
   // Each unit gets 3-8 historical ENDED leases (not every single month)
   for (const unit of allUnits) {
-    const tenant = expiredTenants[Math.floor(Math.random() * expiredTenants.length)];
-    const paymentCycle = paymentCycles[Math.floor(Math.random() * paymentCycles.length)];
+    const tenant =
+      expiredTenants[Math.floor(Math.random() * expiredTenants.length)];
+    const paymentCycle =
+      paymentCycles[Math.floor(Math.random() * paymentCycles.length)];
 
     const numHistoricalLeases = Math.floor(Math.random() * 6) + 3; // 3-8 leases
-    let currentStartDate = createDate(2024, 1, Math.floor(Math.random() * 28) + 1);
+    let currentStartDate = createDate(
+      2024,
+      1,
+      Math.floor(Math.random() * 28) + 1,
+    );
 
     for (let i = 0; i < numHistoricalLeases; i++) {
       // Each lease is ONE payment period
@@ -913,9 +913,8 @@ async function main() {
             ? unit.monthlyRate
             : unit.dailyRate,
       );
-      const depositAmount = i === 0
-        ? Math.round(rentAmount * (Math.random() * 0.5 + 1))
-        : null; // Only first lease has deposit
+      const depositAmount =
+        i === 0 ? Math.round(rentAmount * (Math.random() * 0.5 + 1)) : null; // Only first lease has deposit
 
       historicalLeases.push({
         tenantId: tenant.id,
@@ -926,7 +925,11 @@ async function main() {
         paymentCycle,
         rentAmount,
         depositAmount,
-        depositStatus: depositAmount ? (Math.random() > 0.3 ? "RETURNED" : "HELD") : null,
+        depositStatus: depositAmount
+          ? Math.random() > 0.3
+            ? "RETURNED"
+            : "HELD"
+          : null,
         status: "ENDED",
         paidAt: currentStartDate,
         paymentMethod:
@@ -1067,7 +1070,7 @@ async function main() {
 
   // Get units that don't have active leases (remaining 30%)
   const unitsWithoutActive = allUnits.filter(
-    unit => !unitsForActiveLease.includes(unit)
+    (unit) => !unitsForActiveLease.includes(unit),
   );
 
   // ALL units without active leases get draft leases (100% instead of 50%)
@@ -1137,7 +1140,9 @@ async function main() {
       paidAt: null,
       paymentMethod: null,
       paymentStatus: "PENDING",
-      gracePeriodDays: hasGracePeriod ? Math.floor(Math.random() * 7) + 3 : null, // 3-9 days grace period
+      gracePeriodDays: hasGracePeriod
+        ? Math.floor(Math.random() * 7) + 3
+        : null, // 3-9 days grace period
     });
 
     markUnitOccupied(unit.id, startDate, endDate);
@@ -1221,7 +1226,9 @@ async function main() {
       paidAt: null,
       paymentMethod: null,
       paymentStatus: "PENDING",
-      gracePeriodDays: hasGracePeriod ? Math.floor(Math.random() * 7) + 3 : null, // 3-9 days grace period
+      gracePeriodDays: hasGracePeriod
+        ? Math.floor(Math.random() * 7) + 3
+        : null, // 3-9 days grace period
     });
 
     markUnitOccupied(unit.id, startDate, endDate);
@@ -1232,7 +1239,9 @@ async function main() {
   await prisma.leaseAgreement.createMany({
     data: additionalDraftLeases,
   });
-  console.log(`  ✓ Created ${additionalDraftLeases.length} additional draft leases for future bookings`);
+  console.log(
+    `  ✓ Created ${additionalDraftLeases.length} additional draft leases for future bookings`,
+  );
 
   // Create some DRAFT leases with payment due in the PAST (overdue) and spread across the next 60 days
   console.log(
@@ -1257,7 +1266,8 @@ async function main() {
     const daysOffset = Math.floor(Math.random() * 75) - 15; // -15 to +60
     const startDate = addDays(today, daysOffset);
 
-    const paymentCycle = paymentCycles[Math.floor(Math.random() * paymentCycles.length)];
+    const paymentCycle =
+      paymentCycles[Math.floor(Math.random() * paymentCycles.length)];
 
     // Each lease is ONE payment period
     let endDate: Date;
@@ -1298,7 +1308,9 @@ async function main() {
       paidAt: null,
       paymentMethod: null,
       paymentStatus: "PENDING",
-      gracePeriodDays: hasGracePeriod ? Math.floor(Math.random() * 7) + 3 : null, // 3-9 days grace period
+      gracePeriodDays: hasGracePeriod
+        ? Math.floor(Math.random() * 7) + 3
+        : null, // 3-9 days grace period
     });
 
     markUnitOccupied(unit.id, startDate, endDate);
@@ -1308,7 +1320,9 @@ async function main() {
   await prisma.leaseAgreement.createMany({
     data: spreadDraftLeases,
   });
-  console.log(`  ✓ Created ${spreadDraftLeases.length} spread draft leases (including overdue payments)`);
+  console.log(
+    `  ✓ Created ${spreadDraftLeases.length} spread draft leases (including overdue payments)`,
+  );
 
   // Create some cancelled leases
   console.log("  Creating cancelled leases...");
@@ -1742,7 +1756,9 @@ async function main() {
   }
 
   // Create maintenance for active leases (mix of statuses)
-  const activeLeasesForMaintenance = allLeases.filter((l) => l.status === "ACTIVE");
+  const activeLeasesForMaintenance = allLeases.filter(
+    (l) => l.status === "ACTIVE",
+  );
   for (const lease of activeLeasesForMaintenance) {
     // 40% chance of having maintenance issues
     if (Math.random() > 0.6) {
@@ -1850,7 +1866,9 @@ async function main() {
   ];
 
   // Create notifications for ended leases
-  const endedLeasesWithRelations = allLeasesWithRelations.filter((l) => l.status === "ENDED");
+  const endedLeasesWithRelations = allLeasesWithRelations.filter(
+    (l) => l.status === "ENDED",
+  );
   for (const lease of endedLeasesWithRelations.slice(0, 100)) {
     // Limit to first 100 to avoid too many
     // Payment reminder sent before lease started
@@ -1934,7 +1952,9 @@ async function main() {
   }
 
   // Create notifications for active leases
-  const activeLeasesWithRelations = allLeasesWithRelations.filter((l) => l.status === "ACTIVE");
+  const activeLeasesWithRelations = allLeasesWithRelations.filter(
+    (l) => l.status === "ACTIVE",
+  );
   for (const lease of activeLeasesWithRelations.slice(0, 80)) {
     // Limit to first 80
     // Payment reminder
@@ -2003,7 +2023,9 @@ async function main() {
   // Create some pending notifications
   for (let i = 0; i < 20; i++) {
     const randomLease =
-      activeLeasesWithRelations[Math.floor(Math.random() * activeLeasesWithRelations.length)];
+      activeLeasesWithRelations[
+        Math.floor(Math.random() * activeLeasesWithRelations.length)
+      ];
     await prisma.notificationLog.create({
       data: {
         organizationId: org.id,
@@ -2033,15 +2055,14 @@ async function main() {
   console.log("✓ Linked features to tiers");
 
   // Create notification templates
-  const paymentReminderEmailTemplate = await prisma.notificationTemplate.create(
-    {
-      data: {
-        organizationId: org.id,
-        name: "Payment Reminder Email",
-        trigger: "PAYMENT_REMINDER",
-        channel: "EMAIL",
-        subject: "Payment Reminder - {{propertyName}}",
-        body: `Dear {{tenantName}},
+  await prisma.notificationTemplate.create({
+    data: {
+      organizationId: org.id,
+      name: "Payment Reminder Email",
+      trigger: "PAYMENT_REMINDER",
+      channel: "EMAIL",
+      subject: "Payment Reminder - {{propertyName}}",
+      body: `Dear {{tenantName}},
 
 This is a friendly reminder that your rent payment is due soon.
 
@@ -2053,12 +2074,11 @@ Please ensure payment is made on time to avoid any late fees.
 
 Thank you,
 Haventium Property Management`,
-        isActive: true,
-      },
+      isActive: true,
     },
-  );
+  });
 
-  const leaseExpiringEmailTemplate = await prisma.notificationTemplate.create({
+  await prisma.notificationTemplate.create({
     data: {
       organizationId: org.id,
       name: "Lease Expiring Email",
@@ -2080,15 +2100,14 @@ Haventium Property Management`,
     },
   });
 
-  const paymentConfirmedEmailTemplate =
-    await prisma.notificationTemplate.create({
-      data: {
-        organizationId: org.id,
-        name: "Payment Confirmed Email",
-        trigger: "PAYMENT_CONFIRMED",
-        channel: "EMAIL",
-        subject: "Payment Received - {{propertyName}}",
-        body: `Dear {{tenantName}},
+  await prisma.notificationTemplate.create({
+    data: {
+      organizationId: org.id,
+      name: "Payment Confirmed Email",
+      trigger: "PAYMENT_CONFIRMED",
+      channel: "EMAIL",
+      subject: "Payment Received - {{propertyName}}",
+      body: `Dear {{tenantName}},
 
 Thank you! We have received your payment.
 
@@ -2100,14 +2119,14 @@ Your lease is now active. If you have any questions, please don't hesitate to co
 
 Thank you,
 Haventium Property Management`,
-        isActive: true,
-      },
-    });
+      isActive: true,
+    },
+  });
 
   console.log("✓ Created notification templates");
 
   // Create notification rules
-  const paymentReminderRule = await prisma.notificationRule.create({
+  await prisma.notificationRule.create({
     data: {
       organizationId: org.id,
       name: "Payment Reminder 7 Days Before",
@@ -2119,7 +2138,7 @@ Haventium Property Management`,
     },
   });
 
-  const leaseExpiringRule = await prisma.notificationRule.create({
+  await prisma.notificationRule.create({
     data: {
       organizationId: org.id,
       name: "Lease Expiring 14 Days Before",
@@ -2131,7 +2150,7 @@ Haventium Property Management`,
     },
   });
 
-  const paymentConfirmedRule = await prisma.notificationRule.create({
+  await prisma.notificationRule.create({
     data: {
       organizationId: org.id,
       name: "Payment Confirmed Notification",
@@ -2150,7 +2169,7 @@ Haventium Property Management`,
   const sampleUnit = allUnits[0];
   const sampleTenant = activeTenants[0];
 
-  const maintenanceReq1 = await prisma.maintenanceRequest.create({
+  await prisma.maintenanceRequest.create({
     data: {
       organizationId: org.id,
       propertyId: sampleProperty.id,
@@ -2165,7 +2184,7 @@ Haventium Property Management`,
     },
   });
 
-  const maintenanceReq2 = await prisma.maintenanceRequest.create({
+  await prisma.maintenanceRequest.create({
     data: {
       organizationId: org.id,
       propertyId: properties[1].id,
@@ -2181,7 +2200,7 @@ Haventium Property Management`,
     },
   });
 
-  const maintenanceReq3 = await prisma.maintenanceRequest.create({
+  await prisma.maintenanceRequest.create({
     data: {
       organizationId: org.id,
       propertyId: properties[2].id,
@@ -2196,7 +2215,7 @@ Haventium Property Management`,
     },
   });
 
-  const maintenanceReq4 = await prisma.maintenanceRequest.create({
+  await prisma.maintenanceRequest.create({
     data: {
       organizationId: org.id,
       propertyId: sampleProperty.id,
@@ -2212,7 +2231,7 @@ Haventium Property Management`,
 
   // Create sample documents (Note: we can't upload actual files to Vercel Blob in seed, so we'll create placeholder metadata)
   // In real usage, these would be created via the upload endpoint
-  const doc1 = await prisma.document.create({
+  await prisma.document.create({
     data: {
       organizationId: org.id,
       propertyId: sampleProperty.id,
@@ -2226,7 +2245,7 @@ Haventium Property Management`,
     },
   });
 
-  const doc2 = await prisma.document.create({
+  await prisma.document.create({
     data: {
       organizationId: org.id,
       propertyId: sampleProperty.id,
@@ -2239,7 +2258,7 @@ Haventium Property Management`,
     },
   });
 
-  const doc3 = await prisma.document.create({
+  await prisma.document.create({
     data: {
       organizationId: org.id,
       propertyId: properties[1].id,

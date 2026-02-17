@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { DocumentList } from "@/components/document-list";
@@ -28,9 +28,6 @@ import {
   ShieldEnergyIcon,
   Notification01Icon,
   MoreHorizontalIcon,
-  ToolsIcon,
-  PencilEdit02Icon,
-  CheckmarkCircle01Icon,
 } from "@hugeicons/core-free-icons";
 import { formatDate, formatCurrency } from "@/lib/format";
 
@@ -95,7 +92,10 @@ const ACTIVITY_BG_MAP: Record<string, string> = {
 };
 
 const getStatusBadge = (status: string) => {
-  const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+  const variants: Record<
+    string,
+    "default" | "secondary" | "destructive" | "outline"
+  > = {
     OPEN: "default",
     IN_PROGRESS: "secondary",
     COMPLETED: "outline",
@@ -110,7 +110,10 @@ const getStatusBadge = (status: string) => {
 };
 
 const getPriorityBadge = (priority: string) => {
-  const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+  const variants: Record<
+    string,
+    "default" | "secondary" | "destructive" | "outline"
+  > = {
     LOW: "outline",
     MEDIUM: "secondary",
     HIGH: "default",
@@ -190,13 +193,7 @@ export default function TenantDetailClient({
     });
   }, [params]);
 
-  useEffect(() => {
-    if (tenantId) {
-      fetchTenant();
-    }
-  }, [tenantId]);
-
-  const fetchTenant = async () => {
+  const fetchTenant = useCallback(async () => {
     try {
       setIsLoading(true);
       const response = await fetch(`/api/tenants/${tenantId}`);
@@ -207,12 +204,18 @@ export default function TenantDetailClient({
 
       const data = await response.json();
       setTenant(data);
-    } catch (err) {
+    } catch {
       // Error handled via UI state
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [tenantId]);
+
+  useEffect(() => {
+    if (tenantId) {
+      fetchTenant();
+    }
+  }, [tenantId, fetchTenant]);
 
   const formatRelativeTime = (dateString: string) => {
     const date = new Date(dateString);

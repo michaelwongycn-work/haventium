@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { hasAccess, type UserRole } from "@/lib/access-utils";
@@ -183,14 +183,7 @@ export default function PropertyDetailClient({
     });
   }, [params]);
 
-  useEffect(() => {
-    if (propertyId) {
-      fetchProperty();
-      fetchUnits();
-    }
-  }, [propertyId]);
-
-  const fetchProperty = async () => {
+  const fetchProperty = useCallback(async () => {
     try {
       const response = await fetch(`/api/properties/${propertyId}`);
 
@@ -203,9 +196,9 @@ export default function PropertyDetailClient({
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load property");
     }
-  };
+  }, [propertyId]);
 
-  const fetchUnits = async () => {
+  const fetchUnits = useCallback(async () => {
     try {
       setIsLoading(true);
       const response = await fetch(`/api/properties/${propertyId}/units`);
@@ -221,7 +214,14 @@ export default function PropertyDetailClient({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [propertyId]);
+
+  useEffect(() => {
+    if (propertyId) {
+      fetchProperty();
+      fetchUnits();
+    }
+  }, [propertyId, fetchProperty, fetchUnits]);
 
   const handleOpenDialog = (unit?: Unit) => {
     if (unit) {

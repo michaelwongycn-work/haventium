@@ -62,7 +62,7 @@ function LoginFormContent() {
       // Redirect to dashboard on success
       router.push("/dashboard");
       router.refresh();
-    } catch (err) {
+    } catch {
       setError("An error occurred during login");
     } finally {
       setIsLoading(false);

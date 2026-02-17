@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -16,9 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   ArrowLeft01Icon,
-  ToolsIcon,
   Home01Icon,
-  UserIcon,
   File01Icon,
   PencilEdit02Icon,
   CheckmarkCircle01Icon,
@@ -74,53 +72,11 @@ type MaintenanceRequest = {
   }>;
 };
 
-const STATUS_ICON_MAP: Record<string, typeof File01Icon> = {
-  OPEN: File01Icon,
-  IN_PROGRESS: PencilEdit02Icon,
-  COMPLETED: CheckmarkCircle01Icon,
-  CANCELLED: File01Icon,
-};
-
-const STATUS_COLOR_MAP: Record<string, string> = {
-  OPEN: "text-blue-500",
-  IN_PROGRESS: "text-amber-500",
-  COMPLETED: "text-green-500",
-  CANCELLED: "text-red-500",
-};
-
-const STATUS_BG_MAP: Record<string, string> = {
-  OPEN: "bg-blue-500/10",
-  IN_PROGRESS: "bg-amber-500/10",
-  COMPLETED: "bg-green-500/10",
-  CANCELLED: "bg-red-500/10",
-};
-
-const ACTIVITY_ICON_MAP: Record<string, typeof File01Icon> = {
-  MAINTENANCE_REQUEST_CREATED: ToolsIcon,
-  MAINTENANCE_REQUEST_UPDATED: ToolsIcon,
-  MAINTENANCE_REQUEST_STATUS_CHANGED: ToolsIcon,
-  MAINTENANCE_REQUEST_COMPLETED: CheckmarkCircle01Icon,
-  OTHER: File01Icon,
-};
-
-const ACTIVITY_COLOR_MAP: Record<string, string> = {
-  MAINTENANCE_REQUEST_CREATED: "text-blue-500",
-  MAINTENANCE_REQUEST_UPDATED: "text-amber-500",
-  MAINTENANCE_REQUEST_STATUS_CHANGED: "text-violet-500",
-  MAINTENANCE_REQUEST_COMPLETED: "text-green-500",
-  OTHER: "text-muted-foreground",
-};
-
-const ACTIVITY_BG_MAP: Record<string, string> = {
-  MAINTENANCE_REQUEST_CREATED: "bg-blue-500/10",
-  MAINTENANCE_REQUEST_UPDATED: "bg-amber-500/10",
-  MAINTENANCE_REQUEST_STATUS_CHANGED: "bg-violet-500/10",
-  MAINTENANCE_REQUEST_COMPLETED: "bg-green-500/10",
-  OTHER: "bg-muted",
-};
-
 const getStatusBadge = (status: string) => {
-  const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+  const variants: Record<
+    string,
+    "default" | "secondary" | "destructive" | "outline"
+  > = {
     OPEN: "default",
     IN_PROGRESS: "secondary",
     COMPLETED: "outline",
@@ -135,7 +91,10 @@ const getStatusBadge = (status: string) => {
 };
 
 const getPriorityBadge = (priority: string) => {
-  const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+  const variants: Record<
+    string,
+    "default" | "secondary" | "destructive" | "outline"
+  > = {
     LOW: "outline",
     MEDIUM: "secondary",
     HIGH: "default",
@@ -147,7 +106,7 @@ const getPriorityBadge = (priority: string) => {
 
 export default function MaintenanceRequestDetailClient({
   id,
-  roles
+  roles,
 }: {
   id: string;
   roles: UserRole[];
@@ -166,11 +125,7 @@ export default function MaintenanceRequestDetailClient({
   } | null>(null);
   const [actualCost, setActualCost] = useState<string>("");
 
-  useEffect(() => {
-    fetchRequest();
-  }, [id]);
-
-  const fetchRequest = async () => {
+  const fetchRequest = useCallback(async () => {
     try {
       setIsLoading(true);
       const response = await fetch(`/api/maintenance-requests/${id}`);
@@ -186,20 +141,33 @@ export default function MaintenanceRequestDetailClient({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [id]);
 
-  const openConfirmDialog = (status: string, label: string, message: string, requiresCost = false) => {
+  useEffect(() => {
+    fetchRequest();
+  }, [fetchRequest]);
+
+  const openConfirmDialog = (
+    status: string,
+    label: string,
+    message: string,
+    requiresCost = false,
+  ) => {
     setConfirmAction({ status, label, message, requiresCost });
-    setActualCost(request?.actualCost?.toString() || request?.estimatedCost?.toString() || "");
+    setActualCost(
+      request?.actualCost?.toString() ||
+        request?.estimatedCost?.toString() ||
+        "",
+    );
     setIsConfirmDialogOpen(true);
   };
 
   const handleStatusChange = async (newStatus: string) => {
     // Validate actual cost for completion
-    if (newStatus === 'COMPLETED') {
+    if (newStatus === "COMPLETED") {
       const cost = parseFloat(actualCost);
       if (!actualCost || isNaN(cost) || cost < 0) {
-        setError('Please enter a valid actual cost to complete the request');
+        setError("Please enter a valid actual cost to complete the request");
         return;
       }
     }
@@ -207,22 +175,24 @@ export default function MaintenanceRequestDetailClient({
     setIsStatusChanging(true);
     setError(null);
     try {
-      const body: { status: string; actualCost?: number } = { status: newStatus };
+      const body: { status: string; actualCost?: number } = {
+        status: newStatus,
+      };
 
       // Include actual cost for completion
-      if (newStatus === 'COMPLETED') {
+      if (newStatus === "COMPLETED") {
         body.actualCost = parseFloat(actualCost);
       }
 
       const response = await fetch(`/api/maintenance-requests/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to update status');
+        throw new Error(errorData.error || "Failed to update status");
       }
 
       await fetchRequest(); // Refetch to update UI
@@ -230,7 +200,7 @@ export default function MaintenanceRequestDetailClient({
       setConfirmAction(null);
       setActualCost("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update status');
+      setError(err instanceof Error ? err.message : "Failed to update status");
     } finally {
       setIsStatusChanging(false);
     }
@@ -287,62 +257,84 @@ export default function MaintenanceRequestDetailClient({
           </div>
 
           {/* Status Transition Actions */}
-          {hasAccess(roles, 'maintenance', 'update') && (
+          {hasAccess(roles, "maintenance", "update") && (
             <div className="flex gap-2 mt-4">
-              {request.status === 'OPEN' && (
+              {request.status === "OPEN" && (
                 <>
                   <Button
                     size="sm"
-                    onClick={() => handleStatusChange('IN_PROGRESS')}
+                    onClick={() => handleStatusChange("IN_PROGRESS")}
                     disabled={isStatusChanging}
                   >
-                    <HugeiconsIcon icon={PencilEdit02Icon} size={16} className="mr-2" />
-                    {isStatusChanging ? 'Updating...' : 'Start Work'}
+                    <HugeiconsIcon
+                      icon={PencilEdit02Icon}
+                      size={16}
+                      className="mr-2"
+                    />
+                    {isStatusChanging ? "Updating..." : "Start Work"}
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
                     className="text-destructive border-destructive hover:bg-destructive/10"
-                    onClick={() => openConfirmDialog(
-                      'CANCELLED',
-                      'Cancel Request',
-                      'Are you sure you want to cancel this maintenance request? This action cannot be undone.'
-                    )}
+                    onClick={() =>
+                      openConfirmDialog(
+                        "CANCELLED",
+                        "Cancel Request",
+                        "Are you sure you want to cancel this maintenance request? This action cannot be undone.",
+                      )
+                    }
                     disabled={isStatusChanging}
                   >
-                    <HugeiconsIcon icon={Cancel01Icon} size={16} className="mr-2" />
+                    <HugeiconsIcon
+                      icon={Cancel01Icon}
+                      size={16}
+                      className="mr-2"
+                    />
                     Cancel
                   </Button>
                 </>
               )}
 
-              {request.status === 'IN_PROGRESS' && (
+              {request.status === "IN_PROGRESS" && (
                 <>
                   <Button
                     size="sm"
-                    onClick={() => openConfirmDialog(
-                      'COMPLETED',
-                      'Mark Complete',
-                      'Please enter the actual cost incurred for this maintenance work. This will mark the request as completed and cannot be undone.',
-                      true
-                    )}
+                    onClick={() =>
+                      openConfirmDialog(
+                        "COMPLETED",
+                        "Mark Complete",
+                        "Please enter the actual cost incurred for this maintenance work. This will mark the request as completed and cannot be undone.",
+                        true,
+                      )
+                    }
                     disabled={isStatusChanging}
                   >
-                    <HugeiconsIcon icon={CheckmarkCircle01Icon} size={16} className="mr-2" />
-                    {isStatusChanging ? 'Updating...' : 'Mark Complete'}
+                    <HugeiconsIcon
+                      icon={CheckmarkCircle01Icon}
+                      size={16}
+                      className="mr-2"
+                    />
+                    {isStatusChanging ? "Updating..." : "Mark Complete"}
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
                     className="text-destructive border-destructive hover:bg-destructive/10"
-                    onClick={() => openConfirmDialog(
-                      'CANCELLED',
-                      'Cancel Request',
-                      'Are you sure you want to cancel this maintenance request? This action cannot be undone.'
-                    )}
+                    onClick={() =>
+                      openConfirmDialog(
+                        "CANCELLED",
+                        "Cancel Request",
+                        "Are you sure you want to cancel this maintenance request? This action cannot be undone.",
+                      )
+                    }
                     disabled={isStatusChanging}
                   >
-                    <HugeiconsIcon icon={Cancel01Icon} size={16} className="mr-2" />
+                    <HugeiconsIcon
+                      icon={Cancel01Icon}
+                      size={16}
+                      className="mr-2"
+                    />
                     Cancel
                   </Button>
                 </>
@@ -405,9 +397,13 @@ export default function MaintenanceRequestDetailClient({
         <CardContent>
           <div className="grid grid-cols-2 gap-6">
             <div>
-              <p className="text-sm text-muted-foreground mb-1">Estimated Cost</p>
+              <p className="text-sm text-muted-foreground mb-1">
+                Estimated Cost
+              </p>
               <p className="font-medium">
-                {request.estimatedCost ? formatCurrency(request.estimatedCost) : "—"}
+                {request.estimatedCost
+                  ? formatCurrency(request.estimatedCost)
+                  : "—"}
               </p>
             </div>
             <div>
@@ -424,7 +420,9 @@ export default function MaintenanceRequestDetailClient({
       <Card>
         <CardHeader>
           <CardTitle>Progress Timeline</CardTitle>
-          <CardDescription>Status updates and maintenance history</CardDescription>
+          <CardDescription>
+            Status updates and maintenance history
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="relative space-y-4">
@@ -445,13 +443,16 @@ export default function MaintenanceRequestDetailClient({
               <div className="flex-1 pt-1">
                 <p className="text-sm font-medium">Request Created</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {formatDate(request.createdAt)} • {new Date(request.createdAt).toLocaleTimeString()}
+                  {formatDate(request.createdAt)} •{" "}
+                  {new Date(request.createdAt).toLocaleTimeString()}
                 </p>
               </div>
             </div>
 
             {/* In Progress (if status is IN_PROGRESS, COMPLETED, or CANCELLED) */}
-            {(request.status === "IN_PROGRESS" || request.status === "COMPLETED" || request.status === "CANCELLED") && (
+            {(request.status === "IN_PROGRESS" ||
+              request.status === "COMPLETED" ||
+              request.status === "CANCELLED") && (
               <div className="relative flex gap-4">
                 <div className="relative z-10">
                   <div className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-500/10">
@@ -486,7 +487,9 @@ export default function MaintenanceRequestDetailClient({
                 <div className="flex-1 pt-1">
                   <p className="text-sm font-medium">Request Completed</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {request.completedAt ? `${formatDate(request.completedAt)} • ${new Date(request.completedAt).toLocaleTimeString()}` : "Maintenance work completed"}
+                    {request.completedAt
+                      ? `${formatDate(request.completedAt)} • ${new Date(request.completedAt).toLocaleTimeString()}`
+                      : "Maintenance work completed"}
                   </p>
                 </div>
               </div>
@@ -516,7 +519,10 @@ export default function MaintenanceRequestDetailClient({
       </Card>
 
       {/* Status Confirmation Dialog */}
-      <AlertDialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
+      <AlertDialog
+        open={isConfirmDialogOpen}
+        onOpenChange={setIsConfirmDialogOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{confirmAction?.label}</AlertDialogTitle>
@@ -555,13 +561,21 @@ export default function MaintenanceRequestDetailClient({
             </div>
           )}
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isStatusChanging}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isStatusChanging}>
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => confirmAction && handleStatusChange(confirmAction.status)}
+              onClick={() =>
+                confirmAction && handleStatusChange(confirmAction.status)
+              }
               disabled={isStatusChanging}
-              className={confirmAction?.status === 'CANCELLED' ? 'bg-destructive hover:bg-destructive/90' : ''}
+              className={
+                confirmAction?.status === "CANCELLED"
+                  ? "bg-destructive hover:bg-destructive/90"
+                  : ""
+              }
             >
-              {isStatusChanging ? 'Updating...' : 'Confirm'}
+              {isStatusChanging ? "Updating..." : "Confirm"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

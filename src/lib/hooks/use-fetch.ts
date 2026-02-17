@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 
 /**
  * Generic hook for fetching data from an API endpoint
@@ -9,7 +9,38 @@ export function useFetch<T>(url: string | null, deps: unknown[] = []) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchData = async () => {
+  // Memoize deps to avoid infinite re-renders
+  const depsKey = useMemo(() => JSON.stringify(deps), [deps]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!url) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        setError(null);
+        const response = await fetch(url);
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch data");
+        }
+
+        const result = await response.json();
+        setData(result);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load data");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [url, depsKey]);
+
+  const refetch = useCallback(async () => {
     if (!url) {
       setIsLoading(false);
       return;
@@ -31,14 +62,9 @@ export function useFetch<T>(url: string | null, deps: unknown[] = []) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [url]);
 
-  useEffect(() => {
-    fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [url, ...deps]);
-
-  return { data, isLoading, error, refetch: fetchData };
+  return { data, isLoading, error, refetch };
 }
 
 /**
@@ -58,7 +84,7 @@ export function usePaginatedFetch<T>(
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!url) {
       setIsLoading(false);
       return;
@@ -87,10 +113,15 @@ export function usePaginatedFetch<T>(
       // Handle both direct arrays and paginated responses
       if (Array.isArray(result)) {
         setData(result);
-      } else if (result.data || result.logs || result.rules || result.templates) {
+      } else if (
+        result.data ||
+        result.logs ||
+        result.rules ||
+        result.templates
+      ) {
         // Handle different paginated response formats
-        const dataKey = Object.keys(result).find(
-          (k) => Array.isArray(result[k]),
+        const dataKey = Object.keys(result).find((k) =>
+          Array.isArray(result[k]),
         );
         if (dataKey) {
           setData(result[dataKey]);
@@ -104,12 +135,11 @@ export function usePaginatedFetch<T>(
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [url, pagination.page, pagination.limit, filters]);
 
   useEffect(() => {
     fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [url, pagination.page, JSON.stringify(filters)]);
+  }, [fetchData]);
 
   const setPage = (page: number) => {
     setPagination((prev) => ({ ...prev, page }));

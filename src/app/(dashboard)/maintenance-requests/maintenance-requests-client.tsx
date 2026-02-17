@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -54,7 +53,6 @@ import {
   Delete02Icon,
   PencilEdit02Icon,
   Search01Icon,
-  ToolsIcon,
   Download04Icon,
   Upload04Icon,
   FileDownloadIcon,
@@ -154,39 +152,58 @@ export default function MaintenanceRequestsClient() {
     tenant: { id: string; fullName: string };
   } | null>(null);
 
-  useEffect(() => {
-    fetchProperties();
+  const fetchProperties = useCallback(async () => {
+    try {
+      const response = await fetch("/api/properties");
+      if (response.ok) {
+        const data = await response.json();
+        setProperties(data.items || data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch properties:", err);
+    }
+  }, []);
+
+  const fetchUnitsForProperty = useCallback(async (propertyId: string) => {
+    try {
+      const response = await fetch(`/api/properties/${propertyId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setUnits(data.units || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch units:", err);
+    }
+  }, []);
+
+  const fetchActiveLeaseForUnit = useCallback(async (unitId: string) => {
+    try {
+      const response = await fetch(`/api/units/${unitId}/active-lease`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.lease) {
+          setActiveLease(data.lease);
+          setFormData((prev) => ({
+            ...prev,
+            tenantId: data.lease.tenant.id,
+            leaseId: data.lease.id,
+          }));
+        } else {
+          setActiveLease(null);
+          setFormData((prev) => ({ ...prev, tenantId: "", leaseId: "" }));
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch active lease:", err);
+      setActiveLease(null);
+    }
   }, []);
 
   useEffect(() => {
-    fetchRequests();
-  }, [
-    currentPage,
-    pageSize,
-    statusFilter,
-    priorityFilter,
-    propertyFilter,
-    searchQuery,
-  ]);
+    fetchProperties();
+  }, [fetchProperties]);
 
-  useEffect(() => {
-    if (formData.propertyId) {
-      fetchUnitsForProperty(formData.propertyId);
-    } else {
-      setUnits([]);
-    }
-  }, [formData.propertyId]);
-
-  useEffect(() => {
-    if (formData.unitId && !editingRequest) {
-      fetchActiveLeaseForUnit(formData.unitId);
-    } else {
-      setActiveLease(null);
-      setFormData((prev) => ({ ...prev, tenantId: "", leaseId: "" }));
-    }
-  }, [formData.unitId]);
-
-  const fetchRequests = async () => {
+  const fetchRequests = useCallback(async () => {
     try {
       setIsLoading(true);
       const params = new URLSearchParams({
@@ -223,54 +240,28 @@ export default function MaintenanceRequestsClient() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [currentPage, pageSize, statusFilter, priorityFilter, propertyFilter, searchQuery]);
 
-  const fetchProperties = async () => {
-    try {
-      const response = await fetch("/api/properties");
-      if (response.ok) {
-        const data = await response.json();
-        setProperties(data.items || data);
-      }
-    } catch (err) {
-      console.error("Failed to fetch properties:", err);
+  useEffect(() => {
+    fetchRequests();
+  }, [fetchRequests]);
+
+  useEffect(() => {
+    if (formData.propertyId) {
+      fetchUnitsForProperty(formData.propertyId);
+    } else {
+      setUnits([]);
     }
-  };
+  }, [formData.propertyId, fetchUnitsForProperty]);
 
-  const fetchUnitsForProperty = async (propertyId: string) => {
-    try {
-      const response = await fetch(`/api/properties/${propertyId}`);
-      if (response.ok) {
-        const data = await response.json();
-        setUnits(data.units || []);
-      }
-    } catch (err) {
-      console.error("Failed to fetch units:", err);
-    }
-  };
-
-  const fetchActiveLeaseForUnit = async (unitId: string) => {
-    try {
-      const response = await fetch(`/api/units/${unitId}/active-lease`);
-      if (response.ok) {
-        const data = await response.json();
-        if (data.lease) {
-          setActiveLease(data.lease);
-          setFormData((prev) => ({
-            ...prev,
-            tenantId: data.lease.tenant.id,
-            leaseId: data.lease.id,
-          }));
-        } else {
-          setActiveLease(null);
-          setFormData((prev) => ({ ...prev, tenantId: "", leaseId: "" }));
-        }
-      }
-    } catch (err) {
-      console.error("Failed to fetch active lease:", err);
+  useEffect(() => {
+    if (formData.unitId && !editingRequest) {
+      fetchActiveLeaseForUnit(formData.unitId);
+    } else {
       setActiveLease(null);
+      setFormData((prev) => ({ ...prev, tenantId: "", leaseId: "" }));
     }
-  };
+  }, [formData.unitId, editingRequest, fetchActiveLeaseForUnit]);
 
   const handleOpenDialog = async (request?: MaintenanceRequest) => {
     if (request) {
@@ -965,7 +956,7 @@ export default function MaintenanceRequestsClient() {
         description="Upload an Excel file (.xlsx or .xls) with maintenance request data. Download the template for the correct format."
         apiEndpoint="/api/maintenance-requests/bulk-import"
         onImportComplete={fetchRequests}
-        renderPreview={(data, index) => {
+        renderPreview={(data) => {
           const title = (data["Title"] || data.title) as string;
           const propertyName = (data["Property Name"] ||
             data.propertyName) as string;

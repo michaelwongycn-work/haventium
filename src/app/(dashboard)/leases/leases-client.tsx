@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { formatDate, formatCurrency as formatCurrencyUtil } from "@/lib/format";
 import {
@@ -159,13 +159,7 @@ export default function LeasesClient() {
     depositAmount: "",
   });
 
-  useEffect(() => {
-    fetchLeases();
-    fetchTenants();
-    fetchProperties();
-  }, [currentPage, pageSize, statusFilter, searchQuery]);
-
-  const fetchLeases = async () => {
+  const fetchLeases = useCallback(async () => {
     try {
       setIsLoading(true);
       const params = new URLSearchParams({
@@ -197,7 +191,13 @@ export default function LeasesClient() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [currentPage, pageSize, statusFilter, searchQuery]);
+
+  useEffect(() => {
+    fetchLeases();
+    fetchTenants();
+    fetchProperties();
+  }, [fetchLeases]);
 
   const fetchTenants = async () => {
     try {
@@ -206,7 +206,7 @@ export default function LeasesClient() {
         const data = await response.json();
         setTenants(data.items || data);
       }
-    } catch (err) {
+    } catch {
       // Silent fail - not critical
     }
   };
@@ -237,7 +237,7 @@ export default function LeasesClient() {
 
         setProperties(propertiesWithUnits);
       }
-    } catch (err) {
+    } catch {
       // Silent fail - not critical
     }
   };
@@ -1323,7 +1323,7 @@ export default function LeasesClient() {
         description="Upload an Excel file (.xlsx or .xls) with lease data. Download the template for the correct format. All imported leases will be created as DRAFT status."
         apiEndpoint="/api/leases/bulk-import"
         onImportComplete={fetchLeases}
-        renderPreview={(data, index) => {
+        renderPreview={(data) => {
           const tenantEmail = (data["Tenant Email"] ||
             data.tenantEmail) as string;
           const propertyName = (data["Property Name"] ||

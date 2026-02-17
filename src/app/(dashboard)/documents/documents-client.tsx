@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useEffect, useState, useCallback } from "react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -76,11 +76,6 @@ type Property = {
   name: string;
 };
 
-type Unit = {
-  id: string;
-  name: string;
-};
-
 type Tenant = {
   id: string;
   fullName: string;
@@ -90,12 +85,13 @@ export default function DocumentsClient() {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [filteredDocuments, setFilteredDocuments] = useState<Document[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
-  const [units, setUnits] = useState<Unit[]>([]);
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [deletingDocument, setDeletingDocument] = useState<Document | null>(null);
+  const [deletingDocument, setDeletingDocument] = useState<Document | null>(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [entityTypeFilter, setEntityTypeFilter] = useState<string>("all");
@@ -111,17 +107,7 @@ export default function DocumentsClient() {
     entityId: "",
   });
 
-  useEffect(() => {
-    fetchDocuments();
-    fetchProperties();
-    fetchTenants();
-  }, [currentPage, pageSize]);
-
-  useEffect(() => {
-    filterDocuments();
-  }, [documents, entityTypeFilter, searchQuery]);
-
-  const fetchDocuments = async () => {
+  const fetchDocuments = useCallback(async () => {
     try {
       setIsLoading(true);
       const params = new URLSearchParams({
@@ -143,9 +129,9 @@ export default function DocumentsClient() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [currentPage, pageSize]);
 
-  const fetchProperties = async () => {
+  const fetchProperties = useCallback(async () => {
     try {
       const response = await fetch("/api/properties");
       if (response.ok) {
@@ -155,9 +141,9 @@ export default function DocumentsClient() {
     } catch (err) {
       console.error("Failed to fetch properties:", err);
     }
-  };
+  }, []);
 
-  const fetchTenants = async () => {
+  const fetchTenants = useCallback(async () => {
     try {
       const response = await fetch("/api/tenants");
       if (response.ok) {
@@ -167,9 +153,15 @@ export default function DocumentsClient() {
     } catch (err) {
       console.error("Failed to fetch tenants:", err);
     }
-  };
+  }, []);
 
-  const filterDocuments = () => {
+  useEffect(() => {
+    fetchDocuments();
+    fetchProperties();
+    fetchTenants();
+  }, [fetchDocuments, fetchProperties, fetchTenants]);
+
+  const filterDocuments = useCallback(() => {
     let filtered = documents;
 
     if (entityTypeFilter !== "all") {
@@ -190,12 +182,20 @@ export default function DocumentsClient() {
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter((doc) =>
-        doc.filename.toLowerCase().includes(query)
+        doc.filename.toLowerCase().includes(query),
       );
     }
 
     setFilteredDocuments(filtered);
-  };
+  }, [documents, entityTypeFilter, searchQuery]);
+
+  useEffect(() => {
+    fetchDocuments();
+  }, [fetchDocuments]);
+
+  useEffect(() => {
+    filterDocuments();
+  }, [filterDocuments]);
 
   const handleOpenDialog = () => {
     setFormData({
@@ -251,7 +251,9 @@ export default function DocumentsClient() {
       await fetchDocuments();
       handleCloseDialog();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to upload document");
+      setError(
+        err instanceof Error ? err.message : "Failed to upload document",
+      );
     } finally {
       setIsSaving(false);
     }
@@ -277,7 +279,9 @@ export default function DocumentsClient() {
       setIsDeleteDialogOpen(false);
       setDeletingDocument(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete document");
+      setError(
+        err instanceof Error ? err.message : "Failed to delete document",
+      );
     } finally {
       setIsSaving(false);
     }
@@ -325,7 +329,8 @@ export default function DocumentsClient() {
             <div>
               <CardTitle>Documents</CardTitle>
               <CardDescription>
-                Manage files and documents attached to properties, units, tenants, and leases
+                Manage files and documents attached to properties, units,
+                tenants, and leases
               </CardDescription>
             </div>
             <Button onClick={handleOpenDialog}>
@@ -351,7 +356,10 @@ export default function DocumentsClient() {
                 />
               </div>
             </div>
-            <Select value={entityTypeFilter} onValueChange={setEntityTypeFilter}>
+            <Select
+              value={entityTypeFilter}
+              onValueChange={setEntityTypeFilter}
+            >
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Filter by type" />
               </SelectTrigger>
@@ -385,7 +393,10 @@ export default function DocumentsClient() {
             <TableBody>
               {filteredDocuments.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground">
+                  <TableCell
+                    colSpan={7}
+                    className="text-center text-muted-foreground"
+                  >
                     No documents found
                   </TableCell>
                 </TableRow>
@@ -401,9 +412,11 @@ export default function DocumentsClient() {
                           className="block"
                         >
                           {isImage ? (
-                            <img
+                            <Image
                               src={doc.fileUrl}
                               alt={doc.filename}
+                              width={48}
+                              height={48}
                               className="w-12 h-12 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
                               loading="lazy"
                             />
@@ -418,16 +431,22 @@ export default function DocumentsClient() {
                           )}
                         </button>
                       </TableCell>
-                      <TableCell className="font-medium">{doc.filename}</TableCell>
+                      <TableCell className="font-medium">
+                        {doc.filename}
+                      </TableCell>
                       <TableCell>
-                        <Badge variant="outline">{doc.fileType.split("/")[1].toUpperCase()}</Badge>
+                        <Badge variant="outline">
+                          {doc.fileType.split("/")[1].toUpperCase()}
+                        </Badge>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {formatFileSize(doc.fileSize)}
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
-                          <div className="text-muted-foreground text-xs">{entityInfo.type}</div>
+                          <div className="text-muted-foreground text-xs">
+                            {entityInfo.type}
+                          </div>
                           <div>{entityInfo.name}</div>
                         </div>
                       </TableCell>
@@ -483,7 +502,8 @@ export default function DocumentsClient() {
           <DialogHeader>
             <DialogTitle>Upload Document</DialogTitle>
             <DialogDescription>
-              Upload a document and attach it to a property, unit, tenant, or lease
+              Upload a document and attach it to a property, unit, tenant, or
+              lease
             </DialogDescription>
           </DialogHeader>
 
@@ -535,10 +555,14 @@ export default function DocumentsClient() {
                 </Label>
                 <Select
                   value={formData.entityId}
-                  onValueChange={(value) => setFormData({ ...formData, entityId: value })}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, entityId: value })
+                  }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder={`Select ${formData.entityType}`} />
+                    <SelectValue
+                      placeholder={`Select ${formData.entityType}`}
+                    />
                   </SelectTrigger>
                   <SelectContent>
                     {getEntitiesForType().map((entity) => (
@@ -553,7 +577,11 @@ export default function DocumentsClient() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={handleCloseDialog} disabled={isSaving}>
+            <Button
+              variant="outline"
+              onClick={handleCloseDialog}
+              disabled={isSaving}
+            >
               Cancel
             </Button>
             <Button onClick={handleUploadDocument} disabled={isSaving}>
@@ -564,13 +592,16 @@ export default function DocumentsClient() {
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Document</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete &ldquo;{deletingDocument?.filename}&rdquo;?
-              This action cannot be undone.
+              Are you sure you want to delete &ldquo;
+              {deletingDocument?.filename}&rdquo;? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           {error && (

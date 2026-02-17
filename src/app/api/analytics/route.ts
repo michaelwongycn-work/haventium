@@ -17,7 +17,6 @@ export async function GET(request: Request) {
 
     const organizationId = session.user.organizationId;
     const now = new Date();
-    const startDate = subMonths(now, months);
 
     // Generate array of months for the time range
     const monthLabels: string[] = [];
