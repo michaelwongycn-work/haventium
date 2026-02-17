@@ -31,6 +31,16 @@ export function NavLinks({ roles }: NavLinksProps) {
     links.push({ href: "/leases", label: "Leases" });
   }
 
+  // Analytics
+  if (hasAccess(roles, "leases", "read")) {
+    links.push({ href: "/analytics", label: "Analytics" });
+  }
+
+  // Calendar
+  if (hasAccess(roles, "leases", "read")) {
+    links.push({ href: "/calendar", label: "Calendar" });
+  }
+
   // Maintenance Requests
   if (hasAccess(roles, "maintenance", "read")) {
     links.push({ href: "/maintenance-requests", label: "Maintenance" });
