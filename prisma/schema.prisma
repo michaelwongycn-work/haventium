@@ -32,6 +32,7 @@ model Organization {
   notificationLogs      NotificationLog[]
   activities            Activity[]
   roles                 Role[]
+  subscription          Subscription?
 }
 
 model User {
@@ -489,4 +490,123 @@ model Activity {
   @@index([userId])
   @@index([tenantId])
   @@index([createdAt])
+}
+
+// ========================================
+// SUBSCRIPTION & BILLING
+// ========================================
+
+enum SubscriptionTierType {
+  FREE
+  NORMAL
+  PRO
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  EXPIRED
+  TRIAL
+}
+
+enum BillingCycle {
+  MONTHLY
+  ANNUAL
+}
+
+model SubscriptionTier {
+  id   String               @id @default(cuid())
+  type SubscriptionTierType @unique
+  name String
+
+  monthlyPrice Decimal @db.Decimal(10, 2)
+  annualPrice  Decimal @db.Decimal(10, 2)
+
+  // Limits
+  maxUsers      Int
+  maxProperties Int
+  maxUnits      Int
+  maxTenants    Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  features      TierFeature[]
+  subscriptions Subscription[]
+
+  @@index([type])
+}
+
+model Feature {
+  id   String @id @default(cuid())
+  code String @unique
+  name String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tierFeatures TierFeature[]
+}
+
+model TierFeature {
+  id        String           @id @default(cuid())
+  tierId    String
+  tier      SubscriptionTier @relation(fields: [tierId], references: [id], onDelete: Cascade)
+  featureId String
+  feature   Feature          @relation(fields: [featureId], references: [id], onDelete: Cascade)
+  limit     Int?
+
+  @@unique([tierId, featureId])
+  @@index([tierId])
+  @@index([featureId])
+}
+
+model Subscription {
+  id             String           @id @default(cuid())
+  organizationId String           @unique
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tierId         String
+  tier           SubscriptionTier @relation(fields: [tierId], references: [id])
+
+  status       SubscriptionStatus @default(TRIAL)
+  billingCycle BillingCycle       @default(MONTHLY)
+
+  startDate          DateTime
+  endDate            DateTime
+  trialEndsAt        DateTime?
+  cancelledAt        DateTime?
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+
+  externalId       String? @unique
+  externalResponse Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  invoices Invoice[]
+
+  @@index([organizationId])
+  @@index([tierId])
+  @@index([status])
+}
+
+model Invoice {
+  id             String       @id @default(cuid())
+  subscriptionId String
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  amount           Decimal       @db.Decimal(10, 2)
+  status           PaymentStatus @default(PENDING)
+  dueDate          DateTime
+  paidAt           DateTime?
+  externalId       String?       @unique
+  externalResponse Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([subscriptionId])
+  @@index([status])
+  @@index([dueDate])
 }
