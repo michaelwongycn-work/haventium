@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAccess } from "@/lib/api";
+import { requireAccess, handleApiError, logger } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { processNotifications } from "@/lib/services/notification-processor";
 import { NOTIFICATION_TRIGGER } from "@/lib/constants";
@@ -39,6 +39,7 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  let organizationId: string | undefined;
   try {
     const { authorized, response, session } = await requireAccess(
       "leases",
@@ -46,12 +47,13 @@ export async function GET(
     );
     if (!authorized) return response;
 
+    organizationId = session.user.organizationId;
     const { id } = await params;
 
     const lease = await prisma.leaseAgreement.findFirst({
       where: {
         id,
-        organizationId: session.user.organizationId,
+        organizationId,
       },
       include: {
         tenant: true,
@@ -75,7 +77,7 @@ export async function GET(
 
     const activities = await prisma.activity.findMany({
       where: {
-        organizationId: session.user.organizationId,
+        organizationId,
         leaseId: id,
       },
       include: {
@@ -99,11 +101,7 @@ export async function GET(
 
     return NextResponse.json(leaseWithActivities);
   } catch (error) {
-    console.error("Error fetching lease:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch lease" },
-      { status: 500 },
-    );
+    return handleApiError(error, "fetch lease");
   }
 }
 
@@ -485,29 +483,19 @@ export async function PATCH(
     // Send notification after successful transaction
     if (validatedData.paidAt !== undefined && validatedData.paidAt !== null) {
       // Trigger PAYMENT_CONFIRMED notification (async, don't block response)
+      const orgId = session.user.organizationId;
       processNotifications({
-        organizationId: session.user.organizationId,
+        organizationId: orgId,
         trigger: NOTIFICATION_TRIGGER.PAYMENT_CONFIRMED,
         relatedEntityId: id,
       }).catch((err) => {
-        console.error("Failed to send payment confirmation notification:", err);
+        logger.apiError("processNotifications (PAYMENT_CONFIRMED)", err, { organizationId: orgId });
       });
     }
 
     return NextResponse.json(lease);
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: error.issues[0].message },
-        { status: 400 },
-      );
-    }
-
-    console.error("Error updating lease:", error);
-    return NextResponse.json(
-      { error: "Failed to update lease" },
-      { status: 500 },
-    );
+    return handleApiError(error, "update lease");
   }
 }
 
@@ -606,10 +594,6 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error deleting lease:", error);
-    return NextResponse.json(
-      { error: "Failed to delete lease" },
-      { status: 500 },
-    );
+    return handleApiError(error, "delete lease");
   }
 }

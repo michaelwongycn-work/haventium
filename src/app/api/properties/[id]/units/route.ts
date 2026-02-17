@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAccess } from "@/lib/api";
+import { requireAccess, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 
 const createUnitSchema = z.object({
@@ -62,11 +62,7 @@ export async function GET(
 
     return NextResponse.json(units);
   } catch (error) {
-    console.error("Error fetching units:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch units" },
-      { status: 500 },
-    );
+    return handleApiError(error, "fetch units");
   }
 }
 
@@ -162,17 +158,6 @@ export async function POST(
 
     return NextResponse.json(unit, { status: 201 });
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: error.issues[0].message },
-        { status: 400 },
-      );
-    }
-
-    console.error("Error creating unit:", error);
-    return NextResponse.json(
-      { error: "Failed to create unit" },
-      { status: 500 },
-    );
+    return handleApiError(error, "create unit");
   }
 }

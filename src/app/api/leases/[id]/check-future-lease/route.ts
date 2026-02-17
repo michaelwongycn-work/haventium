@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAccess } from "@/lib/api";
+import { requireAccess, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(
@@ -37,10 +37,6 @@ export async function GET(
 
     return NextResponse.json({ hasFutureLease: !!futureLease });
   } catch (error) {
-    console.error("Error checking future leases:", error);
-    return NextResponse.json(
-      { error: "Failed to check future leases" },
-      { status: 500 },
-    );
+    return handleApiError(error, "check future leases");
   }
 }

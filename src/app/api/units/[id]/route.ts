@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAccess } from "@/lib/api";
+import { requireAccess, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 
 const updateUnitSchema = z.object({
@@ -55,11 +55,7 @@ export async function GET(
 
     return NextResponse.json(unit);
   } catch (error) {
-    console.error("Error fetching unit:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch unit" },
-      { status: 500 },
-    );
+    return handleApiError(error, "fetch unit");
   }
 }
 
@@ -138,18 +134,7 @@ export async function PATCH(
 
     return NextResponse.json(unit);
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: error.issues[0].message },
-        { status: 400 },
-      );
-    }
-
-    console.error("Error updating unit:", error);
-    return NextResponse.json(
-      { error: "Failed to update unit" },
-      { status: 500 },
-    );
+    return handleApiError(error, "update unit");
   }
 }
 
@@ -204,10 +189,6 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error deleting unit:", error);
-    return NextResponse.json(
-      { error: "Failed to delete unit" },
-      { status: 500 },
-    );
+    return handleApiError(error, "delete unit");
   }
 }

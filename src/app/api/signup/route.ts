@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { hashPassword, validatePassword } from "@/lib/password";
+import { handleApiError } from "@/lib/api";
 import { z } from "zod";
 
 const signupSchema = z.object({
@@ -147,10 +148,6 @@ export async function POST(request: NextRequest) {
       { status: 201 },
     );
   } catch (error) {
-    console.error("Signup error:", error);
-    return NextResponse.json(
-      { error: "An error occurred during signup" },
-      { status: 500 },
-    );
+    return handleApiError(error, "signup");
   }
 }

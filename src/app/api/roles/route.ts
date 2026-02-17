@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAccess } from "@/lib/api";
+import { requireAccess, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
-import { Prisma } from "@prisma/client";
 
 const createRoleSchema = z.object({
   name: z.string().min(1, "Role name is required"),
@@ -41,11 +40,7 @@ export async function GET() {
 
     return NextResponse.json(roles);
   } catch (error) {
-    console.error("Error fetching roles:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch roles" },
-      { status: 500 },
-    );
+    return handleApiError(error, "fetch roles");
   }
 }
 
@@ -113,27 +108,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json(role, { status: 201 });
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: error.issues[0].message },
-        { status: 400 },
-      );
-    }
-
-    if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === "P2002"
-    ) {
-      return NextResponse.json(
-        { error: "A role with this name already exists" },
-        { status: 400 },
-      );
-    }
-
-    console.error("Error creating role:", error);
-    return NextResponse.json(
-      { error: "Failed to create role" },
-      { status: 500 },
-    );
+    return handleApiError(error, "create role");
   }
 }

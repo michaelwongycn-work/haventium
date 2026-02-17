@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAccess } from "@/lib/api";
+import { requireAccess, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 
 const updatePropertySchema = z.object({
@@ -54,11 +54,7 @@ export async function GET(
 
     return NextResponse.json({ ...property, activities });
   } catch (error) {
-    console.error("Error fetching property:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch property" },
-      { status: 500 },
-    );
+    return handleApiError(error, "fetch property");
   }
 }
 
@@ -122,18 +118,7 @@ export async function PATCH(
 
     return NextResponse.json(property);
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: error.issues[0].message },
-        { status: 400 },
-      );
-    }
-
-    console.error("Error updating property:", error);
-    return NextResponse.json(
-      { error: "Failed to update property" },
-      { status: 500 },
-    );
+    return handleApiError(error, "update property");
   }
 }
 
@@ -184,10 +169,6 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error deleting property:", error);
-    return NextResponse.json(
-      { error: "Failed to delete property" },
-      { status: 500 },
-    );
+    return handleApiError(error, "delete property");
   }
 }

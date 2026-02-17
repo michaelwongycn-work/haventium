@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAccess } from "@/lib/api";
+import { requireAccess, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
-import { Prisma } from "@prisma/client";
 
 const updateRoleSchema = z.object({
   name: z.string().min(1, "Role name is required").optional(),
@@ -51,11 +50,7 @@ export async function GET(
 
     return NextResponse.json(role);
   } catch (error) {
-    console.error("Error fetching role:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch role" },
-      { status: 500 },
-    );
+    return handleApiError(error, "fetch role");
   }
 }
 
@@ -155,28 +150,7 @@ export async function PATCH(
 
     return NextResponse.json(role);
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: error.issues[0].message },
-        { status: 400 },
-      );
-    }
-
-    if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === "P2002"
-    ) {
-      return NextResponse.json(
-        { error: "A role with this name already exists" },
-        { status: 400 },
-      );
-    }
-
-    console.error("Error updating role:", error);
-    return NextResponse.json(
-      { error: "Failed to update role" },
-      { status: 500 },
-    );
+    return handleApiError(error, "update role");
   }
 }
 
@@ -252,10 +226,6 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error deleting role:", error);
-    return NextResponse.json(
-      { error: "Failed to delete role" },
-      { status: 500 },
-    );
+    return handleApiError(error, "delete role");
   }
 }

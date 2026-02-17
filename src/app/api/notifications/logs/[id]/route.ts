@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAccess } from "@/lib/api";
+import { requireAccess, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 
 // GET /api/notifications/logs/[id] - Get single notification log
@@ -32,10 +32,6 @@ export async function GET(
 
     return NextResponse.json(log);
   } catch (error) {
-    console.error("Error fetching notification log:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch notification log" },
-      { status: 500 },
-    );
+    return handleApiError(error, "fetch notification log");
   }
 }

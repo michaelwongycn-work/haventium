@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAccess } from "@/lib/api";
+import { requireAccess, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import type { NotificationChannel, NotificationTrigger } from "@prisma/client";
 import { NOTIFICATION_CHANNEL, NOTIFICATION_TRIGGER } from "@/lib/constants";
@@ -47,11 +47,7 @@ export async function GET(
 
     return NextResponse.json(template);
   } catch (error) {
-    console.error("Error fetching notification template:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch notification template" },
-      { status: 500 },
-    );
+    return handleApiError(error, "fetch notification template");
   }
 }
 
@@ -149,18 +145,7 @@ export async function PATCH(
 
     return NextResponse.json(template);
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: error.issues[0].message },
-        { status: 400 },
-      );
-    }
-
-    console.error("Error updating notification template:", error);
-    return NextResponse.json(
-      { error: "Failed to update notification template" },
-      { status: 500 },
-    );
+    return handleApiError(error, "update notification template");
   }
 }
 
@@ -199,10 +184,6 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error deleting notification template:", error);
-    return NextResponse.json(
-      { error: "Failed to delete notification template" },
-      { status: 500 },
-    );
+    return handleApiError(error, "delete notification template");
   }
 }

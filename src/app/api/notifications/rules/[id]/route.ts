@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAccess } from "@/lib/api";
+import { requireAccess, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { NOTIFICATION_CHANNEL, NOTIFICATION_TRIGGER } from "@/lib/constants";
 
@@ -67,11 +67,7 @@ export async function GET(
 
     return NextResponse.json(rule);
   } catch (error) {
-    console.error("Error fetching notification rule:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch notification rule" },
-      { status: 500 },
-    );
+    return handleApiError(error, "fetch notification rule");
   }
 }
 
@@ -215,18 +211,7 @@ export async function PATCH(
 
     return NextResponse.json(rule);
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: error.issues[0].message },
-        { status: 400 },
-      );
-    }
-
-    console.error("Error updating notification rule:", error);
-    return NextResponse.json(
-      { error: "Failed to update notification rule" },
-      { status: 500 },
-    );
+    return handleApiError(error, "update notification rule");
   }
 }
 
@@ -265,10 +250,6 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error deleting notification rule:", error);
-    return NextResponse.json(
-      { error: "Failed to delete notification rule" },
-      { status: 500 },
-    );
+    return handleApiError(error, "delete notification rule");
   }
 }
