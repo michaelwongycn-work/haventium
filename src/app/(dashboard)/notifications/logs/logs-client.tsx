@@ -155,14 +155,7 @@ export default function NotificationLogsClient() {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Notification Logs</h1>
-        <p className="text-muted-foreground">
-          View delivery history of all notifications
-        </p>
-      </div>
-
+    <>
       {error && (
         <Card className="border-destructive">
           <CardContent className="pt-6">
@@ -322,6 +315,6 @@ export default function NotificationLogsClient() {
           )}
         </CardContent>
       </Card>
-    </div>
+    </>
   );
 }

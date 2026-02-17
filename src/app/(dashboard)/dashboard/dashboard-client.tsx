@@ -11,6 +11,13 @@ export function DashboardClient({ userName }: { userName: string }) {
 
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <p className="text-muted-foreground mt-1">
+          Welcome back, {userName}
+        </p>
+      </div>
+
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full max-w-md grid-cols-3">
           <TabsTrigger value="overview">Overview</TabsTrigger>

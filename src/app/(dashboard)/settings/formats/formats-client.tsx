@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -48,7 +47,6 @@ const CURRENCIES = [
 ];
 
 export function FormatsClient() {
-  const router = useRouter();
   const [settings, setSettings] = useState<FormatSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -98,10 +96,10 @@ export function FormatsClient() {
 
       setSuccess(true);
 
-      // Reload the page to apply new format settings
+      // Auto-clear success message after 3 seconds
       setTimeout(() => {
-        router.refresh();
-      }, 1500);
+        setSuccess(false);
+      }, 3000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save settings");
     } finally {
@@ -111,13 +109,7 @@ export function FormatsClient() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Format Settings</h1>
-          <p className="text-muted-foreground mt-1">
-            Configure date and currency formats for your organization
-          </p>
-        </div>
+      <div className="space-y-4">
         <Card>
           <CardHeader>
             <Skeleton className="h-6 w-48" />
@@ -136,13 +128,6 @@ export function FormatsClient() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Format Settings</h1>
-        <p className="text-muted-foreground mt-1">
-          Configure date and currency formats for your organization
-        </p>
-      </div>
-
       {error && (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
@@ -152,7 +137,7 @@ export function FormatsClient() {
       {success && (
         <Alert>
           <AlertDescription>
-            Settings saved successfully! Page will reload to apply changes...
+            Settings saved successfully!
           </AlertDescription>
         </Alert>
       )}

@@ -332,20 +332,7 @@ export default function NotificationRulesClient() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Notification Rules</h1>
-          <p className="text-muted-foreground">
-            Configure automated notification triggers
-          </p>
-        </div>
-        <Button onClick={openCreateDialog}>
-          <HugeiconsIcon icon={PlusSignIcon} className="mr-2 h-4 w-4" />
-          Create Rule
-        </Button>
-      </div>
-
+    <>
       {error && !isDialogOpen && (
         <Card className="border-destructive">
           <CardContent className="pt-6">
@@ -356,10 +343,18 @@ export default function NotificationRulesClient() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Rules</CardTitle>
-          <CardDescription>
-            Define when and how notifications are sent automatically
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Rules</CardTitle>
+              <CardDescription>
+                Define when and how notifications are sent automatically
+              </CardDescription>
+            </div>
+            <Button onClick={openCreateDialog}>
+              <HugeiconsIcon icon={PlusSignIcon} className="mr-2 h-4 w-4" />
+              Create Rule
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -677,6 +672,6 @@ export default function NotificationRulesClient() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   );
 }

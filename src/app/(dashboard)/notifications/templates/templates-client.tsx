@@ -254,20 +254,7 @@ export default function NotificationTemplatesClient() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Notification Templates</h1>
-          <p className="text-muted-foreground">
-            Manage email and WhatsApp notification templates
-          </p>
-        </div>
-        <Button onClick={openCreateDialog}>
-          <HugeiconsIcon icon={PlusSignIcon} className="mr-2 h-4 w-4" />
-          Create Template
-        </Button>
-      </div>
-
+    <>
       {error && !isDialogOpen && (
         <Card className="border-destructive">
           <CardContent className="pt-6">
@@ -278,10 +265,18 @@ export default function NotificationTemplatesClient() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Templates</CardTitle>
-          <CardDescription>
-            Create reusable templates for automated notifications
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Templates</CardTitle>
+              <CardDescription>
+                Create reusable templates for automated notifications
+              </CardDescription>
+            </div>
+            <Button onClick={openCreateDialog}>
+              <HugeiconsIcon icon={PlusSignIcon} className="mr-2 h-4 w-4" />
+              Create Template
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -538,6 +533,6 @@ export default function NotificationTemplatesClient() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   );
 }

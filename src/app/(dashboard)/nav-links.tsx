@@ -43,7 +43,7 @@ export function NavLinks({ roles }: NavLinksProps) {
 
   // Notifications
   if (hasAccess(roles, "notifications", "read")) {
-    links.push({ href: "/notifications/templates", label: "Notifications" });
+    links.push({ href: "/notifications", label: "Notifications" });
   }
 
   // Settings

@@ -11,13 +11,18 @@ export default async function SettingsPage() {
   }
 
   const roles = session.user.roles || [];
-  const authorized =
-    hasAccess(roles, "settings", "manage") ||
-    hasAccess(roles, "users", "manage");
+  const hasSettingsManage = hasAccess(roles, "settings", "manage");
+  const hasUsersManage = hasAccess(roles, "users", "manage");
+  const authorized = hasSettingsManage || hasUsersManage;
 
   if (!authorized) {
     return <AccessDenied resource="Settings" />;
   }
 
-  return <SettingsClient />;
+  return (
+    <SettingsClient
+      hasSettingsManage={hasSettingsManage}
+      hasUsersManage={hasUsersManage}
+    />
+  );
 }

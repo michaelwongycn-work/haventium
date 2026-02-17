@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -54,6 +55,8 @@ import {
   Delete02Icon,
   PencilEdit02Icon,
 } from "@hugeicons/core-free-icons";
+import ApiKeysClient from "./api-keys/api-keys-client";
+import { FormatsClient } from "./formats/formats-client";
 
 // ========================================
 // Types
@@ -97,6 +100,11 @@ type User = {
   userRoles: UserRole[];
 };
 
+type SettingsClientProps = {
+  hasSettingsManage: boolean;
+  hasUsersManage: boolean;
+};
+
 // ========================================
 // Helpers
 // ========================================
@@ -116,8 +124,22 @@ function groupAccessesByResource(accesses: Access[]) {
 // Page Component
 // ========================================
 
-export default function SettingsClient() {
-  const [activeTab, setActiveTab] = useState<"roles" | "users">("roles");
+function SettingsContent({
+  hasSettingsManage,
+  hasUsersManage,
+}: SettingsClientProps) {
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
+
+  // Determine default tab based on permissions
+  const getDefaultTab = () => {
+    if (tabParam && ["roles", "users", "api-keys", "formats"].includes(tabParam)) {
+      return tabParam;
+    }
+    return hasUsersManage ? "users" : "roles";
+  };
+
+  const [activeTab, setActiveTab] = useState<string>(getDefaultTab());
   const [roles, setRoles] = useState<Role[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [accesses, setAccesses] = useState<Access[]>([]);
@@ -459,309 +481,315 @@ export default function SettingsClient() {
 
   const accessGroups = groupAccessesByResource(accesses);
 
+  // Determine grid class based on available tabs
+  const getGridClass = () => {
+    if (hasSettingsManage && hasUsersManage) {
+      return "grid-cols-4"; // All 4 tabs: Roles, Users, API Keys, Formats
+    } else if (hasSettingsManage) {
+      return "grid-cols-3"; // Roles, API Keys, Formats
+    } else {
+      return "grid-cols-1"; // Only Users
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Settings</h1>
         <p className="text-muted-foreground mt-1">
-          Manage roles and team members
+          Manage roles, team members, API keys, and formats
         </p>
       </div>
 
-      {/* Tab Switcher */}
-      <div className="flex gap-1 rounded-lg bg-muted p-1 w-fit">
-        <button
-          onClick={() => setActiveTab("roles")}
-          className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
-            activeTab === "roles"
-              ? "bg-background text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Roles
-        </button>
-        <button
-          onClick={() => setActiveTab("users")}
-          className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
-            activeTab === "users"
-              ? "bg-background text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Users
-        </button>
-        <Link
-          href="/settings/api-keys"
-          className="rounded-md px-4 py-1.5 text-sm font-medium transition-colors text-muted-foreground hover:text-foreground"
-        >
-          API Keys
-        </Link>
-        <Link
-          href="/settings/formats"
-          className="rounded-md px-4 py-1.5 text-sm font-medium transition-colors text-muted-foreground hover:text-foreground"
-        >
-          Formats
-        </Link>
-      </div>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className={`grid w-full max-w-2xl ${getGridClass()}`}>
+          {hasSettingsManage && <TabsTrigger value="roles">Roles</TabsTrigger>}
+          {hasUsersManage && <TabsTrigger value="users">Users</TabsTrigger>}
+          {hasSettingsManage && <TabsTrigger value="api-keys">API Keys</TabsTrigger>}
+          {hasSettingsManage && <TabsTrigger value="formats">Formats</TabsTrigger>}
+        </TabsList>
 
-      {/* ======================================== */}
-      {/* ROLES TAB */}
-      {/* ======================================== */}
-      {activeTab === "roles" && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Roles</CardTitle>
-                <CardDescription>
-                  Manage roles and their permissions
-                </CardDescription>
-              </div>
-              <Button onClick={() => handleOpenRoleDialog()}>
-                <HugeiconsIcon
-                  icon={PlusSignIcon}
-                  strokeWidth={2}
-                  data-icon="inline-start"
-                />
-                Add Role
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Permissions</TableHead>
-                    <TableHead>Users</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {Array.from({ length: 3 }).map((_, i) => (
-                    <TableRow key={i}>
-                      <TableCell>
-                        <Skeleton className="h-4 w-[120px]" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-[60px]" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-[40px]" />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Skeleton className="h-8 w-8" />
-                          <Skeleton className="h-8 w-8" />
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            ) : roles.length === 0 ? (
-              <div className="text-center py-12">
-                <h3 className="text-lg font-medium mb-2">No roles yet</h3>
-                <p className="text-muted-foreground mb-6">
-                  Create your first role to assign permissions
-                </p>
-                <Button onClick={() => handleOpenRoleDialog()}>
-                  <HugeiconsIcon
-                    icon={PlusSignIcon}
-                    strokeWidth={2}
-                    data-icon="inline-start"
-                  />
-                  Add Role
-                </Button>
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Permissions</TableHead>
-                    <TableHead>Users</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {roles.map((role) => (
-                    <TableRow key={role.id}>
-                      <TableCell className="font-medium">{role.name}</TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {role.roleAccesses.length}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {role._count.userRoles}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {!role.isSystem && (
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleOpenRoleDialog(role)}
-                            >
-                              <HugeiconsIcon
-                                icon={PencilEdit02Icon}
-                                strokeWidth={2}
-                                className="h-4 w-4"
-                              />
-                              <span className="sr-only">Edit</span>
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleOpenDeleteRoleDialog(role)}
-                            >
-                              <HugeiconsIcon
-                                icon={Delete02Icon}
-                                strokeWidth={2}
-                                className="h-4 w-4"
-                              />
-                              <span className="sr-only">Delete</span>
-                            </Button>
-                          </div>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-      )}
+        {/* ======================================== */}
+        {/* ROLES TAB */}
+        {/* ======================================== */}
+        {hasSettingsManage && (
+          <TabsContent value="roles" className="mt-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Roles</CardTitle>
+                    <CardDescription>
+                      Manage roles and their permissions
+                    </CardDescription>
+                  </div>
+                  <Button onClick={() => handleOpenRoleDialog()}>
+                    <HugeiconsIcon
+                      icon={PlusSignIcon}
+                      strokeWidth={2}
+                      data-icon="inline-start"
+                    />
+                    Add Role
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {isLoading ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Permissions</TableHead>
+                        <TableHead>Users</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {Array.from({ length: 3 }).map((_, i) => (
+                        <TableRow key={i}>
+                          <TableCell>
+                            <Skeleton className="h-4 w-[120px]" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-4 w-[60px]" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-4 w-[40px]" />
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Skeleton className="h-8 w-8" />
+                              <Skeleton className="h-8 w-8" />
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : roles.length === 0 ? (
+                  <div className="text-center py-12">
+                    <h3 className="text-lg font-medium mb-2">No roles yet</h3>
+                    <p className="text-muted-foreground mb-6">
+                      Create your first role to assign permissions
+                    </p>
+                    <Button onClick={() => handleOpenRoleDialog()}>
+                      <HugeiconsIcon
+                        icon={PlusSignIcon}
+                        strokeWidth={2}
+                        data-icon="inline-start"
+                      />
+                      Add Role
+                    </Button>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Permissions</TableHead>
+                        <TableHead>Users</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {roles.map((role) => (
+                        <TableRow key={role.id}>
+                          <TableCell className="font-medium">{role.name}</TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {role.roleAccesses.length}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {role._count.userRoles}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {!role.isSystem && (
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleOpenRoleDialog(role)}
+                                >
+                                  <HugeiconsIcon
+                                    icon={PencilEdit02Icon}
+                                    strokeWidth={2}
+                                    className="h-4 w-4"
+                                  />
+                                  <span className="sr-only">Edit</span>
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleOpenDeleteRoleDialog(role)}
+                                >
+                                  <HugeiconsIcon
+                                    icon={Delete02Icon}
+                                    strokeWidth={2}
+                                    className="h-4 w-4"
+                                  />
+                                  <span className="sr-only">Delete</span>
+                                </Button>
+                              </div>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
 
-      {/* ======================================== */}
-      {/* USERS TAB */}
-      {/* ======================================== */}
-      {activeTab === "users" && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Team Members</CardTitle>
-                <CardDescription>
-                  Manage users in your organization
-                </CardDescription>
-              </div>
-              <Button onClick={() => handleOpenUserDialog()}>
-                <HugeiconsIcon
-                  icon={PlusSignIcon}
-                  strokeWidth={2}
-                  data-icon="inline-start"
-                />
-                Invite User
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {Array.from({ length: 3 }).map((_, i) => (
-                    <TableRow key={i}>
-                      <TableCell>
-                        <Skeleton className="h-4 w-[120px]" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-[180px]" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-[80px]" />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Skeleton className="h-8 w-8" />
-                          <Skeleton className="h-8 w-8" />
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            ) : users.length === 0 ? (
-              <div className="text-center py-12">
-                <h3 className="text-lg font-medium mb-2">No team members</h3>
-                <p className="text-muted-foreground mb-6">
-                  Invite your first team member
-                </p>
-                <Button onClick={() => handleOpenUserDialog()}>
-                  <HugeiconsIcon
-                    icon={PlusSignIcon}
-                    strokeWidth={2}
-                    data-icon="inline-start"
-                  />
-                  Invite User
-                </Button>
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {users.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell className="font-medium">{user.name}</TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {user.email}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {user.userRoles.map((ur) => ur.role.name).join(", ") ||
-                          "—"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleOpenUserDialog(user)}
-                          >
-                            <HugeiconsIcon
-                              icon={PencilEdit02Icon}
-                              strokeWidth={2}
-                              className="h-4 w-4"
-                            />
-                            <span className="sr-only">Edit</span>
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleOpenDeleteUserDialog(user)}
-                          >
-                            <HugeiconsIcon
-                              icon={Delete02Icon}
-                              strokeWidth={2}
-                              className="h-4 w-4"
-                            />
-                            <span className="sr-only">Delete</span>
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-      )}
+        {/* ======================================== */}
+        {/* USERS TAB */}
+        {/* ======================================== */}
+        {hasUsersManage && (
+          <TabsContent value="users" className="mt-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Team Members</CardTitle>
+                    <CardDescription>
+                      Manage users in your organization
+                    </CardDescription>
+                  </div>
+                  <Button onClick={() => handleOpenUserDialog()}>
+                    <HugeiconsIcon
+                      icon={PlusSignIcon}
+                      strokeWidth={2}
+                      data-icon="inline-start"
+                    />
+                    Invite User
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {isLoading ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {Array.from({ length: 3 }).map((_, i) => (
+                        <TableRow key={i}>
+                          <TableCell>
+                            <Skeleton className="h-4 w-[120px]" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-4 w-[180px]" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-4 w-[80px]" />
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Skeleton className="h-8 w-8" />
+                              <Skeleton className="h-8 w-8" />
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : users.length === 0 ? (
+                  <div className="text-center py-12">
+                    <h3 className="text-lg font-medium mb-2">No team members</h3>
+                    <p className="text-muted-foreground mb-6">
+                      Invite your first team member
+                    </p>
+                    <Button onClick={() => handleOpenUserDialog()}>
+                      <HugeiconsIcon
+                        icon={PlusSignIcon}
+                        strokeWidth={2}
+                        data-icon="inline-start"
+                      />
+                      Invite User
+                    </Button>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {users.map((user) => (
+                        <TableRow key={user.id}>
+                          <TableCell className="font-medium">{user.name}</TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {user.email}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {user.userRoles.map((ur) => ur.role.name).join(", ") ||
+                              "—"}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleOpenUserDialog(user)}
+                              >
+                                <HugeiconsIcon
+                                  icon={PencilEdit02Icon}
+                                  strokeWidth={2}
+                                  className="h-4 w-4"
+                                />
+                                <span className="sr-only">Edit</span>
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleOpenDeleteUserDialog(user)}
+                              >
+                                <HugeiconsIcon
+                                  icon={Delete02Icon}
+                                  strokeWidth={2}
+                                  className="h-4 w-4"
+                                />
+                                <span className="sr-only">Delete</span>
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+
+        {/* ======================================== */}
+        {/* API KEYS TAB */}
+        {/* ======================================== */}
+        {hasSettingsManage && (
+          <TabsContent value="api-keys" className="mt-6">
+            <ApiKeysClient />
+          </TabsContent>
+        )}
+
+        {/* ======================================== */}
+        {/* FORMATS TAB */}
+        {/* ======================================== */}
+        {hasSettingsManage && (
+          <TabsContent value="formats" className="mt-6">
+            <FormatsClient />
+          </TabsContent>
+        )}
+      </Tabs>
 
       {/* ======================================== */}
       {/* Role Create/Edit Dialog */}
@@ -1047,5 +1075,19 @@ export default function SettingsClient() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+export default function SettingsClient({
+  hasSettingsManage,
+  hasUsersManage,
+}: SettingsClientProps) {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SettingsContent
+        hasSettingsManage={hasSettingsManage}
+        hasUsersManage={hasUsersManage}
+      />
+    </Suspense>
   );
 }

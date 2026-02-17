@@ -112,11 +112,6 @@ export function OverviewClient({ userName }: { userName: string }) {
   if (loading) {
     return (
       <div className="space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">Welcome back, {userName}!</p>
-        </div>
-
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {[...Array(4)].map((_, i) => (
             <Card key={i}>
@@ -163,15 +158,9 @@ export function OverviewClient({ userName }: { userName: string }) {
 
   if (error) {
     return (
-      <div className="space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">Welcome back, {userName}!</p>
-        </div>
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      </div>
+      <Alert variant="destructive">
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
     );
   }
   if (!data) return null;
@@ -183,11 +172,6 @@ export function OverviewClient({ userName }: { userName: string }) {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground">Welcome back, {userName}!</p>
-      </div>
-
       {/* Row 1: Key counts */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
@@ -330,7 +314,7 @@ export function OverviewClient({ userName }: { userName: string }) {
               </p>
             ) : (
               <div className="space-y-3">
-                {data.expiringSoon.map((lease) => {
+                {data.expiringSoon.slice(0, 5).map((lease) => {
                   const endDate = new Date(lease.endDate);
                   const daysLeft = Math.ceil(
                     (endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
@@ -377,7 +361,7 @@ export function OverviewClient({ userName }: { userName: string }) {
               </p>
             ) : (
               <div className="space-y-3">
-                {data.upcomingPayments.map((lease) => {
+                {data.upcomingPayments.slice(0, 5).map((lease) => {
                   const startDate = new Date(lease.startDate);
                   const daysUntil = Math.ceil(
                     (startDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),

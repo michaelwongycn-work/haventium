@@ -367,9 +367,10 @@ export default function TenantDetailClient({
               ) : (
                 <div className="space-y-3">
                   {tenant.leaseAgreements.map((lease) => (
-                    <div
+                    <Link
                       key={lease.id}
-                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent transition-colors"
+                      href={`/leases/${lease.id}`}
+                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent transition-colors cursor-pointer"
                     >
                       <div>
                         <p className="font-medium">
@@ -388,7 +389,7 @@ export default function TenantDetailClient({
                           {lease.status.toLowerCase()}
                         </p>
                       </div>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               )}
