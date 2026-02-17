@@ -112,7 +112,7 @@ Revenue calculation: "expected" = sum of `rentAmount` for ACTIVE leases overlapp
 - `WHATSAPP_META` — WhatsApp Meta Cloud API credentials (JSON with accessToken, phoneNumberId, businessAccountId)
 - `TELEGRAM_BOT` — Telegram bot token from @BotFather
 
-**API:** CRUD at `/api/settings/api-keys` and `/api/settings/api-keys/[id]`. Test endpoint at `/api/settings/api-keys/[id]/test` validates credentials. All protected by `checkAccess('settings', 'manage')`.
+**API:** CRUD at `/api/settings/api-keys` and `/api/settings/api-keys/[id]`. Test endpoint at `/api/settings/api-keys/[id]/test` validates credentials. All protected by `requireAccess('settings', 'manage')`.
 
 **UI:** Management interface at `/settings/api-keys` with create/test/delete operations.
 
@@ -156,7 +156,7 @@ Revenue calculation: "expected" = sum of `rentAmount` for ACTIVE leases overlapp
 
 **API Key Requirement:** All notifications require organization-specific API keys. If not configured, notifications fail with status FAILED and clear error message in NotificationLog.
 
-**API:** Full CRUD for templates and rules at `/api/notifications/templates` and `/api/notifications/rules`. Read-only logs at `/api/notifications/logs`. All endpoints protected by `checkAccess('notifications', action)`.
+**API:** Full CRUD for templates and rules at `/api/notifications/templates` and `/api/notifications/rules`. Read-only logs at `/api/notifications/logs`. All endpoints protected by `requireAccess('notifications', action)`.
 
 **Cron Jobs:**
 - `/api/cron/process-notifications` (2am UTC) — Processes PAYMENT_REMINDER, PAYMENT_LATE, and LEASE_EXPIRING notifications based on rules
@@ -184,7 +184,7 @@ Revenue calculation: "expected" = sum of `rentAmount` for ACTIVE leases overlapp
 | settings | manage (roles/accesses/api-keys) |
 | users | manage |
 
-**API enforcement:** All route handlers use `checkAccess(resource, action)` from `src/lib/guards.ts`. It returns `{ authorized, response, session }` — handlers check `!authorized` and return the response (403 with error message). Session data is returned for convenience.
+**API enforcement:** All route handlers use `requireAccess(resource, action)` from `src/lib/api` (auth-middleware.ts). It returns `{ authorized, response, session }` — handlers check `!authorized` and return the response (401/403 with error message). Session data is returned for convenience.
 
 **UI enforcement:** All pages use `checkPageAccess(resource, action)` from `src/lib/guards.tsx` in a server component wrapper. If unauthorized, renders `<AccessDenied />` component; otherwise renders the client component (e.g. `<PropertiesClient />`).
 
@@ -219,27 +219,36 @@ generated/prisma/         — generated Prisma client + types
 
 **Core:**
 - `auth.ts` / `auth.config.ts` — NextAuth 5 configuration with Credentials provider
-- `guards.tsx` — RBAC enforcement: `checkAccess()` (API), `checkPageAccess()` (UI), `hasAccess()` (navigation)
-- `access-utils.ts` — Permission checking helpers
+- `guards.tsx` — RBAC enforcement: `checkPageAccess()` (UI), `hasAccess()` (navigation), `<AccessDenied />` component
+- `access-utils.ts` — Permission checking: `hasAccess(roles, resource, action)`
+- `logger.ts` — Structured logging: `logger.info()`, `logger.error()`, `logger.apiError()`, `logger.cronError()`, `logger.cronInfo()` (server-side only)
 - `prisma.ts` — Singleton Prisma client instance
 - `utils.ts` — `cn()` for Tailwind class merging
 - `constants.ts` — App-wide constants (subscription limits, permissions)
 - `password.ts` — bcryptjs hashing/verification
 - `date-utils.ts` — Date manipulation helpers
+- `encryption.ts` — AES-256-GCM encryption for API keys
 - `zod-resolver.ts` — Zod integration for form validation
 
+**Notification services (`src/lib/services/`):**
+- `notification-processor.ts` — Main notification processor: `processNotifications()`
+- `email-service.ts` — Resend email delivery
+- `whatsapp-service.ts` — Meta Cloud API WhatsApp delivery
+- `telegram-service.ts` — Telegram Bot API delivery
+
 **API helpers (`src/lib/api/`):**
-- `auth-middleware.ts` — Auth checking for route handlers
-- `response.ts` — Standardized API response helpers
-- `error-handler.ts` — Centralized error handling
-- `validation.ts` — Zod schema validation utilities
-- `password-verification.ts` — Current password confirmation for sensitive ops
-- `subscription-limits.ts` — Tier limit enforcement
-- `query-helpers.ts` — Common Prisma query patterns
-- `lease-validation.ts` — Lease overlap/auto-renew validation logic
-- `user-validation.ts` — User mutation validation
-- `activity-logger.ts` — Activity timeline logging
-- `index.ts` — Re-exports all API utilities
+- `auth-middleware.ts` — Auth checking: `requireAuth()`, `requireAccess(resource, action)`, `verifyCronAuth()`
+- `response.ts` — Standardized responses: `apiSuccess()`, `apiError()`, `apiCreated()`, `apiUnauthorized()`, `apiForbidden()`, `apiNotFound()`, `apiServerError()`
+- `error-handler.ts` — Centralized error handling: `handleApiError(error, context)` (auto-handles Zod/Prisma errors, logs with context)
+- `validation.ts` — Zod schema validation: `validateRequest()`, `validateSearchParams()`, `sanitizeSearchInput()`, `parseEnumParam()`
+- `password-verification.ts` — Password confirmation: `verifyCurrentUserPassword()`, `extractPasswordFromRequest()`
+- `subscription-limits.ts` — Tier limit enforcement: `checkSubscriptionLimit()`
+- `query-helpers.ts` — Common Prisma patterns: `scopeToOrganization()`, `findUserInOrganization()`, `findTenantInOrganization()`, etc.
+- `lease-validation.ts` — Lease validation: `validateLeaseAvailability()`, `canDeleteLease()`, `calculateGracePeriodDeadline()`, `isLeaseOverdue()`
+- `user-validation.ts` — User validation: `ensureNotLastOwner()`, `ensureNotLastUser()`, `validateRoleChange()`
+- `activity-logger.ts` — Activity logging: `logActivity()`
+- `pagination.ts` — Pagination helpers: `parsePaginationParams()`, `createPaginatedResponse()`
+- `index.ts` — Re-exports all API utilities + logger
 
 ### Auth & Middleware
 
@@ -251,22 +260,115 @@ Password requirements: min 8 chars, lowercase, uppercase, digit, special char (`
 
 ### API Patterns
 
-Route handlers in `src/app/api/`. Every handler:
-1. Calls `checkAccess(resource, action)` from `src/lib/guards.ts` for RBAC enforcement
-2. If `!authorized`, returns the 403 response immediately
-3. Extracts `organizationId` from `session.user.organizationId` (session returned by `checkAccess`)
-4. Validates input with inline Zod schemas
-5. Scopes all queries by `organizationId`
-6. Returns Zod validation errors as `{ error: issues[0].message }` with status 400
+Route handlers in `src/app/api/`. Every handler follows this pattern:
 
-**Example pattern:**
+1. **Import utilities from `@/lib/api`:**
 ```typescript
-const { authorized, response, session } = await checkAccess('properties', 'create');
+import { requireAccess, handleApiError, validateRequest, apiSuccess } from "@/lib/api";
+```
+
+2. **RBAC enforcement:**
+```typescript
+const { authorized, response, session } = await requireAccess('properties', 'create');
 if (!authorized) return response;
 const organizationId = session.user.organizationId;
 ```
 
+3. **Validate input** (optional helpers):
+```typescript
+const validatedData = await validateRequest(request, createPropertySchema);
+// OR inline:
+const body = await request.json();
+const validatedData = createPropertySchema.parse(body);
+```
+
+4. **Scope all queries by `organizationId`:**
+```typescript
+const properties = await prisma.property.findMany({
+  where: { organizationId },
+  // ...
+});
+```
+
+5. **Use centralized error handling:**
+```typescript
+try {
+  // ... handler logic
+  return apiSuccess(data);
+} catch (error) {
+  return handleApiError(error, "create property");
+}
+```
+
+**Error handling benefits:**
+- `handleApiError()` automatically handles Zod validation errors (→ 400)
+- Auto-handles Prisma errors: P2002 (unique constraint), P2025 (not found), P2003 (foreign key)
+- Logs errors via `logger.apiError()` with full context
+- Returns consistent error responses with appropriate status codes
+
+**Logging:**
+- Use `logger` from `@/lib/api` for all server-side logging
+- `logger.apiError(endpoint, error, { organizationId })` for API route errors (used automatically by `handleApiError`)
+- `logger.cronError(jobName, error, context)` for cron job errors
+- `logger.info(message, context)` for informational logs
+- Never use `console.log/error/warn` in production code
+
+**Response helpers:**
+```typescript
+return apiSuccess(data);           // 200 OK
+return apiCreated(data);           // 201 Created
+return apiError("Message", 400);   // 400 Bad Request
+return apiUnauthorized();          // 401 Unauthorized
+return apiForbidden();             // 403 Forbidden
+return apiNotFound();              // 404 Not Found
+return apiServerError("Message");  // 500 Internal Server Error
+```
+
 Business rules are always enforced server-side — never trust the client.
+
+### Logging & Error Tracking
+
+**Centralized logger** (`src/lib/logger.ts`) — server-side only, do NOT import in client components.
+
+**Logger methods:**
+- `logger.info(message, context?)` — Informational events
+- `logger.warn(message, context?)` — Warnings (non-errors)
+- `logger.error(message, error?, context?)` — Generic errors
+- `logger.debug(message, data?)` — Debug info (dev only)
+- `logger.apiError(endpoint, error, context?)` — API route errors (used by `handleApiError`)
+- `logger.cronError(jobName, error, context?)` — Cron job errors
+- `logger.cronInfo(jobName, message, context?)` — Cron job info
+
+**Context object** (optional):
+```typescript
+{
+  userId?: string;
+  organizationId?: string;
+  resource?: string;
+  action?: string;
+  [key: string]: unknown;
+}
+```
+
+**Sensitive data sanitization:**
+The logger automatically redacts: `password`, `currentPassword`, `token`, `apiKey`, `secret`, `accessToken`, `refreshToken`
+
+**Environment behavior:**
+- **Development:** Full console logging with colors and stack traces
+- **Production:** Structured JSON logs (ready for log aggregators like Datadog, CloudWatch, etc.)
+- Future: Integration with Sentry/LogRocket for error tracking (TODOs in logger.ts)
+
+**Best practices:**
+- Always use `logger` instead of `console.log/error/warn`
+- Use `handleApiError()` for catch blocks (it logs automatically)
+- Provide context (organizationId, userId) when available
+- For async operations that might fail after response is sent, capture variables in closure:
+```typescript
+const orgId = session.user.organizationId;
+someAsyncOperation().catch((err) => {
+  logger.apiError("async operation", err, { organizationId: orgId });
+});
+```
 
 ### Cron Jobs
 
