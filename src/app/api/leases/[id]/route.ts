@@ -57,14 +57,10 @@ export async function GET(
       )
     }
 
-    // Fetch activities related to this lease (tenant and property)
     const activities = await prisma.activity.findMany({
       where: {
         organizationId: session.user.organizationId,
-        OR: [
-          { tenantId: lease.tenantId },
-          { propertyId: lease.unit.propertyId },
-        ],
+        leaseId: id,
       },
       include: {
         user: {
@@ -198,7 +194,7 @@ export async function PATCH(
       }
     }
 
-    const updateData: any = {}
+    const updateData: Record<string, string | number | boolean | Date | null> = {}
     if (validatedData.startDate !== undefined) updateData.startDate = new Date(validatedData.startDate)
     if (validatedData.endDate !== undefined) updateData.endDate = new Date(validatedData.endDate)
     if (validatedData.paymentCycle !== undefined) updateData.paymentCycle = validatedData.paymentCycle
@@ -247,6 +243,8 @@ export async function PATCH(
               organizationId: session.user.organizationId,
               tenantId: existingLease.tenantId,
               propertyId: existingLease.unit.propertyId,
+              leaseId: id,
+              unitId: existingLease.unitId,
             },
           })
         }
@@ -260,6 +258,8 @@ export async function PATCH(
             organizationId: session.user.organizationId,
             tenantId: existingLease.tenantId,
             propertyId: existingLease.unit.propertyId,
+            leaseId: id,
+            unitId: existingLease.unitId,
           },
         })
       }
@@ -323,7 +323,7 @@ export async function PATCH(
     })
 
     // Log activity
-    let activityType: any = "LEASE_UPDATED"
+    let activityType: string = "LEASE_UPDATED"
     let activityDescription = `Updated lease agreement for ${lease.tenant.fullName} at ${lease.unit.property.name} - ${lease.unit.name}`
 
     if (validatedData.status && validatedData.status !== existingLease.status) {
@@ -341,6 +341,8 @@ export async function PATCH(
         organizationId: session.user.organizationId,
         tenantId: lease.tenantId,
         propertyId: lease.unit.propertyId,
+        leaseId: lease.id,
+        unitId: lease.unitId,
       },
     })
 
@@ -409,6 +411,20 @@ export async function DELETE(
       )
     }
 
+    // Log activity before deletion so leaseId FK is valid
+    await prisma.activity.create({
+      data: {
+        type: "LEASE_UPDATED",
+        description: `Deleted draft lease for ${existingLease.tenant.fullName} at ${existingLease.unit.property.name} - ${existingLease.unit.name}`,
+        userId: session.user.id,
+        organizationId: session.user.organizationId,
+        tenantId: existingLease.tenantId,
+        propertyId: existingLease.unit.propertyId,
+        leaseId: id,
+        unitId: existingLease.unitId,
+      },
+    })
+
     await prisma.leaseAgreement.delete({
       where: { id },
     })
@@ -428,18 +444,6 @@ export async function DELETE(
         data: { status: "LEAD" },
       })
     }
-
-    // Log activity
-    await prisma.activity.create({
-      data: {
-        type: "LEASE_UPDATED",
-        description: `Deleted draft lease for ${existingLease.tenant.fullName} at ${existingLease.unit.property.name} - ${existingLease.unit.name}`,
-        userId: session.user.id,
-        organizationId: session.user.organizationId,
-        tenantId: existingLease.tenantId,
-        propertyId: existingLease.unit.propertyId,
-      },
-    })
 
     return NextResponse.json({ success: true })
   } catch (error) {

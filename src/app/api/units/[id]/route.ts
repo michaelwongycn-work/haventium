@@ -125,6 +125,7 @@ export async function PATCH(
         userId: session.user.id,
         organizationId: session.user.organizationId,
         propertyId: existingUnit.property.id,
+        unitId: id,
       },
     })
 
@@ -182,13 +183,7 @@ export async function DELETE(
       )
     }
 
-    await prisma.unit.delete({
-      where: {
-        id,
-      },
-    })
-
-    // Log activity
+    // Log activity before deletion so unitId FK is valid
     await prisma.activity.create({
       data: {
         type: "UNIT_UPDATED",
@@ -196,6 +191,13 @@ export async function DELETE(
         userId: session.user.id,
         organizationId: session.user.organizationId,
         propertyId: existingUnit.property.id,
+        unitId: id,
+      },
+    })
+
+    await prisma.unit.delete({
+      where: {
+        id,
       },
     })
 

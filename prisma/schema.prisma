@@ -197,6 +197,7 @@ model Unit {
   updatedAt DateTime @updatedAt
 
   leaseAgreements LeaseAgreement[]
+  activities      Activity[]
 
   @@index([propertyId])
   @@index([isUnavailable])
@@ -295,6 +296,8 @@ model LeaseAgreement {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  activities Activity[]
 
   @@unique([renewedFromId])
   @@index([tenantId])
@@ -485,11 +488,19 @@ model Activity {
   propertyId String?
   property   Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
 
+  leaseId String?
+  lease   LeaseAgreement? @relation(fields: [leaseId], references: [id], onDelete: SetNull)
+
+  unitId String?
+  unit   Unit? @relation(fields: [unitId], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now())
 
   @@index([organizationId])
   @@index([userId])
   @@index([tenantId])
+  @@index([leaseId])
+  @@index([unitId])
   @@index([createdAt])
 }
 

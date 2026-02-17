@@ -34,7 +34,7 @@ export async function GET(request: Request) {
     const status = searchParams.get("status")
     const search = searchParams.get("search")
 
-    const where: any = {
+    const where: Record<string, unknown> = {
       organizationId: session.user.organizationId,
     }
 

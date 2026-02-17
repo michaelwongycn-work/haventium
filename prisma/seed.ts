@@ -293,7 +293,7 @@ async function main() {
   console.log(`✓ Created user ${email} and assigned Owner role`)
 
   // Create Properties
-  const prop1 = await prisma.property.create({
+  await prisma.property.create({
     data: {
       name: "Grand View Apartments",
       organizationId: org.id,
@@ -309,7 +309,7 @@ async function main() {
     include: { units: true }
   })
 
-  const prop2 = await prisma.property.create({
+  await prisma.property.create({
     data: {
       name: "Sunset Villas",
       organizationId: org.id,
@@ -326,7 +326,7 @@ async function main() {
   console.log("✓ Created 2 Properties and 7 Units")
 
   // Create Tenants
-  const tenant1 = await prisma.tenant.create({
+  await prisma.tenant.create({
     data: {
       fullName: "John Doe",
       email: "john@example.com",
@@ -336,7 +336,7 @@ async function main() {
     }
   })
 
-  const tenant2 = await prisma.tenant.create({
+  await prisma.tenant.create({
     data: {
       fullName: "Jane Smith",
       email: "jane@example.com",
@@ -346,7 +346,7 @@ async function main() {
     }
   })
 
-  const tenant3 = await prisma.tenant.create({
+  await prisma.tenant.create({
     data: {
       fullName: "Bob Wilson",
       email: "bob@example.com",

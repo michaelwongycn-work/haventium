@@ -35,6 +35,7 @@ export function zodResolver<T extends z.ZodType<any, any, any>>(
         errors,
       }
     } catch (error) {
+      console.error("Validation failed:", error)
       return {
         values: {},
         errors: {

@@ -10,7 +10,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -18,8 +17,76 @@ import {
   Mail01Icon,
   SmartPhone01Icon,
   CheckmarkCircle02Icon,
+  File01Icon,
   Cancel01Icon,
+  UserIcon,
+  Home01Icon,
+  Layers01Icon,
+  CreditCardIcon,
+  ShieldEnergyIcon,
+  Notification01Icon,
+  MoreHorizontalIcon,
 } from "@hugeicons/core-free-icons"
+
+const ACTIVITY_ICON_MAP: Record<string, typeof File01Icon> = {
+  LEASE_CREATED: File01Icon,
+  LEASE_UPDATED: File01Icon,
+  LEASE_TERMINATED: Cancel01Icon,
+  TENANT_CREATED: UserIcon,
+  TENANT_UPDATED: UserIcon,
+  TENANT_STATUS_CHANGED: UserIcon,
+  PROPERTY_CREATED: Home01Icon,
+  PROPERTY_UPDATED: Home01Icon,
+  UNIT_CREATED: Layers01Icon,
+  UNIT_UPDATED: Layers01Icon,
+  PAYMENT_RECORDED: CreditCardIcon,
+  PAYMENT_UPDATED: CreditCardIcon,
+  DEPOSIT_CREATED: ShieldEnergyIcon,
+  DEPOSIT_RETURNED: ShieldEnergyIcon,
+  NOTIFICATION_SENT: Notification01Icon,
+  USER_LOGIN: UserIcon,
+  OTHER: MoreHorizontalIcon,
+}
+
+const ACTIVITY_COLOR_MAP: Record<string, string> = {
+  LEASE_CREATED: "text-blue-500",
+  LEASE_UPDATED: "text-blue-500",
+  LEASE_TERMINATED: "text-blue-500",
+  TENANT_CREATED: "text-violet-500",
+  TENANT_UPDATED: "text-violet-500",
+  TENANT_STATUS_CHANGED: "text-violet-500",
+  PROPERTY_CREATED: "text-emerald-500",
+  PROPERTY_UPDATED: "text-emerald-500",
+  UNIT_CREATED: "text-emerald-500",
+  UNIT_UPDATED: "text-emerald-500",
+  PAYMENT_RECORDED: "text-amber-500",
+  PAYMENT_UPDATED: "text-amber-500",
+  DEPOSIT_CREATED: "text-amber-500",
+  DEPOSIT_RETURNED: "text-amber-500",
+  NOTIFICATION_SENT: "text-blue-500",
+  USER_LOGIN: "text-violet-500",
+  OTHER: "text-muted-foreground",
+}
+
+const ACTIVITY_BG_MAP: Record<string, string> = {
+  LEASE_CREATED: "bg-blue-500/10",
+  LEASE_UPDATED: "bg-blue-500/10",
+  LEASE_TERMINATED: "bg-blue-500/10",
+  TENANT_CREATED: "bg-violet-500/10",
+  TENANT_UPDATED: "bg-violet-500/10",
+  TENANT_STATUS_CHANGED: "bg-violet-500/10",
+  PROPERTY_CREATED: "bg-emerald-500/10",
+  PROPERTY_UPDATED: "bg-emerald-500/10",
+  UNIT_CREATED: "bg-emerald-500/10",
+  UNIT_UPDATED: "bg-emerald-500/10",
+  PAYMENT_RECORDED: "bg-amber-500/10",
+  PAYMENT_UPDATED: "bg-amber-500/10",
+  DEPOSIT_CREATED: "bg-amber-500/10",
+  DEPOSIT_RETURNED: "bg-amber-500/10",
+  NOTIFICATION_SENT: "bg-blue-500/10",
+  USER_LOGIN: "bg-violet-500/10",
+  OTHER: "bg-muted",
+}
 
 type TenantStatus = "LEAD" | "BOOKED" | "ACTIVE" | "EXPIRED"
 
@@ -58,12 +125,6 @@ type Tenant = {
   }>
 }
 
-const statusColors: Record<TenantStatus, string> = {
-  LEAD: "bg-blue-500/10 text-blue-500 hover:bg-blue-500/20",
-  BOOKED: "bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20",
-  ACTIVE: "bg-green-500/10 text-green-500 hover:bg-green-500/20",
-  EXPIRED: "bg-gray-500/10 text-gray-500 hover:bg-gray-500/20",
-}
 
 export default function TenantDetailPage({
   params,
@@ -72,7 +133,6 @@ export default function TenantDetailPage({
 }) {
   const [tenant, setTenant] = useState<Tenant | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [tenantId, setTenantId] = useState<string>("")
 
   useEffect(() => {
@@ -99,10 +159,28 @@ export default function TenantDetailPage({
       const data = await response.json()
       setTenant(data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load tenant")
+      console.error(err)
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const formatRelativeTime = (dateString: string) => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMs / 3600000)
+    const diffDays = Math.floor(diffMs / 86400000)
+
+    if (diffMins < 1) return "Just now"
+    if (diffMins < 60) return `${diffMins}m ago`
+    if (diffHours < 24) return `${diffHours}h ago`
+    if (diffDays < 7) return `${diffDays}d ago`
+    const day = String(date.getDate()).padStart(2, "0")
+    const month = String(date.getMonth() + 1).padStart(2, "0")
+    const year = date.getFullYear()
+    return `${day}/${month}/${year}`
   }
 
   const formatCurrency = (value: string | number) => {
@@ -119,7 +197,7 @@ export default function TenantDetailPage({
         <div className="text-center py-12">
           <h2 className="text-2xl font-bold mb-2">Tenant not found</h2>
           <p className="text-muted-foreground mb-6">
-            The tenant you're looking for doesn't exist
+            {"The tenant you're looking for doesn't exist"}
           </p>
           <Button asChild>
             <Link href="/tenants">
@@ -296,21 +374,42 @@ export default function TenantDetailPage({
                   No activity yet
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {tenant.activities.map((activity) => (
-                    <div
-                      key={activity.id}
-                      className="flex items-start gap-3 p-3 border rounded-lg"
-                    >
-                      <div className="flex-1">
-                        <p className="text-sm">{activity.description}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {new Date(activity.createdAt).toLocaleString()}
-                          {activity.user && ` by ${activity.user.name}`}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
+                <div className="relative">
+                  <div className="absolute left-[17px] top-0 bottom-0 w-px bg-border" />
+                  <div className="space-y-0">
+                    {tenant.activities.map((activity) => {
+                      const IconComponent = ACTIVITY_ICON_MAP[activity.type] || MoreHorizontalIcon
+                      const colorClass = ACTIVITY_COLOR_MAP[activity.type] || "text-muted-foreground"
+                      const bgClass = ACTIVITY_BG_MAP[activity.type] || "bg-muted"
+
+                      return (
+                        <div key={activity.id} className="relative flex gap-3 pb-6 last:pb-0">
+                          <div className={`relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${bgClass}`}>
+                            <HugeiconsIcon
+                              icon={IconComponent}
+                              strokeWidth={2}
+                              className={`h-4 w-4 ${colorClass}`}
+                            />
+                          </div>
+                          <div className="flex-1 pt-1">
+                            <p className="text-sm leading-relaxed">
+                              {activity.description}
+                            </p>
+                            <div className="flex items-center gap-2 mt-1 flex-wrap">
+                              <p className="text-xs text-muted-foreground">
+                                {formatRelativeTime(activity.createdAt)}
+                              </p>
+                              {activity.user && (
+                                <p className="text-xs text-muted-foreground">
+                                  by <span className="font-medium">{activity.user.name}</span>
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
               )}
             </CardContent>

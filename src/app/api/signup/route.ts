@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await hashPassword(password)
 
     // Create organization, user, subscription, and default role in a transaction
-    const result = await prisma.$transaction(async (tx: any) => {
+    const result = await prisma.$transaction(async (tx) => {
       // Create organization
       const organization = await tx.organization.create({
         data: {
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
       
       if (allAccesses.length > 0) {
         await tx.roleAccess.createMany({
-          data: allAccesses.map((access: any) => ({
+          data: allAccesses.map((access: { id: string }) => ({
             roleId: ownerRole.id,
             accessId: access.id,
           })),

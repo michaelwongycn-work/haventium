@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import {
@@ -48,7 +47,75 @@ import {
   PencilEdit02Icon,
   ArrowLeft01Icon,
   Home01Icon,
+  File01Icon,
+  Cancel01Icon,
+  UserIcon,
+  Layers01Icon,
+  CreditCardIcon,
+  ShieldEnergyIcon,
+  Notification01Icon,
+  MoreHorizontalIcon,
 } from "@hugeicons/core-free-icons"
+
+const ACTIVITY_ICON_MAP: Record<string, typeof File01Icon> = {
+  LEASE_CREATED: File01Icon,
+  LEASE_UPDATED: File01Icon,
+  LEASE_TERMINATED: Cancel01Icon,
+  TENANT_CREATED: UserIcon,
+  TENANT_UPDATED: UserIcon,
+  TENANT_STATUS_CHANGED: UserIcon,
+  PROPERTY_CREATED: Home01Icon,
+  PROPERTY_UPDATED: Home01Icon,
+  UNIT_CREATED: Layers01Icon,
+  UNIT_UPDATED: Layers01Icon,
+  PAYMENT_RECORDED: CreditCardIcon,
+  PAYMENT_UPDATED: CreditCardIcon,
+  DEPOSIT_CREATED: ShieldEnergyIcon,
+  DEPOSIT_RETURNED: ShieldEnergyIcon,
+  NOTIFICATION_SENT: Notification01Icon,
+  USER_LOGIN: UserIcon,
+  OTHER: MoreHorizontalIcon,
+}
+
+const ACTIVITY_COLOR_MAP: Record<string, string> = {
+  LEASE_CREATED: "text-blue-500",
+  LEASE_UPDATED: "text-blue-500",
+  LEASE_TERMINATED: "text-blue-500",
+  TENANT_CREATED: "text-violet-500",
+  TENANT_UPDATED: "text-violet-500",
+  TENANT_STATUS_CHANGED: "text-violet-500",
+  PROPERTY_CREATED: "text-emerald-500",
+  PROPERTY_UPDATED: "text-emerald-500",
+  UNIT_CREATED: "text-emerald-500",
+  UNIT_UPDATED: "text-emerald-500",
+  PAYMENT_RECORDED: "text-amber-500",
+  PAYMENT_UPDATED: "text-amber-500",
+  DEPOSIT_CREATED: "text-amber-500",
+  DEPOSIT_RETURNED: "text-amber-500",
+  NOTIFICATION_SENT: "text-blue-500",
+  USER_LOGIN: "text-violet-500",
+  OTHER: "text-muted-foreground",
+}
+
+const ACTIVITY_BG_MAP: Record<string, string> = {
+  LEASE_CREATED: "bg-blue-500/10",
+  LEASE_UPDATED: "bg-blue-500/10",
+  LEASE_TERMINATED: "bg-blue-500/10",
+  TENANT_CREATED: "bg-violet-500/10",
+  TENANT_UPDATED: "bg-violet-500/10",
+  TENANT_STATUS_CHANGED: "bg-violet-500/10",
+  PROPERTY_CREATED: "bg-emerald-500/10",
+  PROPERTY_UPDATED: "bg-emerald-500/10",
+  UNIT_CREATED: "bg-emerald-500/10",
+  UNIT_UPDATED: "bg-emerald-500/10",
+  PAYMENT_RECORDED: "bg-amber-500/10",
+  PAYMENT_UPDATED: "bg-amber-500/10",
+  DEPOSIT_CREATED: "bg-amber-500/10",
+  DEPOSIT_RETURNED: "bg-amber-500/10",
+  NOTIFICATION_SENT: "bg-blue-500/10",
+  USER_LOGIN: "bg-violet-500/10",
+  OTHER: "bg-muted",
+}
 
 type Property = {
   id: string
@@ -58,6 +125,16 @@ type Property = {
   _count: {
     units: number
   }
+  activities: Array<{
+    id: string
+    type: string
+    description: string
+    createdAt: string
+    user: {
+      name: string
+      email: string
+    } | null
+  }>
 }
 
 type Unit = {
@@ -76,7 +153,6 @@ export default function PropertyDetailPage({
 }: {
   params: { id: string }
 }) {
-  const router = useRouter()
   const [property, setProperty] = useState<Property | null>(null)
   const [units, setUnits] = useState<Unit[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -285,6 +361,24 @@ export default function PropertyDetailPage({
     }
   }
 
+  const formatRelativeTime = (dateString: string) => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMs / 3600000)
+    const diffDays = Math.floor(diffMs / 86400000)
+
+    if (diffMins < 1) return "Just now"
+    if (diffMins < 60) return `${diffMins}m ago`
+    if (diffHours < 24) return `${diffHours}h ago`
+    if (diffDays < 7) return `${diffDays}d ago`
+    const day = String(date.getDate()).padStart(2, "0")
+    const month = String(date.getMonth() + 1).padStart(2, "0")
+    const year = date.getFullYear()
+    return `${day}/${month}/${year}`
+  }
+
   const formatCurrency = (value: string | number | null) => {
     if (value === null || value === "") return "—"
     const num = typeof value === "string" ? parseFloat(value) : value
@@ -301,7 +395,7 @@ export default function PropertyDetailPage({
         <div className="text-center py-12">
           <h2 className="text-2xl font-bold mb-2">Property not found</h2>
           <p className="text-muted-foreground mb-6">
-            The property you're looking for doesn't exist
+            {"The property you're looking for doesn't exist"}
           </p>
           <Button asChild>
             <Link href="/properties">
@@ -435,6 +529,61 @@ export default function PropertyDetailPage({
         </CardContent>
       </Card>
 
+      {/* Activity Log */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Activity Log</CardTitle>
+          <CardDescription>
+            Recent activity for this property
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!property?.activities || property.activities.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No activity yet
+            </div>
+          ) : (
+            <div className="relative">
+              <div className="absolute left-[17px] top-0 bottom-0 w-px bg-border" />
+              <div className="space-y-0">
+                {property.activities.map((activity) => {
+                  const IconComponent = ACTIVITY_ICON_MAP[activity.type] || MoreHorizontalIcon
+                  const colorClass = ACTIVITY_COLOR_MAP[activity.type] || "text-muted-foreground"
+                  const bgClass = ACTIVITY_BG_MAP[activity.type] || "bg-muted"
+
+                  return (
+                    <div key={activity.id} className="relative flex gap-3 pb-6 last:pb-0">
+                      <div className={`relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${bgClass}`}>
+                        <HugeiconsIcon
+                          icon={IconComponent}
+                          strokeWidth={2}
+                          className={`h-4 w-4 ${colorClass}`}
+                        />
+                      </div>
+                      <div className="flex-1 pt-1">
+                        <p className="text-sm leading-relaxed">
+                          {activity.description}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <p className="text-xs text-muted-foreground">
+                            {formatRelativeTime(activity.createdAt)}
+                          </p>
+                          {activity.user && (
+                            <p className="text-xs text-muted-foreground">
+                              by <span className="font-medium">{activity.user.name}</span>
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Create/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-md">
@@ -553,7 +702,7 @@ export default function PropertyDetailPage({
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the unit "{deletingUnit?.name}" and all
+              {"This will permanently delete the unit '"}{deletingUnit?.name}{"' and all"}
               associated lease agreements. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>

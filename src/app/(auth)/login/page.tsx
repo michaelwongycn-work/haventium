@@ -56,6 +56,7 @@ export default function LoginPage() {
       router.push("/dashboard")
       router.refresh()
     } catch (err) {
+      console.log("Login error:", err)
       setError("An error occurred during login")
     } finally {
       setIsLoading(false)
@@ -118,7 +119,7 @@ export default function LoginPage() {
               {isLoading ? "Signing in..." : "Sign in"}
             </Button>
             <p className="text-center text-sm text-muted-foreground">
-              Don't have an account?{" "}
+              {"Don't have an account?"}
               <Link href="/signup" className="text-primary hover:underline">
                 Sign up
               </Link>

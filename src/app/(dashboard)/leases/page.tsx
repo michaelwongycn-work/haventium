@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -54,7 +53,6 @@ import {
   PencilEdit02Icon,
   File02Icon,
   Search01Icon,
-  Tick02Icon,
 } from "@hugeicons/core-free-icons"
 
 type LeaseStatus = "DRAFT" | "ACTIVE" | "ENDED"
@@ -68,8 +66,8 @@ type Lease = {
   endDate: string
   paymentCycle: PaymentCycle
   rentAmount: string
-  gracePeriodDays: number
   isAutoRenew: boolean
+  gracePeriodDays: number
   autoRenewalNoticeDays: number | null
   depositAmount: string | null
   paidAt: string | null
@@ -109,6 +107,7 @@ type Unit = {
   dailyRate: string | null
   monthlyRate: string | null
   annualRate: string | null
+  isUnavailable: boolean
 }
 
 export default function LeasesPage() {
@@ -190,11 +189,11 @@ export default function LeasesPage() {
 
         // Fetch units for each property
         const propertiesWithUnits = await Promise.all(
-          data.map(async (property: any) => {
+          data.map(async (property: Property) => {
             const unitsResponse = await fetch(`/api/properties/${property.id}/units`)
             if (unitsResponse.ok) {
               const units = await unitsResponse.json()
-              return { ...property, units: units.filter((u: any) => !u.isUnavailable) }
+              return { ...property, units: units.filter((u: Unit) => !u.isUnavailable) }
             }
             return { ...property, units: [] }
           })
@@ -359,8 +358,7 @@ export default function LeasesPage() {
     }
 
     // Auto-calculate end date based on payment cycle
-    const start = new Date(startDate)
-    let endDate = new Date(startDate)
+    const endDate = new Date(startDate)
 
     if (formData.paymentCycle === "DAILY") {
       endDate.setDate(endDate.getDate() + 1)
@@ -380,29 +378,7 @@ export default function LeasesPage() {
   }
 
   const parseCurrencyInput = (value: string): string => {
-    // Remove any non-numeric characters except decimal point
     return value.replace(/[^\d.]/g, "")
-  }
-
-  const getLatestPaymentDate = () => {
-    if (!formData.startDate) return null
-
-    const startDate = new Date(formData.startDate)
-    // Calculate first payment date based on payment cycle
-    const firstPaymentDate = new Date(startDate)
-    
-    if (formData.paymentCycle === "DAILY") {
-      firstPaymentDate.setDate(firstPaymentDate.getDate() + 1)
-    } else if (formData.paymentCycle === "MONTHLY") {
-      firstPaymentDate.setMonth(firstPaymentDate.getMonth() + 1)
-    } else if (formData.paymentCycle === "ANNUAL") {
-      firstPaymentDate.setFullYear(firstPaymentDate.getFullYear() + 1)
-    }
-    
-    // Add grace period to first payment date
-    firstPaymentDate.setDate(firstPaymentDate.getDate() + formData.gracePeriodDays)
-
-    return firstPaymentDate
   }
 
   const isPaymentCycleAvailable = (cycle: PaymentCycle) => {
@@ -447,7 +423,7 @@ export default function LeasesPage() {
 
       const method = editingLease ? "PATCH" : "POST"
 
-      const payload: any = {
+      const payload: Record<string, string | number | boolean | null> = {
         startDate: formData.startDate,
         endDate: formData.endDate,
         paymentCycle: formData.paymentCycle,
@@ -525,29 +501,6 @@ export default function LeasesPage() {
       setError(err instanceof Error ? err.message : "Failed to delete lease")
     } finally {
       setIsSaving(false)
-    }
-  }
-
-  const handleTogglePaidStatus = async (lease: Lease) => {
-    try {
-      const newPaidAt = lease.paidAt ? null : new Date().toISOString()
-
-      const response = await fetch(`/api/leases/${lease.id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ paidAt: newPaidAt }),
-      })
-
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || "Failed to update payment status")
-      }
-
-      await fetchLeases()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update payment status")
     }
   }
 
@@ -1013,7 +966,7 @@ export default function LeasesPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the lease agreement for "{deletingLease?.tenant.fullName}".
+              {"This will permanently delete the lease agreement for '"}{deletingLease?.tenant.fullName}{"'."}
               This action cannot be undone. Only draft leases can be deleted.
             </AlertDialogDescription>
           </AlertDialogHeader>

@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -45,7 +44,6 @@ import {
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { Skeleton } from "@/components/ui/skeleton"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -72,13 +70,6 @@ type Tenant = {
   _count: {
     leaseAgreements: number
   }
-}
-
-const statusColors: Record<TenantStatus, string> = {
-  LEAD: "bg-blue-500/10 text-blue-500 hover:bg-blue-500/20",
-  BOOKED: "bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20",
-  ACTIVE: "bg-green-500/10 text-green-500 hover:bg-green-500/20",
-  EXPIRED: "bg-gray-500/10 text-gray-500 hover:bg-gray-500/20",
 }
 
 export default function TenantsPage() {
@@ -578,7 +569,7 @@ export default function TenantsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the tenant "{deletingTenant?.fullName}" and all
+              {"This will permanently delete the tenant '"}{deletingTenant?.fullName}{"' and all"}
               associated data. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>

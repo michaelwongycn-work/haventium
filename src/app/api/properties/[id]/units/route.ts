@@ -141,6 +141,7 @@ export async function POST(
         userId: session.user.id,
         organizationId: session.user.organizationId,
         propertyId: property.id,
+        unitId: unit.id,
       },
     })
 

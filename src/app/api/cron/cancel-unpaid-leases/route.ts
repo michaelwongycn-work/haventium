@@ -73,6 +73,8 @@ export async function POST(request: Request) {
             organizationId: lease.organizationId,
             tenantId: lease.tenantId,
             propertyId: lease.unit.propertyId,
+            leaseId: lease.id,
+            unitId: lease.unitId,
           },
         })
 

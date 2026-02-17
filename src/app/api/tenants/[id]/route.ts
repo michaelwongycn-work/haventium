@@ -62,7 +62,7 @@ export async function GET(
           orderBy: {
             createdAt: "desc",
           },
-          take: 10,
+          take: 50,
         },
       },
     })
@@ -136,7 +136,7 @@ export async function PATCH(
       }
     }
 
-    const updateData: any = {}
+    const updateData: Record<string, string | boolean> = {}
     if (validatedData.fullName !== undefined) updateData.fullName = validatedData.fullName
     if (validatedData.email !== undefined) updateData.email = validatedData.email
     if (validatedData.phone !== undefined) updateData.phone = validatedData.phone

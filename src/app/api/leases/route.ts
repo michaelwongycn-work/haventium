@@ -35,7 +35,7 @@ export async function GET(request: Request) {
     const propertyId = searchParams.get("propertyId")
     const search = searchParams.get("search")
 
-    const where: any = {
+    const where: Record<string, unknown> = {
       organizationId: session.user.organizationId,
     }
 
@@ -249,6 +249,8 @@ export async function POST(request: Request) {
         organizationId: session.user.organizationId,
         tenantId: tenant.id,
         propertyId: unit.propertyId,
+        leaseId: lease.id,
+        unitId: unit.id,
       },
     })
 

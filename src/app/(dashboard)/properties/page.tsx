@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -356,7 +355,7 @@ export default function PropertiesPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the property "{deletingProperty?.name}" and all
+              {"This will permanently delete the property '"}{deletingProperty?.name}{"' and all"}
               associated units. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>

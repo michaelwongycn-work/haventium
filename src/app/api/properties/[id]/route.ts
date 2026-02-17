@@ -45,7 +45,17 @@ export async function GET(
       )
     }
 
-    return NextResponse.json(property)
+    const activities = await prisma.activity.findMany({
+      where: {
+        organizationId: session.user.organizationId,
+        propertyId: id,
+      },
+      include: { user: { select: { name: true, email: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    })
+
+    return NextResponse.json({ ...property, activities })
   } catch (error) {
     console.error("Error fetching property:", error)
     return NextResponse.json(
