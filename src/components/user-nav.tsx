@@ -120,7 +120,7 @@ export function UserNav({ user, roles }: UserNavProps) {
             </div>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
+        <DropdownMenuContent align="end" className="w-56">
           <DropdownMenuLabel>
             <div className="flex flex-col space-y-1">
               <p className="text-sm font-medium leading-none">
@@ -134,7 +134,7 @@ export function UserNav({ user, roles }: UserNavProps) {
           <DropdownMenuSeparator />
           {showSettings && (
             <DropdownMenuItem asChild>
-              <Link href="/settings">Settings</Link>
+              <Link href="/organization">Organization</Link>
             </DropdownMenuItem>
           )}
           <DropdownMenuItem

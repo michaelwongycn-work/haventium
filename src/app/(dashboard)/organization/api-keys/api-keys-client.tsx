@@ -126,7 +126,7 @@ export default function ApiKeysClient() {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch("/api/settings/api-keys");
+      const response = await fetch("/api/organization/api-keys");
       if (!response.ok) {
         throw new Error("Failed to fetch API keys");
       }
@@ -144,7 +144,7 @@ export default function ApiKeysClient() {
     setError(null);
 
     try {
-      const response = await fetch("/api/settings/api-keys", {
+      const response = await fetch("/api/organization/api-keys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -185,7 +185,7 @@ export default function ApiKeysClient() {
     setError(null);
 
     try {
-      const response = await fetch(`/api/settings/api-keys/${selectedKey.id}`, {
+      const response = await fetch(`/api/organization/api-keys/${selectedKey.id}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ currentPassword: deletePassword }),
@@ -213,7 +213,7 @@ export default function ApiKeysClient() {
     setTestResult(null);
 
     try {
-      const response = await fetch(`/api/settings/api-keys/${keyId}/test`, {
+      const response = await fetch(`/api/organization/api-keys/${keyId}/test`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),

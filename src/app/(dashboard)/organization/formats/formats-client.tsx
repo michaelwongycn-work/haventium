@@ -60,7 +60,7 @@ export function FormatsClient() {
   const fetchSettings = async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/settings/formats");
+      const response = await fetch("/api/organization/formats");
 
       if (!response.ok) {
         throw new Error("Failed to fetch format settings");
@@ -83,7 +83,7 @@ export function FormatsClient() {
       setError(null);
       setSuccess(false);
 
-      const response = await fetch("/api/settings/formats", {
+      const response = await fetch("/api/organization/formats", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(settings),

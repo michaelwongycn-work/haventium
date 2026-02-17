@@ -46,12 +46,12 @@ export function NavLinks({ roles }: NavLinksProps) {
     links.push({ href: "/notifications", label: "Notifications" });
   }
 
-  // Settings
+  // Organization
   if (
     hasAccess(roles, "settings", "manage") ||
     hasAccess(roles, "users", "manage")
   ) {
-    links.push({ href: "/settings", label: "Settings" });
+    links.push({ href: "/organization", label: "Organization" });
   }
 
   return (
