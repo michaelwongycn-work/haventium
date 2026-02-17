@@ -67,7 +67,7 @@ export function DocumentList({ entityType, entityId }: DocumentListProps) {
       }
 
       const data = await response.json();
-      setDocuments(data.data || data);
+      setDocuments(data.items || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load documents");
     } finally {

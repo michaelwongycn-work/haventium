@@ -58,7 +58,11 @@ import {
   FileDownloadIcon,
 } from "@hugeicons/core-free-icons";
 import { BulkImportDialog } from "@/components/bulk-import-dialog";
-import { downloadExcelFile, downloadExcelTemplate, formatDateForExcel } from "@/lib/excel-utils";
+import {
+  downloadExcelFile,
+  downloadExcelTemplate,
+  formatDateForExcel,
+} from "@/lib/excel-utils";
 
 type LeaseStatus = "DRAFT" | "ACTIVE" | "ENDED";
 type PaymentCycle = "DAILY" | "MONTHLY" | "ANNUAL";
@@ -532,11 +536,13 @@ export default function LeasesClient() {
       "End Date": formatDateForExcel(lease.endDate),
       "Payment Cycle": lease.paymentCycle,
       "Rent Amount": parseFloat(lease.rentAmount),
-      "Deposit Amount": lease.depositAmount ? parseFloat(lease.depositAmount) : null,
+      "Deposit Amount": lease.depositAmount
+        ? parseFloat(lease.depositAmount)
+        : null,
       "Grace Period Days": lease.gracePeriodDays,
       "Auto Renew": lease.isAutoRenew,
       "Auto Renewal Notice Days": lease.autoRenewalNoticeDays,
-      "Status": lease.status,
+      Status: lease.status,
       "Paid At": lease.paidAt ? formatDateForExcel(lease.paidAt) : null,
     }));
 
@@ -577,7 +583,7 @@ export default function LeasesClient() {
       headers,
       sampleRow,
       "haventium-leases-template.xlsx",
-      "Leases"
+      "Leases",
     );
   };
 
@@ -1326,8 +1332,10 @@ export default function LeasesClient() {
         apiEndpoint="/api/leases/bulk-import"
         onImportComplete={fetchLeases}
         renderPreview={(data, index) => {
-          const tenantEmail = (data["Tenant Email"] || data.tenantEmail) as string;
-          const propertyName = (data["Property Name"] || data.propertyName) as string;
+          const tenantEmail = (data["Tenant Email"] ||
+            data.tenantEmail) as string;
+          const propertyName = (data["Property Name"] ||
+            data.propertyName) as string;
           const unitName = (data["Unit Name"] || data.unitName) as string;
           return (
             <div className="text-sm">

@@ -5,6 +5,10 @@ import { Calendar, dateFnsLocalizer, View } from "react-big-calendar";
 import { format, parse, startOfWeek, getDay } from "date-fns";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import {
+  formatDateLong,
+  formatCurrency as formatCurrencyUtil,
+} from "@/lib/format";
+import {
   Card,
   CardContent,
   CardDescription,
@@ -36,12 +40,17 @@ const localizer = dateFnsLocalizer({
   locales,
 });
 
+type EventType = "start" | "payment" | "grace_end" | "expiration";
+
 type LeaseEvent = {
   id: string;
   title: string;
   start: Date;
   end: Date;
+  allDay: boolean;
   resource: {
+    leaseId: string;
+    eventType: EventType;
     tenantName: string;
     propertyName: string;
     unitName: string;
@@ -58,6 +67,8 @@ type Lease = {
   rentAmount: string;
   status: string;
   paymentCycle: string;
+  gracePeriodDays: number | null;
+  paidAt: string | null;
   tenant: {
     fullName: string;
   };
@@ -100,20 +111,104 @@ export default function CalendarClient() {
   };
 
   const events: LeaseEvent[] = useMemo(() => {
-    return leases.map((lease) => ({
-      id: lease.id,
-      title: `${lease.tenant.fullName} - ${lease.unit.property.name} / ${lease.unit.name}`,
-      start: new Date(lease.startDate),
-      end: new Date(lease.endDate),
-      resource: {
-        tenantName: lease.tenant.fullName,
-        propertyName: lease.unit.property.name,
-        unitName: lease.unit.name,
-        rentAmount: lease.rentAmount,
-        status: lease.status,
-        paymentCycle: lease.paymentCycle,
-      },
-    }));
+    const allEvents: LeaseEvent[] = [];
+
+    leases.forEach((lease) => {
+      const tenantName = lease.tenant.fullName;
+      const location = `${lease.unit.property.name} / ${lease.unit.name}`;
+
+      // 1. Lease Start Date
+      allEvents.push({
+        id: `${lease.id}-start`,
+        title: `🏠 Lease Start: ${tenantName}`,
+        start: new Date(lease.startDate),
+        end: new Date(lease.startDate),
+        allDay: true,
+        resource: {
+          leaseId: lease.id,
+          eventType: "start",
+          tenantName,
+          propertyName: lease.unit.property.name,
+          unitName: lease.unit.name,
+          rentAmount: lease.rentAmount,
+          status: lease.status,
+          paymentCycle: lease.paymentCycle,
+        },
+      });
+
+      // 2. Grace Period End (for DRAFT leases)
+      if (lease.status === "DRAFT" && lease.gracePeriodDays) {
+        const graceEndDate = new Date(lease.startDate);
+        graceEndDate.setDate(graceEndDate.getDate() + lease.gracePeriodDays);
+
+        allEvents.push({
+          id: `${lease.id}-grace`,
+          title: `⏰ Grace Period Ends: ${tenantName}`,
+          start: graceEndDate,
+          end: graceEndDate,
+          allDay: true,
+          resource: {
+            leaseId: lease.id,
+            eventType: "grace_end",
+            tenantName,
+            propertyName: lease.unit.property.name,
+            unitName: lease.unit.name,
+            rentAmount: lease.rentAmount,
+            status: lease.status,
+            paymentCycle: lease.paymentCycle,
+          },
+        });
+      }
+
+      // 3. Payment Due (for unpaid DRAFT/ACTIVE leases)
+      if (
+        !lease.paidAt &&
+        (lease.status === "DRAFT" || lease.status === "ACTIVE")
+      ) {
+        const paymentDueDate = new Date(lease.startDate);
+
+        allEvents.push({
+          id: `${lease.id}-payment`,
+          title: `💵 Payment Due: ${tenantName}`,
+          start: paymentDueDate,
+          end: paymentDueDate,
+          allDay: true,
+          resource: {
+            leaseId: lease.id,
+            eventType: "payment",
+            tenantName,
+            propertyName: lease.unit.property.name,
+            unitName: lease.unit.name,
+            rentAmount: lease.rentAmount,
+            status: lease.status,
+            paymentCycle: lease.paymentCycle,
+          },
+        });
+      }
+
+      // 4. Lease Expiration (for ACTIVE leases)
+      if (lease.status === "ACTIVE") {
+        allEvents.push({
+          id: `${lease.id}-expiration`,
+          title: `🏁 Lease Expires: ${tenantName}`,
+          start: new Date(lease.endDate),
+          end: new Date(lease.endDate),
+          allDay: true,
+          resource: {
+            leaseId: lease.id,
+            eventType: "expiration",
+            tenantName,
+            propertyName: lease.unit.property.name,
+            unitName: lease.unit.name,
+            rentAmount: lease.rentAmount,
+            status: lease.status,
+            paymentCycle: lease.paymentCycle,
+          },
+        });
+      }
+    });
+
+    return allEvents;
   }, [leases]);
 
   const handleSelectEvent = useCallback((event: LeaseEvent) => {
@@ -127,13 +222,15 @@ export default function CalendarClient() {
   };
 
   const eventStyleGetter = (event: LeaseEvent) => {
-    const { status } = event.resource;
+    const { eventType } = event.resource;
 
     let backgroundColor = "#3174ad";
-    if (status === "DRAFT") backgroundColor = "#9ca3af";
-    if (status === "ACTIVE") backgroundColor = "#10b981";
-    if (status === "ENDED") backgroundColor = "#6b7280";
-    if (status === "CANCELLED") backgroundColor = "#ef4444";
+
+    // Color by event type
+    if (eventType === "start") backgroundColor = "#10b981"; // Green
+    if (eventType === "payment") backgroundColor = "#f59e0b"; // Amber
+    if (eventType === "grace_end") backgroundColor = "#ef4444"; // Red
+    if (eventType === "expiration") backgroundColor = "#8b5cf6"; // Purple
 
     return {
       style: {
@@ -143,18 +240,9 @@ export default function CalendarClient() {
         color: "white",
         border: "0px",
         display: "block",
+        fontSize: "0.875rem",
       },
     };
-  };
-
-  const formatCurrency = (value: string) => {
-    const num = parseFloat(value);
-    if (isNaN(num)) return "$0.00";
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 2,
-    }).format(num);
   };
 
   const getStatusBadgeVariant = (status: string) => {
@@ -201,25 +289,37 @@ export default function CalendarClient() {
       {/* Legend */}
       <Card>
         <CardHeader>
-          <CardTitle>Status Legend</CardTitle>
+          <CardTitle>Event Legend</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-4">
             <div className="flex items-center gap-2">
-              <div className="h-4 w-4 rounded" style={{ backgroundColor: "#9ca3af" }} />
-              <span className="text-sm">Draft</span>
+              <div
+                className="h-4 w-4 rounded"
+                style={{ backgroundColor: "#10b981" }}
+              />
+              <span className="text-sm">🏠 Lease Start</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="h-4 w-4 rounded" style={{ backgroundColor: "#10b981" }} />
-              <span className="text-sm">Active</span>
+              <div
+                className="h-4 w-4 rounded"
+                style={{ backgroundColor: "#f59e0b" }}
+              />
+              <span className="text-sm">💵 Payment Due</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="h-4 w-4 rounded" style={{ backgroundColor: "#6b7280" }} />
-              <span className="text-sm">Ended</span>
+              <div
+                className="h-4 w-4 rounded"
+                style={{ backgroundColor: "#ef4444" }}
+              />
+              <span className="text-sm">⏰ Grace Period Ends</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="h-4 w-4 rounded" style={{ backgroundColor: "#ef4444" }} />
-              <span className="text-sm">Cancelled</span>
+              <div
+                className="h-4 w-4 rounded"
+                style={{ backgroundColor: "#8b5cf6" }}
+              />
+              <span className="text-sm">🏁 Lease Expires</span>
             </div>
           </div>
         </CardContent>
@@ -257,20 +357,48 @@ export default function CalendarClient() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Lease Details</DialogTitle>
+            <DialogTitle>Event Details</DialogTitle>
             <DialogDescription>
-              Information about this lease agreement
+              {selectedEvent?.resource.eventType === "start" &&
+                "Lease start date"}
+              {selectedEvent?.resource.eventType === "payment" &&
+                "Payment due date"}
+              {selectedEvent?.resource.eventType === "grace_end" &&
+                "Grace period end date"}
+              {selectedEvent?.resource.eventType === "expiration" &&
+                "Lease expiration date"}
             </DialogDescription>
           </DialogHeader>
           {selectedEvent && (
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-medium text-muted-foreground">
-                  Tenant
+                  Event Type
                 </label>
                 <p className="text-base font-semibold">
-                  {selectedEvent.resource.tenantName}
+                  {selectedEvent.resource.eventType === "start" &&
+                    "🏠 Lease Start"}
+                  {selectedEvent.resource.eventType === "payment" &&
+                    "💵 Payment Due"}
+                  {selectedEvent.resource.eventType === "grace_end" &&
+                    "⏰ Grace Period Ends"}
+                  {selectedEvent.resource.eventType === "expiration" &&
+                    "🏁 Lease Expires"}
                 </p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">
+                  Date
+                </label>
+                <p className="text-base font-semibold">
+                  {formatDateLong(selectedEvent.start)}
+                </p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">
+                  Tenant
+                </label>
+                <p className="text-base">{selectedEvent.resource.tenantName}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-muted-foreground">
@@ -284,28 +412,10 @@ export default function CalendarClient() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">
-                    Start Date
-                  </label>
-                  <p className="text-base">
-                    {format(selectedEvent.start, "MMM dd, yyyy")}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">
-                    End Date
-                  </label>
-                  <p className="text-base">
-                    {format(selectedEvent.end, "MMM dd, yyyy")}
-                  </p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">
                     Rent Amount
                   </label>
-                  <p className="text-base font-semibold">
-                    {formatCurrency(selectedEvent.resource.rentAmount)}
+                  <p className="text-base">
+                    {formatCurrencyUtil(selectedEvent.resource.rentAmount)}
                   </p>
                 </div>
                 <div>
@@ -317,23 +427,13 @@ export default function CalendarClient() {
                   </p>
                 </div>
               </div>
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">
-                  Status
-                </label>
-                <div className="mt-1">
-                  <Badge variant={getStatusBadgeVariant(selectedEvent.resource.status) as any}>
-                    {selectedEvent.resource.status}
-                  </Badge>
-                </div>
-              </div>
               <div className="flex justify-end gap-2 pt-4">
                 <Button variant="outline" onClick={handleCloseDialog}>
                   Close
                 </Button>
                 <Button
                   onClick={() => {
-                    window.location.href = `/leases/${selectedEvent.id}`;
+                    window.location.href = `/leases/${selectedEvent.resource.leaseId}`;
                   }}
                 >
                   View Lease
