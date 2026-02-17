@@ -166,6 +166,40 @@ async function main() {
     })
   }
 
+  // Create default accesses
+  const defaultAccesses = [
+    { resource: "tenants", action: "create" },
+    { resource: "tenants", action: "read" },
+    { resource: "tenants", action: "update" },
+    { resource: "tenants", action: "delete" },
+    { resource: "properties", action: "create" },
+    { resource: "properties", action: "read" },
+    { resource: "properties", action: "update" },
+    { resource: "properties", action: "delete" },
+    { resource: "leases", action: "create" },
+    { resource: "leases", action: "read" },
+    { resource: "leases", action: "update" },
+    { resource: "leases", action: "delete" },
+    { resource: "payments", action: "read" },
+    { resource: "payments", action: "update" },
+    { resource: "settings", action: "manage" },
+    { resource: "users", action: "manage" },
+  ]
+
+  for (const accessData of defaultAccesses) {
+    await prisma.access.upsert({
+      where: {
+        resource_action: {
+          resource: accessData.resource,
+          action: accessData.action,
+        },
+      },
+      update: {},
+      create: accessData,
+    })
+  }
+  console.log("✓ Created default accesses")
+
   console.log("✓ Linked features to tiers")
 
   console.log("🎉 Seed completed successfully!")

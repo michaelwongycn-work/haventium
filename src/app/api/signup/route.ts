@@ -116,51 +116,18 @@ export async function POST(request: NextRequest) {
         },
       })
 
-      // Create default accesses for Owner role
-      const defaultAccesses = [
-        { resource: "tenants", action: "create" },
-        { resource: "tenants", action: "read" },
-        { resource: "tenants", action: "update" },
-        { resource: "tenants", action: "delete" },
-        { resource: "properties", action: "create" },
-        { resource: "properties", action: "read" },
-        { resource: "properties", action: "update" },
-        { resource: "properties", action: "delete" },
-        { resource: "leases", action: "create" },
-        { resource: "leases", action: "read" },
-        { resource: "leases", action: "update" },
-        { resource: "leases", action: "delete" },
-        { resource: "payments", action: "read" },
-        { resource: "payments", action: "update" },
-        { resource: "settings", action: "manage" },
-        { resource: "users", action: "manage" },
-      ]
-
-      for (const accessData of defaultAccesses) {
-        // Create access if it doesn't exist
-        let access = await tx.access.findUnique({
-          where: {
-            resource_action: {
-              resource: accessData.resource,
-              action: accessData.action,
-            },
-          },
-        })
-
-        if (!access) {
-          access = await tx.access.create({
-            data: accessData,
-          })
-        }
-
-        // Link access to role
-        await tx.roleAccess.create({
-          data: {
+      // Fetch all existing accesses and assign to Owner role
+      const allAccesses = await tx.access.findMany()
+      
+      if (allAccesses.length > 0) {
+        await tx.roleAccess.createMany({
+          data: allAccesses.map((access: any) => ({
             roleId: ownerRole.id,
             accessId: access.id,
-          },
+          })),
         })
       }
+
 
       return { user, organization, subscription }
     })

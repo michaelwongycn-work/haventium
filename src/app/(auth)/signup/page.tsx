@@ -8,6 +8,7 @@ import { zodResolver } from "@/lib/zod-resolver"
 import { z } from "zod"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
@@ -165,9 +166,8 @@ export default function SignupPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
-                <Input
+                <PasswordInput
                   id="password"
-                  type="password"
                   {...register("password")}
                   placeholder="••••••••"
                   disabled={isLoading}
@@ -182,7 +182,7 @@ export default function SignupPage() {
                 <Input
                   id="organizationName"
                   {...register("organizationName")}
-                  placeholder="Acme Properties"
+                  placeholder="Kos Ku"
                   disabled={isLoading}
                 />
                 {errors.organizationName && (
@@ -242,7 +242,7 @@ export default function SignupPage() {
               )}
             </div>
           </CardContent>
-          <CardFooter className="flex-col space-y-4">
+          <CardFooter className="flex-col space-y-4 mt-6">
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? "Creating account..." : "Create account"}
             </Button>
