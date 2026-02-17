@@ -46,6 +46,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   PlusSignIcon,
@@ -622,9 +623,49 @@ export default function LeasesPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">
-              Loading leases...
-            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Tenant</TableHead>
+                  <TableHead>Property</TableHead>
+                  <TableHead>Unit</TableHead>
+                  <TableHead>Start Date</TableHead>
+                  <TableHead>End Date</TableHead>
+                  <TableHead>Rent</TableHead>
+                  <TableHead>Cycle</TableHead>
+                  <TableHead>Auto-Renew</TableHead>
+                  <TableHead>Grace</TableHead>
+                  <TableHead>Notice</TableHead>
+                  <TableHead>Payment</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-4 w-[140px]" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-[140px]" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-[90px]" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-[90px]" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-[100px]" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-[70px]" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-[60px]" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-[60px]" /></TableCell>
+                    <TableCell><Skeleton className="h-7 w-[100px]" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-[60px]" /></TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Skeleton className="h-8 w-8" />
+                        <Skeleton className="h-8 w-8" />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           ) : filteredLeases.length === 0 ? (
             <div className="text-center py-12">
               <HugeiconsIcon

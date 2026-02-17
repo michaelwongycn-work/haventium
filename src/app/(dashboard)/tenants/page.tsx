@@ -47,6 +47,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
+import { Skeleton } from "@/components/ui/skeleton"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   PlusSignIcon,
@@ -353,9 +354,35 @@ export default function TenantsPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">
-              Loading tenants...
-            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Leases</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-4 w-[150px]" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-[180px]" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-[120px]" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-[70px]" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-[30px]" /></TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Skeleton className="h-8 w-8" />
+                        <Skeleton className="h-8 w-8" />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           ) : filteredTenants.length === 0 ? (
             <div className="text-center py-12">
               <HugeiconsIcon

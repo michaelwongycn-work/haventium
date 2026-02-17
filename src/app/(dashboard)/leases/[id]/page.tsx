@@ -28,6 +28,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   ArrowLeft01Icon,
@@ -287,8 +288,68 @@ export default function LeaseDetailPage({
       )}
 
       {isLoading ? (
-        <div className="text-center py-8 text-muted-foreground">
-          Loading lease details...
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-[200px]" />
+              <Skeleton className="h-4 w-[350px]" />
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i}>
+                    <Skeleton className="h-3 w-[80px] mb-2" />
+                    <Skeleton className="h-5 w-[120px]" />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-[250px]" />
+              <Skeleton className="h-4 w-[300px]" />
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i}>
+                    <Skeleton className="h-3 w-[80px] mb-2" />
+                    <Skeleton className="h-5 w-[100px]" />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-[280px]" />
+              <Skeleton className="h-4 w-[250px]" />
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i}>
+                    <Skeleton className="h-3 w-[80px] mb-2" />
+                    <Skeleton className="h-5 w-[100px]" />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-[150px]" />
+              <Skeleton className="h-4 w-[280px]" />
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Skeleton key={i} className="h-16 w-full" />
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       ) : (
         <>

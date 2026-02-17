@@ -40,6 +40,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
+import { Skeleton } from "@/components/ui/skeleton"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   PlusSignIcon,
@@ -342,9 +343,29 @@ export default function PropertyDetailPage({
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">
-              Loading units...
-            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Unit Name</TableHead>
+                  <TableHead>Available</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-4 w-[150px]" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-[60px]" /></TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Skeleton className="h-8 w-8" />
+                        <Skeleton className="h-8 w-8" />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           ) : units.length === 0 ? (
             <div className="text-center py-12">
               <HugeiconsIcon
