@@ -4,6 +4,7 @@
  */
 
 import { Resend } from "resend"
+import { logger } from "@/lib/logger"
 import { NotificationChannel } from "../constants"
 import {
   sendWhatsAppMeta,
@@ -42,7 +43,7 @@ export async function sendEmail({
   apiKey,
 }: SendEmailParams): Promise<SendEmailResult> {
   if (!apiKey) {
-    console.error("Resend API key not provided")
+    logger.error("Resend API key not provided for email notification")
     return {
       success: false,
       error: "Organization API key not configured for email",
@@ -60,7 +61,7 @@ export async function sendEmail({
     })
 
     if (error) {
-      console.error("Resend error:", error)
+      logger.error("Resend API error", error, { recipient: to })
       return {
         success: false,
         error: error.message || "Failed to send email",
@@ -72,7 +73,7 @@ export async function sendEmail({
       messageId: data?.id,
     }
   } catch (error) {
-    console.error("Unexpected error sending email:", error)
+    logger.error("Unexpected error sending email", error, { recipient: to })
     return {
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",

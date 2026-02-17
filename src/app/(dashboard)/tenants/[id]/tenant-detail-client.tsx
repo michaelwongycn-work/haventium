@@ -159,7 +159,7 @@ export default function TenantDetailClient({
       const data = await response.json();
       setTenant(data);
     } catch (err) {
-      console.error(err);
+      // Error handled via UI state
     } finally {
       setIsLoading(false);
     }

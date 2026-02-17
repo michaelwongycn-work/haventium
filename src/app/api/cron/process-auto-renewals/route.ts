@@ -4,6 +4,8 @@ import type { LeaseAgreement, PaymentCycle } from "@prisma/client";
 import { processNotifications } from "@/lib/services/notification-processor";
 import { NOTIFICATION_TRIGGER } from "@/lib/constants";
 import { validateLeaseAvailability } from "@/lib/api/lease-validation";
+import { verifyCronAuth } from "@/lib/api";
+import { logger } from "@/lib/logger";
 
 /**
  * Calculate renewal lease start and end dates based on payment cycle
@@ -114,15 +116,22 @@ async function createRenewalLease(
       trigger: NOTIFICATION_TRIGGER.LEASE_EXPIRED,
       relatedEntityId: originalLease.id,
     }).catch((err) => {
-      console.error("Failed to send lease expired notification:", err);
+      logger.error("Failed to send lease expired notification", err, {
+        organizationId: originalLease.organizationId,
+        leaseId: originalLease.id,
+      });
     });
 
     return result;
   } catch (error) {
     // Handle transaction rollback
-    console.error(
-      `[process-auto-renewals] Cannot create renewal for lease ${originalLease.id}:`,
-      error instanceof Error ? error.message : "Unknown error"
+    logger.cronError(
+      "process-auto-renewals",
+      error,
+      {
+        leaseId: originalLease.id,
+        tenantName: originalLease.tenant.fullName,
+      }
     );
     return null;
   }
@@ -130,20 +139,8 @@ async function createRenewalLease(
 
 export async function POST(request: Request) {
   try {
-    const authHeader = request.headers.get("authorization");
-    const cronSecret = process.env.CRON_SECRET;
-
-    // CRON_SECRET is required - fail if not configured
-    if (!cronSecret) {
-      return NextResponse.json(
-        { error: "CRON_SECRET environment variable not configured" },
-        { status: 401 },
-      );
-    }
-
-    if (authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const authCheck = verifyCronAuth(request);
+    if (!authCheck.authorized) return authCheck.response!;
 
     const summary = {
       processed: 0,
@@ -240,7 +237,7 @@ export async function POST(request: Request) {
       processedAt: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("Error in process-auto-renewals cron:", error);
+    logger.cronError("process-auto-renewals", error);
     return NextResponse.json(
       { error: "Failed to process auto-renewals" },
       { status: 500 },

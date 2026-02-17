@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { apiError, apiServerError } from "./response";
+import { logger } from "@/lib/logger";
 
 /**
  * Centralized Error Handler
@@ -53,26 +54,9 @@ export function handleApiError(
     }
   }
 
-  // Log unexpected errors
-  console.error(`Error in ${context}:`, error);
+  // Log unexpected errors with context
+  logger.apiError(context, error);
 
   // Generic server error
   return apiServerError(`Failed to ${context}`);
-}
-
-/**
- * Async error wrapper for API route handlers
- * Automatically catches and handles errors
- */
-export function withErrorHandler<T extends any[], R>(
-  handler: (...args: T) => Promise<NextResponse>,
-  context: string = "operation",
-) {
-  return async (...args: T): Promise<NextResponse> => {
-    try {
-      return await handler(...args);
-    } catch (error) {
-      return handleApiError(error, context);
-    }
-  };
 }

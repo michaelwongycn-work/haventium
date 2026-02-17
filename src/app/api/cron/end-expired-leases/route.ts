@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { processNotifications } from "@/lib/services/notification-processor";
+import { verifyCronAuth } from "@/lib/api";
+import { logger } from "@/lib/logger";
 
 /**
  * Cron job to end expired leases and send LEASE_EXPIRED notifications
@@ -14,20 +16,8 @@ import { processNotifications } from "@/lib/services/notification-processor";
  */
 export async function POST(request: Request) {
   try {
-    // Verify cron secret - REQUIRED
-    const authHeader = request.headers.get("authorization");
-    const cronSecret = process.env.CRON_SECRET;
-
-    if (!cronSecret) {
-      return NextResponse.json(
-        { error: "CRON_SECRET environment variable not configured" },
-        { status: 401 },
-      );
-    }
-
-    if (authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const authCheck = verifyCronAuth(request);
+    if (!authCheck.authorized) return authCheck.response!;
 
     const now = new Date();
     let processedCount = 0;
@@ -57,8 +47,9 @@ export async function POST(request: Request) {
       },
     });
 
-    console.log(
-      `[end-expired-leases] Found ${expiredLeases.length} expired leases to process`,
+    logger.cronInfo(
+      "end-expired-leases",
+      `Found ${expiredLeases.length} expired leases to process`,
     );
 
     // Process each expired lease
@@ -132,20 +123,23 @@ export async function POST(request: Request) {
         }
 
         processedCount++;
-        console.log(
-          `[end-expired-leases] Processed lease ${lease.id} for tenant ${lease.tenant.fullName}`,
+        logger.cronInfo(
+          "end-expired-leases",
+          `Processed lease ${lease.id} for tenant ${lease.tenant.fullName}`,
         );
       } catch (error) {
-        console.error(
-          `[end-expired-leases] Error processing lease ${lease.id}:`,
+        logger.cronError(
+          "end-expired-leases",
           error,
+          { leaseId: lease.id, tenantName: lease.tenant.fullName },
         );
         // Continue processing other leases even if one fails
       }
     }
 
-    console.log(
-      `[end-expired-leases] Completed: ${processedCount} leases ended`,
+    logger.cronInfo(
+      "end-expired-leases",
+      `Completed: ${processedCount} leases ended`,
     );
 
     return NextResponse.json({
@@ -156,7 +150,7 @@ export async function POST(request: Request) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("[end-expired-leases] Fatal error:", error);
+    logger.cronError("end-expired-leases", error);
     return NextResponse.json(
       {
         success: false,

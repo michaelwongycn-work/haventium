@@ -128,7 +128,6 @@ export default function NotificationLogsClient() {
       setLogs(data.logs);
       setPagination(data.pagination);
     } catch (err) {
-      console.error("Error fetching logs:", err);
       setError("Failed to load notification logs");
     } finally {
       setIsLoading(false);

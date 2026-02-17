@@ -136,7 +136,6 @@ export default function NotificationTemplatesClient() {
       const data = await response.json();
       setTemplates(data);
     } catch (err) {
-      console.error("Error fetching templates:", err);
       setError("Failed to load notification templates");
     } finally {
       setIsLoading(false);

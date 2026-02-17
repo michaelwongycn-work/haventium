@@ -177,7 +177,7 @@ export default function LeasesClient() {
         setTenants(data);
       }
     } catch (err) {
-      console.error("Error fetching tenants:", err);
+      // Silent fail - not critical
     }
   };
 
@@ -207,7 +207,7 @@ export default function LeasesClient() {
         setProperties(propertiesWithUnits);
       }
     } catch (err) {
-      console.error("Error fetching properties:", err);
+      // Silent fail - not critical
     }
   };
 

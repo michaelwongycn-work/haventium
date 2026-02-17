@@ -162,7 +162,6 @@ export default function NotificationRulesClient() {
       const data = await response.json();
       setRules(data);
     } catch (err) {
-      console.error("Error fetching rules:", err);
       setError("Failed to load notification rules");
     } finally {
       setIsLoading(false);
@@ -176,7 +175,7 @@ export default function NotificationRulesClient() {
       const data = await response.json();
       setUsers(data);
     } catch (err) {
-      console.error("Error fetching users:", err);
+      // Silent fail - not critical
     }
   };
 
@@ -187,7 +186,7 @@ export default function NotificationRulesClient() {
       const data = await response.json();
       setRoles(data);
     } catch (err) {
-      console.error("Error fetching roles:", err);
+      // Silent fail - not critical
     }
   };
 

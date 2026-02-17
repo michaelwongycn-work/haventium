@@ -63,7 +63,6 @@ export default function LoginPage() {
       router.push("/dashboard");
       router.refresh();
     } catch (err) {
-      console.log("Login error:", err);
       setError("An error occurred during login");
     } finally {
       setIsLoading(false);

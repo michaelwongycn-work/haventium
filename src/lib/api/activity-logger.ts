@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { Session } from "next-auth";
+import { logger } from "@/lib/logger";
 
 /**
  * Activity Logger Service
@@ -57,7 +58,11 @@ export async function logActivity(
     });
   } catch (error) {
     // Log but don't throw - activity logging shouldn't break the main operation
-    console.error("Failed to log activity:", error);
+    logger.error("Failed to log activity", error, {
+      userId: session.user.id,
+      organizationId: session.user.organizationId,
+      activityType: data.type,
+    });
   }
 }
 

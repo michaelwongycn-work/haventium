@@ -4,6 +4,7 @@
  */
 
 import { prisma } from "@/lib/prisma"
+import { logger } from "@/lib/logger"
 import { sendNotification, replaceTemplateVariables } from "./notification-service"
 import type { NotificationTrigger, NotificationChannel } from "../constants"
 import { decrypt } from "@/lib/encryption"
@@ -65,7 +66,11 @@ async function getOrganizationApiKeys(organizationId: string): Promise<{
         data: { lastUsedAt: new Date() },
       })
     } catch (error) {
-      console.error(`Failed to decrypt API key ${key.id}:`, error)
+      logger.error("Failed to decrypt API key", error, {
+        organizationId,
+        apiKeyId: key.id,
+        service: key.service,
+      })
     }
   }
 
@@ -314,7 +319,11 @@ export async function processNotifications({
 
     return result
   } catch (error) {
-    console.error("Error processing notifications:", error)
+    logger.error("Error processing notifications", error, {
+      organizationId,
+      trigger,
+      relatedEntityId,
+    })
     result.errors.push(
       error instanceof Error ? error.message : "Unknown error processing notifications"
     )
