@@ -1,14 +1,14 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -16,7 +16,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
+} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -24,7 +24,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,28 +34,28 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Switch } from "@/components/ui/switch"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Badge } from "@/components/ui/badge"
-import { HugeiconsIcon } from "@hugeicons/react"
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { HugeiconsIcon } from "@hugeicons/react";
 import {
   PlusSignIcon,
   Delete02Icon,
   PencilEdit02Icon,
   Mail01Icon,
   Notification03Icon,
-} from "@hugeicons/core-free-icons"
+} from "@hugeicons/core-free-icons";
 
 type NotificationTrigger =
   | "PAYMENT_REMINDER"
@@ -63,21 +63,21 @@ type NotificationTrigger =
   | "PAYMENT_CONFIRMED"
   | "LEASE_EXPIRING"
   | "LEASE_EXPIRED"
-  | "MANUAL"
+  | "MANUAL";
 
-type NotificationChannel = "EMAIL" | "WHATSAPP" | "TELEGRAM"
+type NotificationChannel = "EMAIL" | "WHATSAPP" | "TELEGRAM";
 
 type NotificationTemplate = {
-  id: string
-  name: string
-  trigger: NotificationTrigger
-  channel: NotificationChannel
-  subject: string | null
-  body: string
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
-}
+  id: string;
+  name: string;
+  trigger: NotificationTrigger;
+  channel: NotificationChannel;
+  subject: string | null;
+  body: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
 
 const TRIGGER_LABELS: Record<NotificationTrigger, string> = {
   PAYMENT_REMINDER: "Payment Reminder",
@@ -86,13 +86,13 @@ const TRIGGER_LABELS: Record<NotificationTrigger, string> = {
   LEASE_EXPIRING: "Lease Expiring",
   LEASE_EXPIRED: "Lease Expired",
   MANUAL: "Manual",
-}
+};
 
 const CHANNEL_LABELS: Record<NotificationChannel, string> = {
   EMAIL: "Email",
   WHATSAPP: "WhatsApp",
   TELEGRAM: "Telegram",
-}
+};
 
 const TEMPLATE_VARIABLES = [
   { name: "{{tenantName}}", description: "Tenant's full name" },
@@ -101,17 +101,19 @@ const TEMPLATE_VARIABLES = [
   { name: "{{rentAmount}}", description: "Lease rent amount" },
   { name: "{{propertyName}}", description: "Property name" },
   { name: "{{unitName}}", description: "Unit name" },
-]
+];
 
 export default function NotificationTemplatesClient() {
-  const [templates, setTemplates] = useState<NotificationTemplate[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [editingTemplate, setEditingTemplate] = useState<NotificationTemplate | null>(null)
-  const [deletingTemplate, setDeletingTemplate] = useState<NotificationTemplate | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [isSaving, setIsSaving] = useState(false)
+  const [templates, setTemplates] = useState<NotificationTemplate[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] =
+    useState<NotificationTemplate | null>(null);
+  const [deletingTemplate, setDeletingTemplate] =
+    useState<NotificationTemplate | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -120,29 +122,29 @@ export default function NotificationTemplatesClient() {
     subject: "",
     body: "",
     isActive: true,
-  })
+  });
 
   useEffect(() => {
-    fetchTemplates()
-  }, [])
+    fetchTemplates();
+  }, []);
 
   const fetchTemplates = async () => {
     try {
-      setIsLoading(true)
-      const response = await fetch("/api/notifications/templates")
-      if (!response.ok) throw new Error("Failed to fetch templates")
-      const data = await response.json()
-      setTemplates(data)
+      setIsLoading(true);
+      const response = await fetch("/api/notifications/templates");
+      if (!response.ok) throw new Error("Failed to fetch templates");
+      const data = await response.json();
+      setTemplates(data);
     } catch (err) {
-      console.error("Error fetching templates:", err)
-      setError("Failed to load notification templates")
+      console.error("Error fetching templates:", err);
+      setError("Failed to load notification templates");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const openCreateDialog = () => {
-    setEditingTemplate(null)
+    setEditingTemplate(null);
     setFormData({
       name: "",
       trigger: "PAYMENT_REMINDER",
@@ -150,13 +152,13 @@ export default function NotificationTemplatesClient() {
       subject: "",
       body: "",
       isActive: true,
-    })
-    setError(null)
-    setIsDialogOpen(true)
-  }
+    });
+    setError(null);
+    setIsDialogOpen(true);
+  };
 
   const openEditDialog = (template: NotificationTemplate) => {
-    setEditingTemplate(template)
+    setEditingTemplate(template);
     setFormData({
       name: template.name,
       trigger: template.trigger,
@@ -164,91 +166,93 @@ export default function NotificationTemplatesClient() {
       subject: template.subject || "",
       body: template.body,
       isActive: template.isActive,
-    })
-    setError(null)
-    setIsDialogOpen(true)
-  }
+    });
+    setError(null);
+    setIsDialogOpen(true);
+  };
 
   const handleSave = async () => {
     try {
-      setIsSaving(true)
-      setError(null)
+      setIsSaving(true);
+      setError(null);
 
       // Validate required fields
       if (!formData.name.trim()) {
-        setError("Template name is required")
-        return
+        setError("Template name is required");
+        return;
       }
 
       if (!formData.body.trim()) {
-        setError("Template body is required")
-        return
+        setError("Template body is required");
+        return;
       }
 
       if (formData.channel === "EMAIL" && !formData.subject.trim()) {
-        setError("Subject is required for email notifications")
-        return
+        setError("Subject is required for email notifications");
+        return;
       }
 
       const url = editingTemplate
         ? `/api/notifications/templates/${editingTemplate.id}`
-        : "/api/notifications/templates"
+        : "/api/notifications/templates";
 
       const response = await fetch(url, {
         method: editingTemplate ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
-      })
+      });
 
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || "Failed to save template")
+        const data = await response.json();
+        throw new Error(data.error || "Failed to save template");
       }
 
-      await fetchTemplates()
-      setIsDialogOpen(false)
+      await fetchTemplates();
+      setIsDialogOpen(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save template")
+      setError(err instanceof Error ? err.message : "Failed to save template");
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }
+  };
 
   const openDeleteDialog = (template: NotificationTemplate) => {
-    setDeletingTemplate(template)
-    setIsDeleteDialogOpen(true)
-  }
+    setDeletingTemplate(template);
+    setIsDeleteDialogOpen(true);
+  };
 
   const handleDelete = async () => {
-    if (!deletingTemplate) return
+    if (!deletingTemplate) return;
 
     try {
       const response = await fetch(
         `/api/notifications/templates/${deletingTemplate.id}`,
         {
           method: "DELETE",
-        }
-      )
+        },
+      );
 
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || "Failed to delete template")
+        const data = await response.json();
+        throw new Error(data.error || "Failed to delete template");
       }
 
-      await fetchTemplates()
-      setIsDeleteDialogOpen(false)
-      setDeletingTemplate(null)
+      await fetchTemplates();
+      setIsDeleteDialogOpen(false);
+      setDeletingTemplate(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete template")
+      setError(
+        err instanceof Error ? err.message : "Failed to delete template",
+      );
     }
-  }
+  };
 
   const insertVariable = (variable: string) => {
     setFormData((prev) => ({
       ...prev,
       body: prev.body + variable,
-    }))
-  }
+    }));
+  };
 
   return (
     <div className="space-y-6">
@@ -294,7 +298,8 @@ export default function NotificationTemplatesClient() {
                 className="mb-4 h-12 w-12 text-muted-foreground"
               />
               <p className="text-sm text-muted-foreground">
-                No notification templates yet. Create your first template to get started.
+                No notification templates yet. Create your first template to get
+                started.
               </p>
             </div>
           ) : (
@@ -311,7 +316,9 @@ export default function NotificationTemplatesClient() {
               <TableBody>
                 {templates.map((template) => (
                   <TableRow key={template.id}>
-                    <TableCell className="font-medium">{template.name}</TableCell>
+                    <TableCell className="font-medium">
+                      {template.name}
+                    </TableCell>
                     <TableCell>{TRIGGER_LABELS[template.trigger]}</TableCell>
                     <TableCell>
                       <Badge variant="outline">
@@ -336,14 +343,20 @@ export default function NotificationTemplatesClient() {
                           size="sm"
                           onClick={() => openEditDialog(template)}
                         >
-                          <HugeiconsIcon icon={PencilEdit02Icon} className="h-4 w-4" />
+                          <HugeiconsIcon
+                            icon={PencilEdit02Icon}
+                            className="h-4 w-4"
+                          />
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => openDeleteDialog(template)}
                         >
-                          <HugeiconsIcon icon={Delete02Icon} className="h-4 w-4" />
+                          <HugeiconsIcon
+                            icon={Delete02Icon}
+                            className="h-4 w-4"
+                          />
                         </Button>
                       </div>
                     </TableCell>
@@ -508,13 +521,16 @@ export default function NotificationTemplatesClient() {
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Template</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete &quot;{deletingTemplate?.name}&quot;? This
-              action cannot be undone.
+              Are you sure you want to delete &quot;{deletingTemplate?.name}
+              &quot;? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -524,5 +540,5 @@ export default function NotificationTemplatesClient() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  )
+  );
 }

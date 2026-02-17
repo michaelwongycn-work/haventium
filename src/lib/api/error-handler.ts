@@ -1,32 +1,35 @@
-import { NextResponse } from "next/server"
-import { z } from "zod"
-import { Prisma } from "@prisma/client"
-import { apiError, apiServerError } from "./response"
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { Prisma } from "@prisma/client";
+import { apiError, apiServerError } from "./response";
 
 /**
  * Centralized Error Handler
  * Handles common error types across all API routes
  */
 
-export function handleApiError(error: unknown, context: string = "operation"): NextResponse {
+export function handleApiError(
+  error: unknown,
+  context: string = "operation",
+): NextResponse {
   // Zod validation errors
   if (error instanceof z.ZodError) {
-    return apiError(error.issues[0].message, 400)
+    return apiError(error.issues[0].message, 400);
   }
 
   // Prisma unique constraint violations
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     if (error.code === "P2002") {
-      const field = (error.meta?.target as string[])?.[0] || "field"
-      return apiError(`A record with this ${field} already exists`, 400)
+      const field = (error.meta?.target as string[])?.[0] || "field";
+      return apiError(`A record with this ${field} already exists`, 400);
     }
-    
+
     if (error.code === "P2025") {
-      return apiError("Record not found", 404)
+      return apiError("Record not found", 404);
     }
 
     if (error.code === "P2003") {
-      return apiError("Related record not found", 400)
+      return apiError("Related record not found", 400);
     }
   }
 
@@ -42,19 +45,19 @@ export function handleApiError(error: unknown, context: string = "operation"): N
       LEASE_NOT_FOUND: { message: "Lease not found", status: 404 },
       UNAUTHORIZED: { message: "Unauthorized", status: 401 },
       FORBIDDEN: { message: "Forbidden", status: 403 },
-    }
+    };
 
-    const customError = customErrors[error.message]
+    const customError = customErrors[error.message];
     if (customError) {
-      return apiError(customError.message, customError.status)
+      return apiError(customError.message, customError.status);
     }
   }
 
   // Log unexpected errors
-  console.error(`Error in ${context}:`, error)
+  console.error(`Error in ${context}:`, error);
 
   // Generic server error
-  return apiServerError(`Failed to ${context}`)
+  return apiServerError(`Failed to ${context}`);
 }
 
 /**
@@ -63,13 +66,13 @@ export function handleApiError(error: unknown, context: string = "operation"): N
  */
 export function withErrorHandler<T extends any[], R>(
   handler: (...args: T) => Promise<NextResponse>,
-  context: string = "operation"
+  context: string = "operation",
 ) {
   return async (...args: T): Promise<NextResponse> => {
     try {
-      return await handler(...args)
+      return await handler(...args);
     } catch (error) {
-      return handleApiError(error, context)
+      return handleApiError(error, context);
     }
-  }
+  };
 }

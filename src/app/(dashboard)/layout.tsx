@@ -1,23 +1,23 @@
-import { auth } from "@/lib/auth"
-import { redirect } from "next/navigation"
-import { Badge } from "@/components/ui/badge"
-import Link from "next/link"
-import { UserNav } from "@/components/user-nav"
-import { NavLinks } from "./nav-links"
+import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
+import { UserNav } from "@/components/user-nav";
+import { NavLinks } from "./nav-links";
 
 export default async function DashboardLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
-  const session = await auth()
+  const session = await auth();
 
   if (!session) {
-    redirect("/login")
+    redirect("/login");
   }
 
-  const tierName = session.user.subscription?.tier?.name || "Free Plan"
-  const roles = session.user.roles || []
+  const tierName = session.user.subscription?.tier?.name || "Free Plan";
+  const roles = session.user.roles || [];
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -42,5 +42,5 @@ export default async function DashboardLayout({
       {/* Main Content */}
       <main className="flex-1 p-8">{children}</main>
     </div>
-  )
+  );
 }

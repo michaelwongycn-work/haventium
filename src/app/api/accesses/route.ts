@@ -1,26 +1,23 @@
-import { NextResponse } from "next/server"
-import { checkAccess } from "@/lib/guards"
-import { prisma } from "@/lib/prisma"
+import { NextResponse } from "next/server";
+import { checkAccess } from "@/lib/guards";
+import { prisma } from "@/lib/prisma";
 
 // GET /api/accesses - List all access permissions
 export async function GET() {
   try {
-    const { authorized, response } = await checkAccess("settings", "manage")
-    if (!authorized) return response
+    const { authorized, response } = await checkAccess("settings", "manage");
+    if (!authorized) return response;
 
     const accesses = await prisma.access.findMany({
-      orderBy: [
-        { resource: "asc" },
-        { action: "asc" },
-      ],
-    })
+      orderBy: [{ resource: "asc" }, { action: "asc" }],
+    });
 
-    return NextResponse.json(accesses)
+    return NextResponse.json(accesses);
   } catch (error) {
-    console.error("Error fetching accesses:", error)
+    console.error("Error fetching accesses:", error);
     return NextResponse.json(
       { error: "Failed to fetch accesses" },
-      { status: 500 }
-    )
+      { status: 500 },
+    );
   }
 }

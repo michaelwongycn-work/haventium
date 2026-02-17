@@ -1,25 +1,35 @@
-"use client"
+"use client";
 
-import { useRouter } from "next/navigation"
+import { useRouter } from "next/navigation";
 
 const MONTH_NAMES = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-]
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
 
 export function MonthYearFilter({
   currentMonth,
   currentYear,
 }: {
-  currentMonth: number
-  currentYear: number
+  currentMonth: number;
+  currentYear: number;
 }) {
-  const router = useRouter()
-  const thisYear = new Date().getFullYear()
-  const years = Array.from({ length: 5 }, (_, i) => thisYear - 2 + i)
+  const router = useRouter();
+  const thisYear = new Date().getFullYear();
+  const years = Array.from({ length: 5 }, (_, i) => thisYear - 2 + i);
 
   function handleChange(month: number, year: number) {
-    router.push(`/dashboard?month=${month}&year=${year}`)
+    router.push(`/dashboard?month=${month}&year=${year}`);
   }
 
   return (
@@ -47,5 +57,5 @@ export function MonthYearFilter({
         ))}
       </select>
     </div>
-  )
+  );
 }

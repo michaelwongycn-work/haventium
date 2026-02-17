@@ -1,17 +1,17 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
-import { HugeiconsIcon } from "@hugeicons/react"
+} from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { HugeiconsIcon } from "@hugeicons/react";
 import {
   ArrowLeft01Icon,
   Mail01Icon,
@@ -26,7 +26,7 @@ import {
   ShieldEnergyIcon,
   Notification01Icon,
   MoreHorizontalIcon,
-} from "@hugeicons/core-free-icons"
+} from "@hugeicons/core-free-icons";
 
 const ACTIVITY_ICON_MAP: Record<string, typeof File01Icon> = {
   LEASE_CREATED: File01Icon,
@@ -46,7 +46,7 @@ const ACTIVITY_ICON_MAP: Record<string, typeof File01Icon> = {
   NOTIFICATION_SENT: Notification01Icon,
   USER_LOGIN: UserIcon,
   OTHER: MoreHorizontalIcon,
-}
+};
 
 const ACTIVITY_COLOR_MAP: Record<string, string> = {
   LEASE_CREATED: "text-blue-500",
@@ -66,7 +66,7 @@ const ACTIVITY_COLOR_MAP: Record<string, string> = {
   NOTIFICATION_SENT: "text-blue-500",
   USER_LOGIN: "text-violet-500",
   OTHER: "text-muted-foreground",
-}
+};
 
 const ACTIVITY_BG_MAP: Record<string, string> = {
   LEASE_CREATED: "bg-blue-500/10",
@@ -86,111 +86,110 @@ const ACTIVITY_BG_MAP: Record<string, string> = {
   NOTIFICATION_SENT: "bg-blue-500/10",
   USER_LOGIN: "bg-violet-500/10",
   OTHER: "bg-muted",
-}
+};
 
-type TenantStatus = "LEAD" | "BOOKED" | "ACTIVE" | "EXPIRED"
+type TenantStatus = "LEAD" | "BOOKED" | "ACTIVE" | "EXPIRED";
 
 type Tenant = {
-  id: string
-  fullName: string
-  email: string
-  phone: string
-  status: TenantStatus
-  preferEmail: boolean
-  preferWhatsapp: boolean
-  preferTelegram: boolean
-  createdAt: string
-  updatedAt: string
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  status: TenantStatus;
+  preferEmail: boolean;
+  preferWhatsapp: boolean;
+  preferTelegram: boolean;
+  createdAt: string;
+  updatedAt: string;
   leaseAgreements: Array<{
-    id: string
-    startDate: string
-    endDate: string
-    status: string
-    rentAmount: string
+    id: string;
+    startDate: string;
+    endDate: string;
+    status: string;
+    rentAmount: string;
     unit: {
-      name: string
+      name: string;
       property: {
-        name: string
-      }
-    }
-  }>
+        name: string;
+      };
+    };
+  }>;
   activities: Array<{
-    id: string
-    type: string
-    description: string
-    createdAt: string
+    id: string;
+    type: string;
+    description: string;
+    createdAt: string;
     user: {
-      name: string
-      email: string
-    } | null
-  }>
-}
-
+      name: string;
+      email: string;
+    } | null;
+  }>;
+};
 
 export default function TenantDetailClient({
   params,
 }: {
-  params: { id: string }
+  params: { id: string };
 }) {
-  const [tenant, setTenant] = useState<Tenant | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [tenantId, setTenantId] = useState<string>("")
+  const [tenant, setTenant] = useState<Tenant | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [tenantId, setTenantId] = useState<string>("");
 
   useEffect(() => {
     Promise.resolve(params).then((resolvedParams) => {
-      setTenantId(resolvedParams.id)
-    })
-  }, [params])
+      setTenantId(resolvedParams.id);
+    });
+  }, [params]);
 
   useEffect(() => {
     if (tenantId) {
-      fetchTenant()
+      fetchTenant();
     }
-  }, [tenantId])
+  }, [tenantId]);
 
   const fetchTenant = async () => {
     try {
-      setIsLoading(true)
-      const response = await fetch(`/api/tenants/${tenantId}`)
+      setIsLoading(true);
+      const response = await fetch(`/api/tenants/${tenantId}`);
 
       if (!response.ok) {
-        throw new Error("Failed to fetch tenant")
+        throw new Error("Failed to fetch tenant");
       }
 
-      const data = await response.json()
-      setTenant(data)
+      const data = await response.json();
+      setTenant(data);
     } catch (err) {
-      console.error(err)
+      console.error(err);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const formatRelativeTime = (dateString: string) => {
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffMins = Math.floor(diffMs / 60000)
-    const diffHours = Math.floor(diffMs / 3600000)
-    const diffDays = Math.floor(diffMs / 86400000)
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
 
-    if (diffMins < 1) return "Just now"
-    if (diffMins < 60) return `${diffMins}m ago`
-    if (diffHours < 24) return `${diffHours}h ago`
-    if (diffDays < 7) return `${diffDays}d ago`
-    const day = String(date.getDate()).padStart(2, "0")
-    const month = String(date.getMonth() + 1).padStart(2, "0")
-    const year = date.getFullYear()
-    return `${day}/${month}/${year}`
-  }
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
 
   const formatCurrency = (value: string | number) => {
-    const num = typeof value === "string" ? parseFloat(value) : value
+    const num = typeof value === "string" ? parseFloat(value) : value;
     return new Intl.NumberFormat("en-US", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    }).format(num)
-  }
+    }).format(num);
+  };
 
   if (!tenant && !isLoading) {
     return (
@@ -202,13 +201,17 @@ export default function TenantDetailClient({
           </p>
           <Button asChild>
             <Link href="/tenants">
-              <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} data-icon="inline-start" />
+              <HugeiconsIcon
+                icon={ArrowLeft01Icon}
+                strokeWidth={2}
+                data-icon="inline-start"
+              />
               Back to Tenants
             </Link>
           </Button>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -220,7 +223,9 @@ export default function TenantDetailClient({
           </Link>
         </Button>
         <div className="flex-1">
-          <h1 className="text-3xl font-bold">{tenant?.fullName || "Loading..."}</h1>
+          <h1 className="text-3xl font-bold">
+            {tenant?.fullName || "Loading..."}
+          </h1>
           <p className="text-muted-foreground mt-1">
             Tenant contact information and preferences
           </p>
@@ -282,45 +287,73 @@ export default function TenantDetailClient({
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex items-center gap-3">
-                  <HugeiconsIcon icon={Mail01Icon} strokeWidth={2} className="h-5 w-5 text-muted-foreground" />
+                  <HugeiconsIcon
+                    icon={Mail01Icon}
+                    strokeWidth={2}
+                    className="h-5 w-5 text-muted-foreground"
+                  />
                   <div>
                     <p className="text-sm text-muted-foreground">Email</p>
                     <p className="font-medium">{tenant?.email}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <HugeiconsIcon icon={SmartPhone01Icon} strokeWidth={2} className="h-5 w-5 text-muted-foreground" />
+                  <HugeiconsIcon
+                    icon={SmartPhone01Icon}
+                    strokeWidth={2}
+                    className="h-5 w-5 text-muted-foreground"
+                  />
                   <div>
                     <p className="text-sm text-muted-foreground">Phone</p>
                     <p className="font-medium">{tenant?.phone}</p>
-                    <p className="text-xs text-muted-foreground">WhatsApp & Telegram</p>
+                    <p className="text-xs text-muted-foreground">
+                      WhatsApp & Telegram
+                    </p>
                   </div>
                 </div>
               </div>
               <div className="pt-4 border-t">
-                <p className="text-sm font-medium mb-3">Preferred Communication Channel</p>
+                <p className="text-sm font-medium mb-3">
+                  Preferred Communication Channel
+                </p>
                 <div className="space-y-2 text-sm">
                   {tenant?.preferEmail && tenant?.email && (
                     <div className="flex items-center gap-2">
-                      <HugeiconsIcon icon={CheckmarkCircle02Icon} strokeWidth={2} className="h-4 w-4 text-green-500" />
+                      <HugeiconsIcon
+                        icon={CheckmarkCircle02Icon}
+                        strokeWidth={2}
+                        className="h-4 w-4 text-green-500"
+                      />
                       <span>Email</span>
                     </div>
                   )}
                   {tenant?.preferWhatsapp && tenant?.phone && (
                     <div className="flex items-center gap-2">
-                      <HugeiconsIcon icon={CheckmarkCircle02Icon} strokeWidth={2} className="h-4 w-4 text-green-500" />
+                      <HugeiconsIcon
+                        icon={CheckmarkCircle02Icon}
+                        strokeWidth={2}
+                        className="h-4 w-4 text-green-500"
+                      />
                       <span>WhatsApp</span>
                     </div>
                   )}
                   {tenant?.preferTelegram && tenant?.phone && (
                     <div className="flex items-center gap-2">
-                      <HugeiconsIcon icon={CheckmarkCircle02Icon} strokeWidth={2} className="h-4 w-4 text-green-500" />
+                      <HugeiconsIcon
+                        icon={CheckmarkCircle02Icon}
+                        strokeWidth={2}
+                        className="h-4 w-4 text-green-500"
+                      />
                       <span>Telegram</span>
                     </div>
                   )}
-                  {!tenant?.preferEmail && !tenant?.preferWhatsapp && !tenant?.preferTelegram && (
-                    <p className="text-muted-foreground">No preferred channel selected</p>
-                  )}
+                  {!tenant?.preferEmail &&
+                    !tenant?.preferWhatsapp &&
+                    !tenant?.preferTelegram && (
+                      <p className="text-muted-foreground">
+                        No preferred channel selected
+                      </p>
+                    )}
                 </div>
               </div>
             </CardContent>
@@ -335,7 +368,8 @@ export default function TenantDetailClient({
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {!tenant?.leaseAgreements || tenant.leaseAgreements.length === 0 ? (
+              {!tenant?.leaseAgreements ||
+              tenant.leaseAgreements.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   No lease agreements yet
                 </div>
@@ -356,7 +390,9 @@ export default function TenantDetailClient({
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="font-medium">{formatCurrency(lease.rentAmount)}</p>
+                        <p className="font-medium">
+                          {formatCurrency(lease.rentAmount)}
+                        </p>
                         <p className="text-sm text-muted-foreground capitalize">
                           {lease.status.toLowerCase()}
                         </p>
@@ -372,9 +408,7 @@ export default function TenantDetailClient({
           <Card>
             <CardHeader>
               <CardTitle>Activity Log</CardTitle>
-              <CardDescription>
-                Recent activity for this tenant
-              </CardDescription>
+              <CardDescription>Recent activity for this tenant</CardDescription>
             </CardHeader>
             <CardContent>
               {!tenant?.activities || tenant.activities.length === 0 ? (
@@ -386,13 +420,22 @@ export default function TenantDetailClient({
                   <div className="absolute left-[17px] top-0 bottom-0 w-px bg-border" />
                   <div className="space-y-0">
                     {tenant.activities.map((activity) => {
-                      const IconComponent = ACTIVITY_ICON_MAP[activity.type] || MoreHorizontalIcon
-                      const colorClass = ACTIVITY_COLOR_MAP[activity.type] || "text-muted-foreground"
-                      const bgClass = ACTIVITY_BG_MAP[activity.type] || "bg-muted"
+                      const IconComponent =
+                        ACTIVITY_ICON_MAP[activity.type] || MoreHorizontalIcon;
+                      const colorClass =
+                        ACTIVITY_COLOR_MAP[activity.type] ||
+                        "text-muted-foreground";
+                      const bgClass =
+                        ACTIVITY_BG_MAP[activity.type] || "bg-muted";
 
                       return (
-                        <div key={activity.id} className="relative flex gap-3 pb-6 last:pb-0">
-                          <div className={`relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${bgClass}`}>
+                        <div
+                          key={activity.id}
+                          className="relative flex gap-3 pb-6 last:pb-0"
+                        >
+                          <div
+                            className={`relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${bgClass}`}
+                          >
                             <HugeiconsIcon
                               icon={IconComponent}
                               strokeWidth={2}
@@ -409,13 +452,16 @@ export default function TenantDetailClient({
                               </p>
                               {activity.user && (
                                 <p className="text-xs text-muted-foreground">
-                                  by <span className="font-medium">{activity.user.name}</span>
+                                  by{" "}
+                                  <span className="font-medium">
+                                    {activity.user.name}
+                                  </span>
                                 </p>
                               )}
                             </div>
                           </div>
                         </div>
-                      )
+                      );
                     })}
                   </div>
                 </div>
@@ -425,5 +471,5 @@ export default function TenantDetailClient({
         </>
       )}
     </div>
-  )
+  );
 }

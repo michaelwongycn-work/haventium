@@ -1,17 +1,17 @@
-import { z } from 'zod';
-import { prisma } from '@/lib/prisma';
+import { z } from "zod";
+import { prisma } from "@/lib/prisma";
 import {
   requireAccess,
   apiSuccess,
   apiError,
   handleApiError,
   validateRequest,
-} from '@/lib/api';
-import { decrypt } from '@/lib/encryption';
+} from "@/lib/api";
+import { decrypt } from "@/lib/encryption";
 
 const testApiKeySchema = z.object({
-  service: z.enum(['RESEND_EMAIL', 'WHATSAPP_META', 'TELEGRAM_BOT']),
-  value: z.string().min(1, 'API key value is required').optional(),
+  service: z.enum(["RESEND_EMAIL", "WHATSAPP_META", "TELEGRAM_BOT"]),
+  value: z.string().min(1, "API key value is required").optional(),
 });
 
 /**
@@ -20,12 +20,12 @@ const testApiKeySchema = z.object({
  */
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { authorized, response, session } = await requireAccess(
-      'settings',
-      'manage'
+      "settings",
+      "manage",
     );
     if (!authorized) return response;
 
@@ -44,14 +44,14 @@ export async function POST(
       });
 
       if (!apiKey) {
-        return apiError('API key not found', 404);
+        return apiError("API key not found", 404);
       }
 
       // Decrypt the stored key
       apiKeyValue = decrypt(
         apiKey.encryptedValue,
         apiKey.encryptionIv,
-        apiKey.encryptionTag
+        apiKey.encryptionTag,
       );
     }
 
@@ -59,20 +59,20 @@ export async function POST(
     let testResult: { success: boolean; message: string; error?: string };
 
     switch (validatedData.service) {
-      case 'RESEND_EMAIL':
+      case "RESEND_EMAIL":
         testResult = await testResendKey(apiKeyValue);
         break;
 
-      case 'WHATSAPP_META':
+      case "WHATSAPP_META":
         testResult = await testWhatsAppKey(apiKeyValue);
         break;
 
-      case 'TELEGRAM_BOT':
+      case "TELEGRAM_BOT":
         testResult = await testTelegramKey(apiKeyValue);
         break;
 
       default:
-        return apiError('Unsupported service type', 400);
+        return apiError("Unsupported service type", 400);
     }
 
     // Update lastUsedAt if testing an existing key
@@ -92,7 +92,7 @@ export async function POST(
       return apiError(testResult.message, 400, { error: testResult.error });
     }
   } catch (error) {
-    return handleApiError(error, 'test API key');
+    return handleApiError(error, "test API key");
   }
 }
 
@@ -100,12 +100,12 @@ export async function POST(
  * Test Resend API key by calling their API
  */
 async function testResendKey(
-  apiKey: string
+  apiKey: string,
 ): Promise<{ success: boolean; message: string; error?: string }> {
   try {
     // Call Resend API to verify the key (using /api-keys endpoint)
-    const response = await fetch('https://api.resend.com/api-keys', {
-      method: 'GET',
+    const response = await fetch("https://api.resend.com/api-keys", {
+      method: "GET",
       headers: {
         Authorization: `Bearer ${apiKey}`,
       },
@@ -114,21 +114,21 @@ async function testResendKey(
     if (response.ok) {
       return {
         success: true,
-        message: 'Resend API key is valid',
+        message: "Resend API key is valid",
       };
     } else {
       const data = await response.json();
       return {
         success: false,
-        message: 'Invalid Resend API key',
-        error: data.message || 'Authentication failed',
+        message: "Invalid Resend API key",
+        error: data.message || "Authentication failed",
       };
     }
   } catch (error) {
     return {
       success: false,
-      message: 'Failed to test Resend API key',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      message: "Failed to test Resend API key",
+      error: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }
@@ -138,7 +138,7 @@ async function testResendKey(
  * Expected format: JSON with { accessToken, phoneNumberId, businessAccountId }
  */
 async function testWhatsAppKey(
-  apiKey: string
+  apiKey: string,
 ): Promise<{ success: boolean; message: string; error?: string }> {
   try {
     const credentials = JSON.parse(apiKey);
@@ -151,7 +151,7 @@ async function testWhatsAppKey(
       return {
         success: false,
         message:
-          'Invalid WhatsApp credentials format. Expected JSON with accessToken, phoneNumberId, and businessAccountId',
+          "Invalid WhatsApp credentials format. Expected JSON with accessToken, phoneNumberId, and businessAccountId",
       };
     }
 
@@ -159,25 +159,25 @@ async function testWhatsAppKey(
     const response = await fetch(
       `https://graph.facebook.com/v18.0/${credentials.phoneNumberId}`,
       {
-        method: 'GET',
+        method: "GET",
         headers: {
           Authorization: `Bearer ${credentials.accessToken}`,
         },
-      }
+      },
     );
 
     if (response.ok) {
       const data = await response.json();
       return {
         success: true,
-        message: `WhatsApp API credentials are valid (Phone: ${data.display_phone_number || 'N/A'})`,
+        message: `WhatsApp API credentials are valid (Phone: ${data.display_phone_number || "N/A"})`,
       };
     } else {
       const data = await response.json();
       return {
         success: false,
-        message: 'Invalid WhatsApp API credentials',
-        error: data.error?.message || 'Authentication failed',
+        message: "Invalid WhatsApp API credentials",
+        error: data.error?.message || "Authentication failed",
       };
     }
   } catch (error) {
@@ -185,13 +185,13 @@ async function testWhatsAppKey(
       return {
         success: false,
         message:
-          'Invalid JSON format. WhatsApp credentials must be valid JSON with accessToken, phoneNumberId, and businessAccountId',
+          "Invalid JSON format. WhatsApp credentials must be valid JSON with accessToken, phoneNumberId, and businessAccountId",
       };
     }
     return {
       success: false,
-      message: 'Failed to test WhatsApp API credentials',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      message: "Failed to test WhatsApp API credentials",
+      error: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }
@@ -200,15 +200,15 @@ async function testWhatsAppKey(
  * Test Telegram Bot token by calling the getMe API
  */
 async function testTelegramKey(
-  botToken: string
+  botToken: string,
 ): Promise<{ success: boolean; message: string; error?: string }> {
   try {
     // Call Telegram Bot API getMe method to verify the token
     const response = await fetch(
       `https://api.telegram.org/bot${botToken}/getMe`,
       {
-        method: 'GET',
-      }
+        method: "GET",
+      },
     );
 
     const data = await response.json();
@@ -216,20 +216,20 @@ async function testTelegramKey(
     if (data.ok && data.result) {
       return {
         success: true,
-        message: `Telegram bot token is valid (Bot: @${data.result.username || 'unknown'})`,
+        message: `Telegram bot token is valid (Bot: @${data.result.username || "unknown"})`,
       };
     } else {
       return {
         success: false,
-        message: 'Invalid Telegram bot token',
-        error: data.description || 'Authentication failed',
+        message: "Invalid Telegram bot token",
+        error: data.description || "Authentication failed",
       };
     }
   } catch (error) {
     return {
       success: false,
-      message: 'Failed to test Telegram bot token',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      message: "Failed to test Telegram bot token",
+      error: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }

@@ -1,39 +1,50 @@
-import { auth } from "@/lib/auth"
-import { prisma } from "@/lib/prisma"
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import Link from "next/link"
-import { MonthYearFilter } from "./month-year-filter"
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import Link from "next/link";
+import { MonthYearFilter } from "./month-year-filter";
 
 function formatCurrency(value: number | null) {
-  if (value === null || value === undefined) return "$0.00"
+  if (value === null || value === undefined) return "$0.00";
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
     minimumFractionDigits: 2,
-  }).format(value)
+  }).format(value);
 }
 
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string; year?: string }>
+  searchParams: Promise<{ month?: string; year?: string }>;
 }) {
-  const session = await auth()
+  const session = await auth();
 
   if (!session?.user?.organizationId) {
-    return null
+    return null;
   }
 
-  const orgId = session.user.organizationId
-  const now = new Date()
-  const params = await searchParams
+  const orgId = session.user.organizationId;
+  const now = new Date();
+  const params = await searchParams;
 
-  const selectedMonth = params.month ? parseInt(params.month, 10) : now.getMonth() + 1
-  const selectedYear = params.year ? parseInt(params.year, 10) : now.getFullYear()
+  const selectedMonth = params.month
+    ? parseInt(params.month, 10)
+    : now.getMonth() + 1;
+  const selectedYear = params.year
+    ? parseInt(params.year, 10)
+    : now.getFullYear();
 
-  const startOfMonth = new Date(selectedYear, selectedMonth - 1, 1)
-  const endOfMonth = new Date(selectedYear, selectedMonth, 0, 23, 59, 59, 999)
-  const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
+  const startOfMonth = new Date(selectedYear, selectedMonth - 1, 1);
+  const endOfMonth = new Date(selectedYear, selectedMonth, 0, 23, 59, 59, 999);
+  const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
   const [
     propertyCount,
@@ -112,13 +123,18 @@ export default async function DashboardPage({
       orderBy: { endDate: "asc" },
       take: 10,
     }),
-  ])
+  ]);
 
-  const unavailableUnitCount = unitCount - availableUnitCount
-  const inactiveTenantCount = totalTenantCount - activeTenantCount
-  const expectedRevenueAmount = expectedRevenue._sum.rentAmount ? Number(expectedRevenue._sum.rentAmount) : 0
-  const collectedRevenueAmount = collectedRevenue._sum.rentAmount ? Number(collectedRevenue._sum.rentAmount) : 0
-  const occupancyRate = unitCount > 0 ? Math.round((activeLeaseCount / unitCount) * 100) : 0
+  const unavailableUnitCount = unitCount - availableUnitCount;
+  const inactiveTenantCount = totalTenantCount - activeTenantCount;
+  const expectedRevenueAmount = expectedRevenue._sum.rentAmount
+    ? Number(expectedRevenue._sum.rentAmount)
+    : 0;
+  const collectedRevenueAmount = collectedRevenue._sum.rentAmount
+    ? Number(collectedRevenue._sum.rentAmount)
+    : 0;
+  const occupancyRate =
+    unitCount > 0 ? Math.round((activeLeaseCount / unitCount) * 100) : 0;
 
   return (
     <div className="space-y-8">
@@ -147,7 +163,8 @@ export default async function DashboardPage({
           <CardContent>
             <div className="text-2xl font-bold">{unitCount}</div>
             <p className="text-xs text-muted-foreground">
-              {availableUnitCount} available · {unavailableUnitCount} unavailable
+              {availableUnitCount} available · {unavailableUnitCount}{" "}
+              unavailable
             </p>
           </CardContent>
         </Card>
@@ -178,13 +195,20 @@ export default async function DashboardPage({
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-medium">Monthly Revenue</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Monthly Revenue
+            </CardTitle>
             <CardAction>
-              <MonthYearFilter currentMonth={selectedMonth} currentYear={selectedYear} />
+              <MonthYearFilter
+                currentMonth={selectedMonth}
+                currentYear={selectedYear}
+              />
             </CardAction>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(collectedRevenueAmount)}</div>
+            <div className="text-2xl font-bold">
+              {formatCurrency(collectedRevenueAmount)}
+            </div>
             <p className="text-xs text-muted-foreground">
               Expected: {formatCurrency(expectedRevenueAmount)}
             </p>
@@ -205,7 +229,9 @@ export default async function DashboardPage({
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-medium">Occupancy Rate</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Occupancy Rate
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{occupancyRate}%</div>
@@ -233,8 +259,10 @@ export default async function DashboardPage({
             ) : (
               <div className="space-y-3">
                 {expiringSoonLeases.map((lease) => {
-                  const endDate = new Date(lease.endDate)
-                  const daysLeft = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+                  const endDate = new Date(lease.endDate);
+                  const daysLeft = Math.ceil(
+                    (endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+                  );
                   return (
                     <Link
                       key={lease.id}
@@ -242,7 +270,9 @@ export default async function DashboardPage({
                       className="flex items-center justify-between p-2 rounded-md hover:bg-muted transition-colors"
                     >
                       <div>
-                        <p className="text-sm font-medium">{lease.tenant.fullName}</p>
+                        <p className="text-sm font-medium">
+                          {lease.tenant.fullName}
+                        </p>
                         <p className="text-xs text-muted-foreground">
                           {lease.unit.property.name} - {lease.unit.name}
                         </p>
@@ -250,11 +280,14 @@ export default async function DashboardPage({
                       <div className="text-right">
                         <p className="text-sm font-medium">{daysLeft}d left</p>
                         <p className="text-xs text-muted-foreground">
-                          {endDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                          {endDate.toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                          })}
                         </p>
                       </div>
                     </Link>
-                  )
+                  );
                 })}
               </div>
             )}
@@ -276,8 +309,10 @@ export default async function DashboardPage({
             ) : (
               <div className="space-y-3">
                 {earliestToExpire.map((lease) => {
-                  const endDate = new Date(lease.endDate)
-                  const daysLeft = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+                  const endDate = new Date(lease.endDate);
+                  const daysLeft = Math.ceil(
+                    (endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+                  );
                   return (
                     <Link
                       key={lease.id}
@@ -285,7 +320,9 @@ export default async function DashboardPage({
                       className="flex items-center justify-between p-2 rounded-md hover:bg-muted transition-colors"
                     >
                       <div>
-                        <p className="text-sm font-medium">{lease.tenant.fullName}</p>
+                        <p className="text-sm font-medium">
+                          {lease.tenant.fullName}
+                        </p>
                         <p className="text-xs text-muted-foreground">
                           {lease.unit.property.name} - {lease.unit.name}
                         </p>
@@ -293,11 +330,14 @@ export default async function DashboardPage({
                       <div className="text-right">
                         <p className="text-sm font-medium">{daysLeft}d left</p>
                         <p className="text-xs text-muted-foreground">
-                          {endDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                          {endDate.toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                          })}
                         </p>
                       </div>
                     </Link>
-                  )
+                  );
                 })}
               </div>
             )}
@@ -305,5 +345,5 @@ export default async function DashboardPage({
         </Card>
       </div>
     </div>
-  )
+  );
 }

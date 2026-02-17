@@ -3,7 +3,23 @@
  * Specialized utilities for lease management, date calculations, and formatting
  */
 
-import { format, formatDistance, formatRelative, addDays, addMonths, addYears, differenceInDays, differenceInMonths, differenceInYears, isAfter, isBefore, isWithinInterval, startOfDay, endOfDay, parseISO } from "date-fns"
+import {
+  format,
+  formatDistance,
+  formatRelative,
+  addDays,
+  addMonths,
+  addYears,
+  differenceInDays,
+  differenceInMonths,
+  differenceInYears,
+  isAfter,
+  isBefore,
+  isWithinInterval,
+  startOfDay,
+  endOfDay,
+  parseISO,
+} from "date-fns";
 
 // ========================================
 // DATE FORMATTING
@@ -18,11 +34,11 @@ import { format, formatDistance, formatRelative, addDays, addMonths, addYears, d
  */
 export function formatDate(
   date: Date | string | null | undefined,
-  formatStr: string = "MMM d, yyyy"
+  formatStr: string = "MMM d, yyyy",
 ): string {
-  if (!date) return "-"
-  const dateObj = typeof date === "string" ? parseISO(date) : date
-  return format(dateObj, formatStr)
+  if (!date) return "-";
+  const dateObj = typeof date === "string" ? parseISO(date) : date;
+  return format(dateObj, formatStr);
 }
 
 /**
@@ -32,7 +48,7 @@ export function formatDate(
  * formatDateTime(new Date()) // "Jan 15, 2024 3:30 PM"
  */
 export function formatDateTime(date: Date | string | null | undefined): string {
-  return formatDate(date, "MMM d, yyyy h:mm a")
+  return formatDate(date, "MMM d, yyyy h:mm a");
 }
 
 /**
@@ -44,10 +60,10 @@ export function formatDateTime(date: Date | string | null | undefined): string {
  */
 export function formatDateRange(
   startDate: Date | string | null | undefined,
-  endDate: Date | string | null | undefined
+  endDate: Date | string | null | undefined,
 ): string {
-  if (!startDate || !endDate) return "-"
-  return `${formatDate(startDate)} - ${formatDate(endDate)}`
+  if (!startDate || !endDate) return "-";
+  return `${formatDate(startDate)} - ${formatDate(endDate)}`;
 }
 
 /**
@@ -56,10 +72,12 @@ export function formatDateRange(
  * @example
  * formatRelativeDate(pastDate) // "2 days ago"
  */
-export function formatRelativeDate(date: Date | string | null | undefined): string {
-  if (!date) return "-"
-  const dateObj = typeof date === "string" ? parseISO(date) : date
-  return formatDistance(dateObj, new Date(), { addSuffix: true })
+export function formatRelativeDate(
+  date: Date | string | null | undefined,
+): string {
+  if (!date) return "-";
+  const dateObj = typeof date === "string" ? parseISO(date) : date;
+  return formatDistance(dateObj, new Date(), { addSuffix: true });
 }
 
 /**
@@ -68,10 +86,12 @@ export function formatRelativeDate(date: Date | string | null | undefined): stri
  * @example
  * formatRelativeDateWithContext(date) // "yesterday at 3:30 PM"
  */
-export function formatRelativeDateWithContext(date: Date | string | null | undefined): string {
-  if (!date) return "-"
-  const dateObj = typeof date === "string" ? parseISO(date) : date
-  return formatRelative(dateObj, new Date())
+export function formatRelativeDateWithContext(
+  date: Date | string | null | undefined,
+): string {
+  if (!date) return "-";
+  const dateObj = typeof date === "string" ? parseISO(date) : date;
+  return formatRelative(dateObj, new Date());
 }
 
 // ========================================
@@ -84,8 +104,8 @@ export function formatRelativeDateWithContext(date: Date | string | null | undef
  * @param days - Number of days to add
  */
 export function addDaysToDate(date: Date | string, days: number): Date {
-  const dateObj = typeof date === "string" ? parseISO(date) : date
-  return addDays(dateObj, days)
+  const dateObj = typeof date === "string" ? parseISO(date) : date;
+  return addDays(dateObj, days);
 }
 
 /**
@@ -94,8 +114,8 @@ export function addDaysToDate(date: Date | string, days: number): Date {
  * @param months - Number of months to add
  */
 export function addMonthsToDate(date: Date | string, months: number): Date {
-  const dateObj = typeof date === "string" ? parseISO(date) : date
-  return addMonths(dateObj, months)
+  const dateObj = typeof date === "string" ? parseISO(date) : date;
+  return addMonths(dateObj, months);
 }
 
 /**
@@ -104,8 +124,8 @@ export function addMonthsToDate(date: Date | string, months: number): Date {
  * @param years - Number of years to add
  */
 export function addYearsToDate(date: Date | string, years: number): Date {
-  const dateObj = typeof date === "string" ? parseISO(date) : date
-  return addYears(dateObj, years)
+  const dateObj = typeof date === "string" ? parseISO(date) : date;
+  return addYears(dateObj, years);
 }
 
 /**
@@ -116,11 +136,11 @@ export function addYearsToDate(date: Date | string, years: number): Date {
  */
 export function daysBetween(
   startDate: Date | string,
-  endDate: Date | string
+  endDate: Date | string,
 ): number {
-  const start = typeof startDate === "string" ? parseISO(startDate) : startDate
-  const end = typeof endDate === "string" ? parseISO(endDate) : endDate
-  return differenceInDays(end, start)
+  const start = typeof startDate === "string" ? parseISO(startDate) : startDate;
+  const end = typeof endDate === "string" ? parseISO(endDate) : endDate;
+  return differenceInDays(end, start);
 }
 
 /**
@@ -131,11 +151,11 @@ export function daysBetween(
  */
 export function monthsBetween(
   startDate: Date | string,
-  endDate: Date | string
+  endDate: Date | string,
 ): number {
-  const start = typeof startDate === "string" ? parseISO(startDate) : startDate
-  const end = typeof endDate === "string" ? parseISO(endDate) : endDate
-  return differenceInMonths(end, start)
+  const start = typeof startDate === "string" ? parseISO(startDate) : startDate;
+  const end = typeof endDate === "string" ? parseISO(endDate) : endDate;
+  return differenceInMonths(end, start);
 }
 
 /**
@@ -146,11 +166,11 @@ export function monthsBetween(
  */
 export function yearsBetween(
   startDate: Date | string,
-  endDate: Date | string
+  endDate: Date | string,
 ): number {
-  const start = typeof startDate === "string" ? parseISO(startDate) : startDate
-  const end = typeof endDate === "string" ? parseISO(endDate) : endDate
-  return differenceInYears(end, start)
+  const start = typeof startDate === "string" ? parseISO(startDate) : startDate;
+  const end = typeof endDate === "string" ? parseISO(endDate) : endDate;
+  return differenceInYears(end, start);
 }
 
 // ========================================
@@ -162,8 +182,8 @@ export function yearsBetween(
  * @param date - Date to check
  */
 export function isPast(date: Date | string): boolean {
-  const dateObj = typeof date === "string" ? parseISO(date) : date
-  return isBefore(dateObj, new Date())
+  const dateObj = typeof date === "string" ? parseISO(date) : date;
+  return isBefore(dateObj, new Date());
 }
 
 /**
@@ -171,8 +191,8 @@ export function isPast(date: Date | string): boolean {
  * @param date - Date to check
  */
 export function isFuture(date: Date | string): boolean {
-  const dateObj = typeof date === "string" ? parseISO(date) : date
-  return isAfter(dateObj, new Date())
+  const dateObj = typeof date === "string" ? parseISO(date) : date;
+  return isAfter(dateObj, new Date());
 }
 
 /**
@@ -180,10 +200,10 @@ export function isFuture(date: Date | string): boolean {
  * @param date - Date to check
  */
 export function isToday(date: Date | string): boolean {
-  const dateObj = typeof date === "string" ? parseISO(date) : date
-  const today = startOfDay(new Date())
-  const checkDate = startOfDay(dateObj)
-  return checkDate.getTime() === today.getTime()
+  const dateObj = typeof date === "string" ? parseISO(date) : date;
+  const today = startOfDay(new Date());
+  const checkDate = startOfDay(dateObj);
+  return checkDate.getTime() === today.getTime();
 }
 
 /**
@@ -195,13 +215,13 @@ export function isToday(date: Date | string): boolean {
 export function isDateInRange(
   date: Date | string,
   start: Date | string,
-  end: Date | string
+  end: Date | string,
 ): boolean {
-  const dateObj = typeof date === "string" ? parseISO(date) : date
-  const startObj = typeof start === "string" ? parseISO(start) : start
-  const endObj = typeof end === "string" ? parseISO(end) : end
-  
-  return isWithinInterval(dateObj, { start: startObj, end: endObj })
+  const dateObj = typeof date === "string" ? parseISO(date) : date;
+  const startObj = typeof start === "string" ? parseISO(start) : start;
+  const endObj = typeof end === "string" ? parseISO(end) : end;
+
+  return isWithinInterval(dateObj, { start: startObj, end: endObj });
 }
 
 // ========================================
@@ -219,19 +239,19 @@ export function isDateInRange(
 export function calculateLeaseEndDate(
   startDate: Date | string,
   paymentCycle: "DAILY" | "MONTHLY" | "ANNUAL",
-  periods: number = 1
+  periods: number = 1,
 ): Date {
-  const start = typeof startDate === "string" ? parseISO(startDate) : startDate
-  
+  const start = typeof startDate === "string" ? parseISO(startDate) : startDate;
+
   switch (paymentCycle) {
     case "DAILY":
-      return addDays(start, periods)
+      return addDays(start, periods);
     case "MONTHLY":
-      return addMonths(start, periods)
+      return addMonths(start, periods);
     case "ANNUAL":
-      return addYears(start, periods)
+      return addYears(start, periods);
     default:
-      return start
+      return start;
   }
 }
 
@@ -247,17 +267,19 @@ export function calculateLeaseEndDate(
 export function isWithinGracePeriod(
   targetDate: Date | string,
   gracePeriodDays: number,
-  referenceDate: Date | string = new Date()
+  referenceDate: Date | string = new Date(),
 ): boolean {
-  const target = typeof targetDate === "string" ? parseISO(targetDate) : targetDate
-  const reference = typeof referenceDate === "string" ? parseISO(referenceDate) : referenceDate
-  
-  const graceEndDate = addDays(target, gracePeriodDays)
-  
+  const target =
+    typeof targetDate === "string" ? parseISO(targetDate) : targetDate;
+  const reference =
+    typeof referenceDate === "string" ? parseISO(referenceDate) : referenceDate;
+
+  const graceEndDate = addDays(target, gracePeriodDays);
+
   return isWithinInterval(reference, {
     start: target,
     end: graceEndDate,
-  })
+  });
 }
 
 /**
@@ -268,9 +290,9 @@ export function isWithinGracePeriod(
  */
 export function daysRemaining(
   targetDate: Date | string,
-  fromDate: Date | string = new Date()
+  fromDate: Date | string = new Date(),
 ): number {
-  return daysBetween(fromDate, targetDate)
+  return daysBetween(fromDate, targetDate);
 }
 
 /**
@@ -281,10 +303,10 @@ export function daysRemaining(
  */
 export function isLeaseExpiringSoon(
   endDate: Date | string,
-  warningDays: number = 30
+  warningDays: number = 30,
 ): boolean {
-  const remaining = daysRemaining(endDate)
-  return remaining > 0 && remaining <= warningDays
+  const remaining = daysRemaining(endDate);
+  return remaining > 0 && remaining <= warningDays;
 }
 
 /**
@@ -295,11 +317,11 @@ export function isLeaseExpiringSoon(
  */
 export function isLeaseExpired(
   endDate: Date | string,
-  gracePeriodDays: number = 0
+  gracePeriodDays: number = 0,
 ): boolean {
-  const end = typeof endDate === "string" ? parseISO(endDate) : endDate
-  const graceEnd = addDays(end, gracePeriodDays)
-  return isPast(graceEnd)
+  const end = typeof endDate === "string" ? parseISO(endDate) : endDate;
+  const graceEnd = addDays(end, gracePeriodDays);
+  return isPast(graceEnd);
 }
 
 /**
@@ -312,25 +334,25 @@ export function isLeaseExpired(
 export function getLeaseStatus(
   startDate: Date | string,
   endDate: Date | string,
-  gracePeriodDays: number = 0
+  gracePeriodDays: number = 0,
 ): "upcoming" | "active" | "grace" | "expired" {
-  const now = new Date()
-  const start = typeof startDate === "string" ? parseISO(startDate) : startDate
-  const end = typeof endDate === "string" ? parseISO(endDate) : endDate
-  
+  const now = new Date();
+  const start = typeof startDate === "string" ? parseISO(startDate) : startDate;
+  const end = typeof endDate === "string" ? parseISO(endDate) : endDate;
+
   if (isBefore(now, start)) {
-    return "upcoming"
+    return "upcoming";
   }
-  
+
   if (isWithinInterval(now, { start, end })) {
-    return "active"
+    return "active";
   }
-  
+
   if (isWithinGracePeriod(end, gracePeriodDays, now)) {
-    return "grace"
+    return "grace";
   }
-  
-  return "expired"
+
+  return "expired";
 }
 
 /**
@@ -341,10 +363,10 @@ export function getLeaseStatus(
  */
 export function calculateAutoRenewalNoticeDate(
   endDate: Date | string,
-  noticeDays: number
+  noticeDays: number,
 ): Date {
-  const end = typeof endDate === "string" ? parseISO(endDate) : endDate
-  return addDays(end, -noticeDays)
+  const end = typeof endDate === "string" ? parseISO(endDate) : endDate;
+  return addDays(end, -noticeDays);
 }
 
 /**
@@ -355,10 +377,10 @@ export function calculateAutoRenewalNoticeDate(
  */
 export function shouldSendAutoRenewalNotice(
   endDate: Date | string,
-  noticeDays: number
+  noticeDays: number,
 ): boolean {
-  const noticeDate = calculateAutoRenewalNoticeDate(endDate, noticeDays)
-  return isToday(noticeDate) || isPast(noticeDate)
+  const noticeDate = calculateAutoRenewalNoticeDate(endDate, noticeDays);
+  return isToday(noticeDate) || isPast(noticeDate);
 }
 
 // ========================================
@@ -370,8 +392,8 @@ export function shouldSendAutoRenewalNotice(
  * @param date - Date
  */
 export function getStartOfDay(date: Date | string): Date {
-  const dateObj = typeof date === "string" ? parseISO(date) : date
-  return startOfDay(dateObj)
+  const dateObj = typeof date === "string" ? parseISO(date) : date;
+  return startOfDay(dateObj);
 }
 
 /**
@@ -379,8 +401,8 @@ export function getStartOfDay(date: Date | string): Date {
  * @param date - Date
  */
 export function getEndOfDay(date: Date | string): Date {
-  const dateObj = typeof date === "string" ? parseISO(date) : date
-  return endOfDay(dateObj)
+  const dateObj = typeof date === "string" ? parseISO(date) : date;
+  return endOfDay(dateObj);
 }
 
 /**
@@ -388,7 +410,7 @@ export function getEndOfDay(date: Date | string): Date {
  * @param dateString - ISO date string
  */
 export function parseDate(dateString: string): Date {
-  return parseISO(dateString)
+  return parseISO(dateString);
 }
 
 /**
@@ -396,5 +418,5 @@ export function parseDate(dateString: string): Date {
  * @param date - Date object
  */
 export function toISOString(date: Date): string {
-  return date.toISOString()
+  return date.toISOString();
 }

@@ -1,16 +1,16 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { hasAccess, type UserRole } from "@/lib/access-utils"
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { hasAccess, type UserRole } from "@/lib/access-utils";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -18,7 +18,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
+} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -26,7 +26,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,12 +36,12 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
-import { Skeleton } from "@/components/ui/skeleton"
-import { HugeiconsIcon } from "@hugeicons/react"
+} from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Skeleton } from "@/components/ui/skeleton";
+import { HugeiconsIcon } from "@hugeicons/react";
 import {
   PlusSignIcon,
   Delete02Icon,
@@ -56,7 +56,7 @@ import {
   ShieldEnergyIcon,
   Notification01Icon,
   MoreHorizontalIcon,
-} from "@hugeicons/core-free-icons"
+} from "@hugeicons/core-free-icons";
 
 const ACTIVITY_ICON_MAP: Record<string, typeof File01Icon> = {
   LEASE_CREATED: File01Icon,
@@ -76,7 +76,7 @@ const ACTIVITY_ICON_MAP: Record<string, typeof File01Icon> = {
   NOTIFICATION_SENT: Notification01Icon,
   USER_LOGIN: UserIcon,
   OTHER: MoreHorizontalIcon,
-}
+};
 
 const ACTIVITY_COLOR_MAP: Record<string, string> = {
   LEASE_CREATED: "text-blue-500",
@@ -96,7 +96,7 @@ const ACTIVITY_COLOR_MAP: Record<string, string> = {
   NOTIFICATION_SENT: "text-blue-500",
   USER_LOGIN: "text-violet-500",
   OTHER: "text-muted-foreground",
-}
+};
 
 const ACTIVITY_BG_MAP: Record<string, string> = {
   LEASE_CREATED: "bg-blue-500/10",
@@ -116,56 +116,56 @@ const ACTIVITY_BG_MAP: Record<string, string> = {
   NOTIFICATION_SENT: "bg-blue-500/10",
   USER_LOGIN: "bg-violet-500/10",
   OTHER: "bg-muted",
-}
+};
 
 type Property = {
-  id: string
-  name: string
-  createdAt: string
-  updatedAt: string
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
   _count: {
-    units: number
-  }
+    units: number;
+  };
   activities: Array<{
-    id: string
-    type: string
-    description: string
-    createdAt: string
+    id: string;
+    type: string;
+    description: string;
+    createdAt: string;
     user: {
-      name: string
-      email: string
-    } | null
-  }>
-}
+      name: string;
+      email: string;
+    } | null;
+  }>;
+};
 
 type Unit = {
-  id: string
-  name: string
-  dailyRate: string
-  monthlyRate: string
-  annualRate: string | null
-  isUnavailable: boolean
-  createdAt: string
-  updatedAt: string
-}
+  id: string;
+  name: string;
+  dailyRate: string;
+  monthlyRate: string;
+  annualRate: string | null;
+  isUnavailable: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
 
 export default function PropertyDetailClient({
   params,
   roles,
 }: {
-  params: { id: string }
-  roles: UserRole[]
+  params: { id: string };
+  roles: UserRole[];
 }) {
-  const [property, setProperty] = useState<Property | null>(null)
-  const [units, setUnits] = useState<Unit[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [editingUnit, setEditingUnit] = useState<Unit | null>(null)
-  const [deletingUnit, setDeletingUnit] = useState<Unit | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [isSaving, setIsSaving] = useState(false)
-  const [propertyId, setPropertyId] = useState<string>("")
+  const [property, setProperty] = useState<Property | null>(null);
+  const [units, setUnits] = useState<Unit[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [editingUnit, setEditingUnit] = useState<Unit | null>(null);
+  const [deletingUnit, setDeletingUnit] = useState<Unit | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [propertyId, setPropertyId] = useState<string>("");
 
   const [formData, setFormData] = useState({
     name: "",
@@ -173,131 +173,139 @@ export default function PropertyDetailClient({
     monthlyRate: "",
     annualRate: "",
     isUnavailable: false,
-  })
+  });
 
   useEffect(() => {
     Promise.resolve(params).then((resolvedParams) => {
-      setPropertyId(resolvedParams.id)
-    })
-  }, [params])
+      setPropertyId(resolvedParams.id);
+    });
+  }, [params]);
 
   useEffect(() => {
     if (propertyId) {
-      fetchProperty()
-      fetchUnits()
+      fetchProperty();
+      fetchUnits();
     }
-  }, [propertyId])
+  }, [propertyId]);
 
   const fetchProperty = async () => {
     try {
-      const response = await fetch(`/api/properties/${propertyId}`)
+      const response = await fetch(`/api/properties/${propertyId}`);
 
       if (!response.ok) {
-        throw new Error("Failed to fetch property")
+        throw new Error("Failed to fetch property");
       }
 
-      const data = await response.json()
-      setProperty(data)
+      const data = await response.json();
+      setProperty(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load property")
+      setError(err instanceof Error ? err.message : "Failed to load property");
     }
-  }
+  };
 
   const fetchUnits = async () => {
     try {
-      setIsLoading(true)
-      const response = await fetch(`/api/properties/${propertyId}/units`)
+      setIsLoading(true);
+      const response = await fetch(`/api/properties/${propertyId}/units`);
 
       if (!response.ok) {
-        throw new Error("Failed to fetch units")
+        throw new Error("Failed to fetch units");
       }
 
-      const data = await response.json()
-      setUnits(data)
+      const data = await response.json();
+      setUnits(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load units")
+      setError(err instanceof Error ? err.message : "Failed to load units");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleOpenDialog = (unit?: Unit) => {
     if (unit) {
-      setEditingUnit(unit)
+      setEditingUnit(unit);
       setFormData({
         name: unit.name,
         dailyRate: unit.dailyRate?.toString() || "",
         monthlyRate: unit.monthlyRate?.toString() || "",
         annualRate: unit.annualRate?.toString() || "",
         isUnavailable: unit.isUnavailable,
-      })
+      });
     } else {
-      setEditingUnit(null)
+      setEditingUnit(null);
       setFormData({
         name: "",
         dailyRate: "",
         monthlyRate: "",
         annualRate: "",
         isUnavailable: false,
-      })
+      });
     }
-    setError(null)
-    setIsDialogOpen(true)
-  }
+    setError(null);
+    setIsDialogOpen(true);
+  };
 
   const handleCloseDialog = () => {
-    setIsDialogOpen(false)
-    setEditingUnit(null)
+    setIsDialogOpen(false);
+    setEditingUnit(null);
     setFormData({
       name: "",
       dailyRate: "",
       monthlyRate: "",
       annualRate: "",
       isUnavailable: false,
-    })
-    setError(null)
-  }
+    });
+    setError(null);
+  };
 
   const handleSaveUnit = async () => {
     if (!formData.name.trim()) {
-      setError("Unit name is required")
-      return
+      setError("Unit name is required");
+      return;
     }
 
-    const dailyRate = formData.dailyRate ? parseFloat(formData.dailyRate) : null
-    const monthlyRate = formData.monthlyRate ? parseFloat(formData.monthlyRate) : null
-    const annualRate = formData.annualRate ? parseFloat(formData.annualRate) : null
+    const dailyRate = formData.dailyRate
+      ? parseFloat(formData.dailyRate)
+      : null;
+    const monthlyRate = formData.monthlyRate
+      ? parseFloat(formData.monthlyRate)
+      : null;
+    const annualRate = formData.annualRate
+      ? parseFloat(formData.annualRate)
+      : null;
 
     // At least one rate must be provided
     if (dailyRate === null && monthlyRate === null && annualRate === null) {
-      setError("At least one rate (daily, monthly, or annual) must be provided")
-      return
+      setError(
+        "At least one rate (daily, monthly, or annual) must be provided",
+      );
+      return;
     }
 
     if (dailyRate !== null && (isNaN(dailyRate) || dailyRate < 0)) {
-      setError("Daily rate must be a positive number")
-      return
+      setError("Daily rate must be a positive number");
+      return;
     }
 
     if (monthlyRate !== null && (isNaN(monthlyRate) || monthlyRate < 0)) {
-      setError("Monthly rate must be a positive number")
-      return
+      setError("Monthly rate must be a positive number");
+      return;
     }
 
     if (annualRate !== null && (isNaN(annualRate) || annualRate < 0)) {
-      setError("Annual rate must be a positive number")
-      return
+      setError("Annual rate must be a positive number");
+      return;
     }
 
-    setIsSaving(true)
-    setError(null)
+    setIsSaving(true);
+    setError(null);
 
     try {
       const url = editingUnit
         ? `/api/units/${editingUnit.id}`
-        : `/api/properties/${propertyId}/units`
+        : `/api/properties/${propertyId}/units`;
 
-      const method = editingUnit ? "PATCH" : "POST"
+      const method = editingUnit ? "PATCH" : "POST";
 
       const response = await fetch(url, {
         method,
@@ -311,86 +319,86 @@ export default function PropertyDetailClient({
           annualRate,
           isUnavailable: formData.isUnavailable,
         }),
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to save unit")
+        throw new Error(data.error || "Failed to save unit");
       }
 
-      await fetchUnits()
-      await fetchProperty()
-      handleCloseDialog()
+      await fetchUnits();
+      await fetchProperty();
+      handleCloseDialog();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save unit")
+      setError(err instanceof Error ? err.message : "Failed to save unit");
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }
+  };
 
   const handleOpenDeleteDialog = (unit: Unit) => {
-    setDeletingUnit(unit)
-    setIsDeleteDialogOpen(true)
-  }
+    setDeletingUnit(unit);
+    setIsDeleteDialogOpen(true);
+  };
 
   const handleCloseDeleteDialog = () => {
-    setIsDeleteDialogOpen(false)
-    setDeletingUnit(null)
-  }
+    setIsDeleteDialogOpen(false);
+    setDeletingUnit(null);
+  };
 
   const handleDeleteUnit = async () => {
-    if (!deletingUnit) return
+    if (!deletingUnit) return;
 
-    setIsSaving(true)
+    setIsSaving(true);
 
     try {
       const response = await fetch(`/api/units/${deletingUnit.id}`, {
         method: "DELETE",
-      })
+      });
 
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || "Failed to delete unit")
+        const data = await response.json();
+        throw new Error(data.error || "Failed to delete unit");
       }
 
-      await fetchUnits()
-      await fetchProperty()
-      handleCloseDeleteDialog()
+      await fetchUnits();
+      await fetchProperty();
+      handleCloseDeleteDialog();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete unit")
+      setError(err instanceof Error ? err.message : "Failed to delete unit");
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }
+  };
 
   const formatRelativeTime = (dateString: string) => {
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffMins = Math.floor(diffMs / 60000)
-    const diffHours = Math.floor(diffMs / 3600000)
-    const diffDays = Math.floor(diffMs / 86400000)
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
 
-    if (diffMins < 1) return "Just now"
-    if (diffMins < 60) return `${diffMins}m ago`
-    if (diffHours < 24) return `${diffHours}h ago`
-    if (diffDays < 7) return `${diffDays}d ago`
-    const day = String(date.getDate()).padStart(2, "0")
-    const month = String(date.getMonth() + 1).padStart(2, "0")
-    const year = date.getFullYear()
-    return `${day}/${month}/${year}`
-  }
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
 
   const formatCurrency = (value: string | number | null) => {
-    if (value === null || value === "") return "—"
-    const num = typeof value === "string" ? parseFloat(value) : value
-    if (isNaN(num)) return "—"
+    if (value === null || value === "") return "—";
+    const num = typeof value === "string" ? parseFloat(value) : value;
+    if (isNaN(num)) return "—";
     return new Intl.NumberFormat("en-US", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    }).format(num)
-  }
+    }).format(num);
+  };
 
   if (!property && !isLoading) {
     return (
@@ -402,13 +410,17 @@ export default function PropertyDetailClient({
           </p>
           <Button asChild>
             <Link href="/properties">
-              <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} data-icon="inline-start" />
+              <HugeiconsIcon
+                icon={ArrowLeft01Icon}
+                strokeWidth={2}
+                data-icon="inline-start"
+              />
               Back to Properties
             </Link>
           </Button>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -420,14 +432,20 @@ export default function PropertyDetailClient({
           </Link>
         </Button>
         <div className="flex-1">
-          <h1 className="text-3xl font-bold">{property?.name || "Loading..."}</h1>
+          <h1 className="text-3xl font-bold">
+            {property?.name || "Loading..."}
+          </h1>
           <p className="text-muted-foreground mt-1">
             Manage units and rental rates
           </p>
         </div>
         {hasAccess(roles, "properties", "create") && (
           <Button onClick={() => handleOpenDialog()}>
-            <HugeiconsIcon icon={PlusSignIcon} strokeWidth={2} data-icon="inline-start" />
+            <HugeiconsIcon
+              icon={PlusSignIcon}
+              strokeWidth={2}
+              data-icon="inline-start"
+            />
             Add Unit
           </Button>
         )}
@@ -436,9 +454,7 @@ export default function PropertyDetailClient({
       <Card>
         <CardHeader>
           <CardTitle>Units</CardTitle>
-          <CardDescription>
-            All rental units in this property
-          </CardDescription>
+          <CardDescription>All rental units in this property</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -453,8 +469,12 @@ export default function PropertyDetailClient({
               <TableBody>
                 {Array.from({ length: 3 }).map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell><Skeleton className="h-4 w-[150px]" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-[60px]" /></TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-[150px]" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-5 w-[60px]" />
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Skeleton className="h-8 w-8" />
@@ -478,7 +498,11 @@ export default function PropertyDetailClient({
               </p>
               {hasAccess(roles, "properties", "create") && (
                 <Button onClick={() => handleOpenDialog()}>
-                  <HugeiconsIcon icon={PlusSignIcon} strokeWidth={2} data-icon="inline-start" />
+                  <HugeiconsIcon
+                    icon={PlusSignIcon}
+                    strokeWidth={2}
+                    data-icon="inline-start"
+                  />
                   Add Unit
                 </Button>
               )}
@@ -496,11 +520,16 @@ export default function PropertyDetailClient({
               </TableHeader>
               <TableBody>
                 {units.map((unit) => (
-                  <TableRow key={unit.id} className={unit.isUnavailable ? "opacity-50" : ""}>
+                  <TableRow
+                    key={unit.id}
+                    className={unit.isUnavailable ? "opacity-50" : ""}
+                  >
                     <TableCell className="font-medium">
                       {unit.name}
                       {unit.isUnavailable && (
-                        <span className="ml-2 text-xs text-muted-foreground">(Unavailable)</span>
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          (Unavailable)
+                        </span>
                       )}
                     </TableCell>
                     <TableCell>{formatCurrency(unit.dailyRate)}</TableCell>
@@ -516,7 +545,11 @@ export default function PropertyDetailClient({
                             size="icon"
                             onClick={() => handleOpenDialog(unit)}
                           >
-                            <HugeiconsIcon icon={PencilEdit02Icon} strokeWidth={2} className="h-4 w-4" />
+                            <HugeiconsIcon
+                              icon={PencilEdit02Icon}
+                              strokeWidth={2}
+                              className="h-4 w-4"
+                            />
                             <span className="sr-only">Edit</span>
                           </Button>
                         )}
@@ -526,7 +559,11 @@ export default function PropertyDetailClient({
                             size="icon"
                             onClick={() => handleOpenDeleteDialog(unit)}
                           >
-                            <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} className="h-4 w-4" />
+                            <HugeiconsIcon
+                              icon={Delete02Icon}
+                              strokeWidth={2}
+                              className="h-4 w-4"
+                            />
                             <span className="sr-only">Delete</span>
                           </Button>
                         )}
@@ -544,9 +581,7 @@ export default function PropertyDetailClient({
       <Card>
         <CardHeader>
           <CardTitle>Activity Log</CardTitle>
-          <CardDescription>
-            Recent activity for this property
-          </CardDescription>
+          <CardDescription>Recent activity for this property</CardDescription>
         </CardHeader>
         <CardContent>
           {!property?.activities || property.activities.length === 0 ? (
@@ -558,13 +593,21 @@ export default function PropertyDetailClient({
               <div className="absolute left-[17px] top-0 bottom-0 w-px bg-border" />
               <div className="space-y-0">
                 {property.activities.map((activity) => {
-                  const IconComponent = ACTIVITY_ICON_MAP[activity.type] || MoreHorizontalIcon
-                  const colorClass = ACTIVITY_COLOR_MAP[activity.type] || "text-muted-foreground"
-                  const bgClass = ACTIVITY_BG_MAP[activity.type] || "bg-muted"
+                  const IconComponent =
+                    ACTIVITY_ICON_MAP[activity.type] || MoreHorizontalIcon;
+                  const colorClass =
+                    ACTIVITY_COLOR_MAP[activity.type] ||
+                    "text-muted-foreground";
+                  const bgClass = ACTIVITY_BG_MAP[activity.type] || "bg-muted";
 
                   return (
-                    <div key={activity.id} className="relative flex gap-3 pb-6 last:pb-0">
-                      <div className={`relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${bgClass}`}>
+                    <div
+                      key={activity.id}
+                      className="relative flex gap-3 pb-6 last:pb-0"
+                    >
+                      <div
+                        className={`relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${bgClass}`}
+                      >
                         <HugeiconsIcon
                           icon={IconComponent}
                           strokeWidth={2}
@@ -581,13 +624,16 @@ export default function PropertyDetailClient({
                           </p>
                           {activity.user && (
                             <p className="text-xs text-muted-foreground">
-                              by <span className="font-medium">{activity.user.name}</span>
+                              by{" "}
+                              <span className="font-medium">
+                                {activity.user.name}
+                              </span>
                             </p>
                           )}
                         </div>
                       </div>
                     </div>
-                  )
+                  );
                 })}
               </div>
             </div>
@@ -672,7 +718,10 @@ export default function PropertyDetailClient({
               />
             </div>
             <div className="flex items-center justify-between space-x-2 pt-2">
-              <Label htmlFor="is-unavailable" className="flex flex-col space-y-1">
+              <Label
+                htmlFor="is-unavailable"
+                className="flex flex-col space-y-1"
+              >
                 <span>Mark as Unavailable</span>
                 <span className="font-normal text-sm text-muted-foreground">
                   This unit will not be available for new leases
@@ -700,20 +749,25 @@ export default function PropertyDetailClient({
               {isSaving
                 ? "Saving..."
                 : editingUnit
-                ? "Update Unit"
-                : "Create Unit"}
+                  ? "Update Unit"
+                  : "Create Unit"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              {"This will permanently delete the unit '"}{deletingUnit?.name}{"' and all"}
+              {"This will permanently delete the unit '"}
+              {deletingUnit?.name}
+              {"' and all"}
               associated lease agreements. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -730,5 +784,5 @@ export default function PropertyDetailClient({
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  )
+  );
 }

@@ -1,9 +1,9 @@
-import crypto from 'crypto'
+import crypto from "crypto";
 
-const ALGORITHM = 'aes-256-gcm'
-const IV_LENGTH = 16
-const TAG_LENGTH = 16
-const KEY_LENGTH = 32
+const ALGORITHM = "aes-256-gcm";
+const IV_LENGTH = 16;
+const TAG_LENGTH = 16;
+const KEY_LENGTH = 32;
 
 /**
  * Encryption utility for sensitive data (API keys, tokens, etc.)
@@ -14,22 +14,22 @@ const KEY_LENGTH = 32
  * Get and validate the encryption key from environment
  */
 function getEncryptionKey(): Buffer {
-  const secret = process.env.ENCRYPTION_SECRET
+  const secret = process.env.ENCRYPTION_SECRET;
 
   if (!secret) {
     throw new Error(
-      'ENCRYPTION_SECRET environment variable is required for API key encryption'
-    )
+      "ENCRYPTION_SECRET environment variable is required for API key encryption",
+    );
   }
 
   if (secret.length < KEY_LENGTH) {
     throw new Error(
-      `ENCRYPTION_SECRET must be at least ${KEY_LENGTH} characters long`
-    )
+      `ENCRYPTION_SECRET must be at least ${KEY_LENGTH} characters long`,
+    );
   }
 
   // Use first 32 bytes of secret as encryption key
-  return Buffer.from(secret.slice(0, KEY_LENGTH), 'utf-8')
+  return Buffer.from(secret.slice(0, KEY_LENGTH), "utf-8");
 }
 
 /**
@@ -38,29 +38,29 @@ function getEncryptionKey(): Buffer {
  * @returns Object containing encrypted value, IV, and authentication tag
  */
 export function encrypt(text: string): {
-  encrypted: string
-  iv: string
-  tag: string
+  encrypted: string;
+  iv: string;
+  tag: string;
 } {
   try {
-    const key = getEncryptionKey()
-    const iv = crypto.randomBytes(IV_LENGTH)
-    const cipher = crypto.createCipheriv(ALGORITHM, key, iv)
+    const key = getEncryptionKey();
+    const iv = crypto.randomBytes(IV_LENGTH);
+    const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
 
-    let encrypted = cipher.update(text, 'utf8', 'hex')
-    encrypted += cipher.final('hex')
+    let encrypted = cipher.update(text, "utf8", "hex");
+    encrypted += cipher.final("hex");
 
-    const tag = cipher.getAuthTag()
+    const tag = cipher.getAuthTag();
 
     return {
       encrypted,
-      iv: iv.toString('hex'),
-      tag: tag.toString('hex'),
-    }
+      iv: iv.toString("hex"),
+      tag: tag.toString("hex"),
+    };
   } catch (error) {
     throw new Error(
-      `Encryption failed: ${error instanceof Error ? error.message : 'Unknown error'}`
-    )
+      `Encryption failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+    );
   }
 }
 
@@ -73,23 +73,23 @@ export function encrypt(text: string): {
  */
 export function decrypt(encrypted: string, iv: string, tag: string): string {
   try {
-    const key = getEncryptionKey()
+    const key = getEncryptionKey();
     const decipher = crypto.createDecipheriv(
       ALGORITHM,
       key,
-      Buffer.from(iv, 'hex')
-    )
+      Buffer.from(iv, "hex"),
+    );
 
-    decipher.setAuthTag(Buffer.from(tag, 'hex'))
+    decipher.setAuthTag(Buffer.from(tag, "hex"));
 
-    let decrypted = decipher.update(encrypted, 'hex', 'utf8')
-    decrypted += decipher.final('utf8')
+    let decrypted = decipher.update(encrypted, "hex", "utf8");
+    decrypted += decipher.final("utf8");
 
-    return decrypted
+    return decrypted;
   } catch (error) {
     throw new Error(
-      `Decryption failed: ${error instanceof Error ? error.message : 'Unknown error'}`
-    )
+      `Decryption failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+    );
   }
 }
 
@@ -100,14 +100,14 @@ export function decrypt(encrypted: string, iv: string, tag: string): string {
  */
 export function maskApiKey(apiKey: string): string {
   if (apiKey.length <= 4) {
-    return '••••'
+    return "••••";
   }
 
-  const lastFour = apiKey.slice(-4)
-  const prefix = apiKey.includes('_') ? apiKey.split('_')[0] + '_' : ''
-  const dotsCount = Math.min(apiKey.length - 4 - prefix.length, 10)
+  const lastFour = apiKey.slice(-4);
+  const prefix = apiKey.includes("_") ? apiKey.split("_")[0] + "_" : "";
+  const dotsCount = Math.min(apiKey.length - 4 - prefix.length, 10);
 
-  return prefix + '•'.repeat(dotsCount) + lastFour
+  return prefix + "•".repeat(dotsCount) + lastFour;
 }
 
 /**
@@ -116,5 +116,5 @@ export function maskApiKey(apiKey: string): string {
  * @returns Last 4 characters
  */
 export function getLastFourChars(value: string): string {
-  return value.slice(-4)
+  return value.slice(-4);
 }

@@ -1,14 +1,14 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -16,7 +16,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
+} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -24,7 +24,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,27 +34,27 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Badge } from "@/components/ui/badge"
-import { Checkbox } from "@/components/ui/checkbox"
-import { HugeiconsIcon } from "@hugeicons/react"
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { HugeiconsIcon } from "@hugeicons/react";
 import {
   PlusSignIcon,
   Delete02Icon,
   PencilEdit02Icon,
   Notification03Icon,
-} from "@hugeicons/core-free-icons"
+} from "@hugeicons/core-free-icons";
 
 type NotificationTrigger =
   | "PAYMENT_REMINDER"
@@ -62,45 +62,45 @@ type NotificationTrigger =
   | "PAYMENT_CONFIRMED"
   | "LEASE_EXPIRING"
   | "LEASE_EXPIRED"
-  | "MANUAL"
+  | "MANUAL";
 
-type NotificationChannel = "EMAIL" | "WHATSAPP" | "TELEGRAM"
+type NotificationChannel = "EMAIL" | "WHATSAPP" | "TELEGRAM";
 
-type NotificationRecipient = "TENANT" | "USER" | "ROLE"
+type NotificationRecipient = "TENANT" | "USER" | "ROLE";
 
 type NotificationRule = {
-  id: string
-  name: string
-  trigger: NotificationTrigger
-  daysOffset: number
-  channels: NotificationChannel[]
-  recipientType: NotificationRecipient
-  recipientUserId: string | null
-  recipientRoleId: string | null
+  id: string;
+  name: string;
+  trigger: NotificationTrigger;
+  daysOffset: number;
+  channels: NotificationChannel[];
+  recipientType: NotificationRecipient;
+  recipientUserId: string | null;
+  recipientRoleId: string | null;
   recipientUser?: {
-    id: string
-    name: string
-    email: string
-  } | null
+    id: string;
+    name: string;
+    email: string;
+  } | null;
   recipientRole?: {
-    id: string
-    name: string
-  } | null
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
-}
+    id: string;
+    name: string;
+  } | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
 
 type User = {
-  id: string
-  name: string
-  email: string
-}
+  id: string;
+  name: string;
+  email: string;
+};
 
 type Role = {
-  id: string
-  name: string
-}
+  id: string;
+  name: string;
+};
 
 const TRIGGER_LABELS: Record<NotificationTrigger, string> = {
   PAYMENT_REMINDER: "Payment Reminder",
@@ -109,31 +109,33 @@ const TRIGGER_LABELS: Record<NotificationTrigger, string> = {
   LEASE_EXPIRING: "Lease Expiring",
   LEASE_EXPIRED: "Lease Expired",
   MANUAL: "Manual",
-}
+};
 
 const CHANNEL_LABELS: Record<NotificationChannel, string> = {
   EMAIL: "Email",
   WHATSAPP: "WhatsApp",
   TELEGRAM: "Telegram",
-}
+};
 
 const RECIPIENT_TYPE_LABELS: Record<NotificationRecipient, string> = {
   TENANT: "Tenant",
   USER: "User",
   ROLE: "Role",
-}
+};
 
 export default function NotificationRulesClient() {
-  const [rules, setRules] = useState<NotificationRule[]>([])
-  const [users, setUsers] = useState<User[]>([])
-  const [roles, setRoles] = useState<Role[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [editingRule, setEditingRule] = useState<NotificationRule | null>(null)
-  const [deletingRule, setDeletingRule] = useState<NotificationRule | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [isSaving, setIsSaving] = useState(false)
+  const [rules, setRules] = useState<NotificationRule[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [editingRule, setEditingRule] = useState<NotificationRule | null>(null);
+  const [deletingRule, setDeletingRule] = useState<NotificationRule | null>(
+    null,
+  );
+  const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -144,53 +146,53 @@ export default function NotificationRulesClient() {
     recipientUserId: "",
     recipientRoleId: "",
     isActive: true,
-  })
+  });
 
   useEffect(() => {
-    fetchRules()
-    fetchUsers()
-    fetchRoles()
-  }, [])
+    fetchRules();
+    fetchUsers();
+    fetchRoles();
+  }, []);
 
   const fetchRules = async () => {
     try {
-      setIsLoading(true)
-      const response = await fetch("/api/notifications/rules")
-      if (!response.ok) throw new Error("Failed to fetch rules")
-      const data = await response.json()
-      setRules(data)
+      setIsLoading(true);
+      const response = await fetch("/api/notifications/rules");
+      if (!response.ok) throw new Error("Failed to fetch rules");
+      const data = await response.json();
+      setRules(data);
     } catch (err) {
-      console.error("Error fetching rules:", err)
-      setError("Failed to load notification rules")
+      console.error("Error fetching rules:", err);
+      setError("Failed to load notification rules");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch("/api/users")
-      if (!response.ok) throw new Error("Failed to fetch users")
-      const data = await response.json()
-      setUsers(data)
+      const response = await fetch("/api/users");
+      if (!response.ok) throw new Error("Failed to fetch users");
+      const data = await response.json();
+      setUsers(data);
     } catch (err) {
-      console.error("Error fetching users:", err)
+      console.error("Error fetching users:", err);
     }
-  }
+  };
 
   const fetchRoles = async () => {
     try {
-      const response = await fetch("/api/roles")
-      if (!response.ok) throw new Error("Failed to fetch roles")
-      const data = await response.json()
-      setRoles(data)
+      const response = await fetch("/api/roles");
+      if (!response.ok) throw new Error("Failed to fetch roles");
+      const data = await response.json();
+      setRoles(data);
     } catch (err) {
-      console.error("Error fetching roles:", err)
+      console.error("Error fetching roles:", err);
     }
-  }
+  };
 
   const openCreateDialog = () => {
-    setEditingRule(null)
+    setEditingRule(null);
     setFormData({
       name: "",
       trigger: "PAYMENT_REMINDER",
@@ -200,13 +202,13 @@ export default function NotificationRulesClient() {
       recipientUserId: "",
       recipientRoleId: "",
       isActive: true,
-    })
-    setError(null)
-    setIsDialogOpen(true)
-  }
+    });
+    setError(null);
+    setIsDialogOpen(true);
+  };
 
   const openEditDialog = (rule: NotificationRule) => {
-    setEditingRule(rule)
+    setEditingRule(rule);
     setFormData({
       name: rule.name,
       trigger: rule.trigger,
@@ -216,114 +218,119 @@ export default function NotificationRulesClient() {
       recipientUserId: rule.recipientUserId || "",
       recipientRoleId: rule.recipientRoleId || "",
       isActive: rule.isActive,
-    })
-    setError(null)
-    setIsDialogOpen(true)
-  }
+    });
+    setError(null);
+    setIsDialogOpen(true);
+  };
 
   const handleSave = async () => {
     try {
-      setIsSaving(true)
-      setError(null)
+      setIsSaving(true);
+      setError(null);
 
       // Validate required fields
       if (!formData.name.trim()) {
-        setError("Rule name is required")
-        return
+        setError("Rule name is required");
+        return;
       }
 
       if (formData.channels.length === 0) {
-        setError("At least one channel is required")
-        return
+        setError("At least one channel is required");
+        return;
       }
 
       if (formData.recipientType === "USER" && !formData.recipientUserId) {
-        setError("Please select a user")
-        return
+        setError("Please select a user");
+        return;
       }
 
       if (formData.recipientType === "ROLE" && !formData.recipientRoleId) {
-        setError("Please select a role")
-        return
+        setError("Please select a role");
+        return;
       }
 
       const payload = {
         ...formData,
-        recipientUserId: formData.recipientType === "USER" ? formData.recipientUserId : null,
-        recipientRoleId: formData.recipientType === "ROLE" ? formData.recipientRoleId : null,
-      }
+        recipientUserId:
+          formData.recipientType === "USER" ? formData.recipientUserId : null,
+        recipientRoleId:
+          formData.recipientType === "ROLE" ? formData.recipientRoleId : null,
+      };
 
       const url = editingRule
         ? `/api/notifications/rules/${editingRule.id}`
-        : "/api/notifications/rules"
+        : "/api/notifications/rules";
 
       const response = await fetch(url, {
         method: editingRule ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-      })
+      });
 
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || "Failed to save rule")
+        const data = await response.json();
+        throw new Error(data.error || "Failed to save rule");
       }
 
-      await fetchRules()
-      setIsDialogOpen(false)
+      await fetchRules();
+      setIsDialogOpen(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save rule")
+      setError(err instanceof Error ? err.message : "Failed to save rule");
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }
+  };
 
   const openDeleteDialog = (rule: NotificationRule) => {
-    setDeletingRule(rule)
-    setIsDeleteDialogOpen(true)
-  }
+    setDeletingRule(rule);
+    setIsDeleteDialogOpen(true);
+  };
 
   const handleDelete = async () => {
-    if (!deletingRule) return
+    if (!deletingRule) return;
 
     try {
-      const response = await fetch(`/api/notifications/rules/${deletingRule.id}`, {
-        method: "DELETE",
-      })
+      const response = await fetch(
+        `/api/notifications/rules/${deletingRule.id}`,
+        {
+          method: "DELETE",
+        },
+      );
 
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || "Failed to delete rule")
+        const data = await response.json();
+        throw new Error(data.error || "Failed to delete rule");
       }
 
-      await fetchRules()
-      setIsDeleteDialogOpen(false)
-      setDeletingRule(null)
+      await fetchRules();
+      setIsDeleteDialogOpen(false);
+      setDeletingRule(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete rule")
+      setError(err instanceof Error ? err.message : "Failed to delete rule");
     }
-  }
+  };
 
   const toggleChannel = (channel: NotificationChannel) => {
     setFormData((prev) => {
       const channels = prev.channels.includes(channel)
         ? prev.channels.filter((c) => c !== channel)
-        : [...prev.channels, channel]
-      return { ...prev, channels }
-    })
-  }
+        : [...prev.channels, channel];
+      return { ...prev, channels };
+    });
+  };
 
   const getRecipientDisplay = (rule: NotificationRule) => {
     if (rule.recipientType === "TENANT") {
-      return "All Tenants"
+      return "All Tenants";
     }
     if (rule.recipientType === "USER" && rule.recipientUser) {
-      return rule.recipientUser.name
+      return rule.recipientUser.name;
     }
     if (rule.recipientType === "ROLE" && rule.recipientRole) {
-      return rule.recipientRole.name
+      return rule.recipientRole.name;
     }
-    return "Unknown"
-  }
+    return "Unknown";
+  };
 
   return (
     <div className="space-y-6">
@@ -369,7 +376,8 @@ export default function NotificationRulesClient() {
                 className="mb-4 h-12 w-12 text-muted-foreground"
               />
               <p className="text-sm text-muted-foreground">
-                No notification rules yet. Create your first rule to get started.
+                No notification rules yet. Create your first rule to get
+                started.
               </p>
             </div>
           ) : (
@@ -394,8 +402,8 @@ export default function NotificationRulesClient() {
                       {rule.daysOffset > 0
                         ? `+${rule.daysOffset} days`
                         : rule.daysOffset < 0
-                        ? `${rule.daysOffset} days`
-                        : "Same day"}
+                          ? `${rule.daysOffset} days`
+                          : "Same day"}
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
@@ -430,14 +438,20 @@ export default function NotificationRulesClient() {
                           size="sm"
                           onClick={() => openEditDialog(rule)}
                         >
-                          <HugeiconsIcon icon={PencilEdit02Icon} className="h-4 w-4" />
+                          <HugeiconsIcon
+                            icon={PencilEdit02Icon}
+                            className="h-4 w-4"
+                          />
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => openDeleteDialog(rule)}
                         >
-                          <HugeiconsIcon icon={Delete02Icon} className="h-4 w-4" />
+                          <HugeiconsIcon
+                            icon={Delete02Icon}
+                            className="h-4 w-4"
+                          />
                         </Button>
                       </div>
                     </TableCell>
@@ -532,7 +546,7 @@ export default function NotificationRulesClient() {
                     <Checkbox
                       id={`channel-${value}`}
                       checked={formData.channels.includes(
-                        value as NotificationChannel
+                        value as NotificationChannel,
                       )}
                       onCheckedChange={() =>
                         toggleChannel(value as NotificationChannel)
@@ -561,11 +575,13 @@ export default function NotificationRulesClient() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(RECIPIENT_TYPE_LABELS).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
-                    </SelectItem>
-                  ))}
+                  {Object.entries(RECIPIENT_TYPE_LABELS).map(
+                    ([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ),
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -644,13 +660,16 @@ export default function NotificationRulesClient() {
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Rule</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete &quot;{deletingRule?.name}&quot;? This
-              action cannot be undone.
+              Are you sure you want to delete &quot;{deletingRule?.name}&quot;?
+              This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -660,5 +679,5 @@ export default function NotificationRulesClient() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  )
+  );
 }

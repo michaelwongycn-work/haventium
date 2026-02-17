@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
-import { hashPassword, validatePassword } from "@/lib/password"
-import { z } from "zod"
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { hashPassword, validatePassword } from "@/lib/password";
+import { z } from "zod";
 
 const signupSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -9,58 +9,61 @@ const signupSchema = z.object({
   name: z.string().min(1, "Name is required"),
   organizationName: z.string().min(1, "Organization name is required"),
   tier: z.enum(["FREE", "NORMAL", "PRO"]),
-})
+});
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
+    const body = await request.json();
 
     // Validate input
-    const validation = signupSchema.safeParse(body)
+    const validation = signupSchema.safeParse(body);
     if (!validation.success) {
       return NextResponse.json(
         { error: "Invalid input", details: validation.error.issues },
-        { status: 400 }
-      )
+        { status: 400 },
+      );
     }
 
-    const { email, password, name, organizationName, tier } = validation.data
+    const { email, password, name, organizationName, tier } = validation.data;
 
     // Validate password strength
-    const passwordValidation = validatePassword(password)
+    const passwordValidation = validatePassword(password);
     if (!passwordValidation.valid) {
       return NextResponse.json(
-        { error: "Password validation failed", details: passwordValidation.errors },
-        { status: 400 }
-      )
+        {
+          error: "Password validation failed",
+          details: passwordValidation.errors,
+        },
+        { status: 400 },
+      );
     }
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
       where: { email },
-    })
+    });
 
     if (existingUser) {
       return NextResponse.json(
         { error: "User with this email already exists" },
-        { status: 400 }
-      )
+        { status: 400 },
+      );
     }
 
     // Get the subscription tier
     const subscriptionTier = await prisma.subscriptionTier.findUnique({
       where: { type: tier },
-    })
+    });
 
     if (!subscriptionTier) {
       return NextResponse.json(
         { error: "Invalid subscription tier" },
-        { status: 400 }
-      )
+        { status: 400 },
+      );
     }
 
     // Hash password
-    const hashedPassword = await hashPassword(password)
+    const hashedPassword = await hashPassword(password);
 
     // Create organization, user, subscription, and default role in a transaction
     const result = await prisma.$transaction(async (tx) => {
@@ -69,7 +72,7 @@ export async function POST(request: NextRequest) {
         data: {
           name: organizationName,
         },
-      })
+      });
 
       // Create user
       const user = await tx.user.create({
@@ -79,12 +82,12 @@ export async function POST(request: NextRequest) {
           hashedPassword,
           organizationId: organization.id,
         },
-      })
+      });
 
       // Create subscription
-      const now = new Date()
-      const trialEnds = new Date(now)
-      trialEnds.setDate(trialEnds.getDate() + 14) // 14 days trial
+      const now = new Date();
+      const trialEnds = new Date(now);
+      trialEnds.setDate(trialEnds.getDate() + 14); // 14 days trial
 
       const subscription = await tx.subscription.create({
         data: {
@@ -98,7 +101,7 @@ export async function POST(request: NextRequest) {
           currentPeriodStart: now,
           currentPeriodEnd: trialEnds,
         },
-      })
+      });
 
       // Create default "Owner" role
       const ownerRole = await tx.role.create({
@@ -107,7 +110,7 @@ export async function POST(request: NextRequest) {
           isSystem: true,
           organizationId: organization.id,
         },
-      })
+      });
 
       // Assign user to Owner role
       await tx.userRole.create({
@@ -115,23 +118,22 @@ export async function POST(request: NextRequest) {
           userId: user.id,
           roleId: ownerRole.id,
         },
-      })
+      });
 
       // Fetch all existing accesses and assign to Owner role
-      const allAccesses = await tx.access.findMany()
-      
+      const allAccesses = await tx.access.findMany();
+
       if (allAccesses.length > 0) {
         await tx.roleAccess.createMany({
           data: allAccesses.map((access: { id: string }) => ({
             roleId: ownerRole.id,
             accessId: access.id,
           })),
-        })
+        });
       }
 
-
-      return { user, organization, subscription }
-    })
+      return { user, organization, subscription };
+    });
 
     return NextResponse.json(
       {
@@ -142,13 +144,13 @@ export async function POST(request: NextRequest) {
           name: result.user.name,
         },
       },
-      { status: 201 }
-    )
+      { status: 201 },
+    );
   } catch (error) {
-    console.error("Signup error:", error)
+    console.error("Signup error:", error);
     return NextResponse.json(
       { error: "An error occurred during signup" },
-      { status: 500 }
-    )
+      { status: 500 },
+    );
   }
 }

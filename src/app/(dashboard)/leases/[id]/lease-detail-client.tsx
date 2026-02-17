@@ -1,22 +1,22 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -24,11 +24,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Switch } from "@/components/ui/switch"
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,8 +37,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { HugeiconsIcon } from "@hugeicons/react"
+} from "@/components/ui/alert-dialog";
+import { HugeiconsIcon } from "@hugeicons/react";
 import {
   ArrowLeft01Icon,
   File01Icon,
@@ -50,7 +50,7 @@ import {
   ShieldEnergyIcon,
   Notification01Icon,
   MoreHorizontalIcon,
-} from "@hugeicons/core-free-icons"
+} from "@hugeicons/core-free-icons";
 
 const ACTIVITY_ICON_MAP: Record<string, typeof File01Icon> = {
   LEASE_CREATED: File01Icon,
@@ -70,7 +70,7 @@ const ACTIVITY_ICON_MAP: Record<string, typeof File01Icon> = {
   NOTIFICATION_SENT: Notification01Icon,
   USER_LOGIN: UserIcon,
   OTHER: MoreHorizontalIcon,
-}
+};
 
 const ACTIVITY_COLOR_MAP: Record<string, string> = {
   LEASE_CREATED: "text-blue-500",
@@ -90,7 +90,7 @@ const ACTIVITY_COLOR_MAP: Record<string, string> = {
   NOTIFICATION_SENT: "text-blue-500",
   USER_LOGIN: "text-violet-500",
   OTHER: "text-muted-foreground",
-}
+};
 
 const ACTIVITY_BG_MAP: Record<string, string> = {
   LEASE_CREATED: "bg-blue-500/10",
@@ -110,204 +110,218 @@ const ACTIVITY_BG_MAP: Record<string, string> = {
   NOTIFICATION_SENT: "bg-blue-500/10",
   USER_LOGIN: "bg-violet-500/10",
   OTHER: "bg-muted",
-}
+};
 
-type LeaseStatus = "DRAFT" | "ACTIVE" | "ENDED"
-type PaymentCycle = "DAILY" | "MONTHLY" | "ANNUAL"
-type DepositStatus = "HELD" | "RETURNED" | "FORFEITED"
-type PaymentMethod = "CASH" | "BANK_TRANSFER" | "VIRTUAL_ACCOUNT" | "QRIS" | "MANUAL"
+type LeaseStatus = "DRAFT" | "ACTIVE" | "ENDED";
+type PaymentCycle = "DAILY" | "MONTHLY" | "ANNUAL";
+type DepositStatus = "HELD" | "RETURNED" | "FORFEITED";
+type PaymentMethod =
+  | "CASH"
+  | "BANK_TRANSFER"
+  | "VIRTUAL_ACCOUNT"
+  | "QRIS"
+  | "MANUAL";
 
 type Lease = {
-  id: string
-  startDate: string
-  endDate: string
-  paymentCycle: PaymentCycle
-  rentAmount: string | null
-  gracePeriodDays: number | null
-  isAutoRenew: boolean
-  autoRenewalNoticeDays: number | null
-  depositAmount: string | null
-  depositStatus: DepositStatus | null
-  paidAt: string | null
-  paymentMethod: PaymentMethod | null
-  status: LeaseStatus
-  createdAt: string
-  updatedAt: string
+  id: string;
+  startDate: string;
+  endDate: string;
+  paymentCycle: PaymentCycle;
+  rentAmount: string | null;
+  gracePeriodDays: number | null;
+  isAutoRenew: boolean;
+  autoRenewalNoticeDays: number | null;
+  depositAmount: string | null;
+  depositStatus: DepositStatus | null;
+  paidAt: string | null;
+  paymentMethod: PaymentMethod | null;
+  status: LeaseStatus;
+  createdAt: string;
+  updatedAt: string;
   tenant: {
-    id: string
-    fullName: string
-    email: string
-    phone: string
-  }
+    id: string;
+    fullName: string;
+    email: string;
+    phone: string;
+  };
   unit: {
-    id: string
-    name: string
+    id: string;
+    name: string;
     property: {
-      id: string
-      name: string
-    }
-  }
+      id: string;
+      name: string;
+    };
+  };
   renewedFrom: {
-    id: string
-    startDate: string
-    endDate: string
-    status: string
-  } | null
+    id: string;
+    startDate: string;
+    endDate: string;
+    status: string;
+  } | null;
   renewedTo: {
-    id: string
-    startDate: string
-    endDate: string
-    status: string
-  } | null
+    id: string;
+    startDate: string;
+    endDate: string;
+    status: string;
+  } | null;
   activities: Array<{
-    id: string
-    type: string
-    description: string
-    createdAt: string
+    id: string;
+    type: string;
+    description: string;
+    createdAt: string;
     user: {
-      name: string
-      email: string
-    } | null
-  }>
-}
+      name: string;
+      email: string;
+    } | null;
+  }>;
+};
 
 export default function LeaseDetailClient({
   params,
 }: {
-  params: { id: string }
+  params: { id: string };
 }) {
-  const [lease, setLease] = useState<Lease | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [leaseId, setLeaseId] = useState<string>("")
-  const [isUpdating, setIsUpdating] = useState(false)
-  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false)
-  const [paymentDate, setPaymentDate] = useState("")
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH")
-  const [isAutoRenewEditing, setIsAutoRenewEditing] = useState(false)
+  const [lease, setLease] = useState<Lease | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [leaseId, setLeaseId] = useState<string>("");
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [paymentDate, setPaymentDate] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
+  const [isAutoRenewEditing, setIsAutoRenewEditing] = useState(false);
   const [autoRenewForm, setAutoRenewForm] = useState({
     isAutoRenew: false,
     gracePeriodDays: 3,
     autoRenewalNoticeDays: 5,
-  })
-  const [isDepositEditing, setIsDepositEditing] = useState(false)
-  const [isNoticePeriodAlertOpen, setIsNoticePeriodAlertOpen] = useState(false)
-  const [isFutureLeaseAlertOpen, setIsFutureLeaseAlertOpen] = useState(false)
-  const [depositStatusForm, setDepositStatusForm] = useState<DepositStatus>("HELD")
+  });
+  const [isDepositEditing, setIsDepositEditing] = useState(false);
+  const [isNoticePeriodAlertOpen, setIsNoticePeriodAlertOpen] = useState(false);
+  const [isFutureLeaseAlertOpen, setIsFutureLeaseAlertOpen] = useState(false);
+  const [depositStatusForm, setDepositStatusForm] =
+    useState<DepositStatus>("HELD");
 
   useEffect(() => {
     Promise.resolve(params).then((resolvedParams) => {
-      setLeaseId(resolvedParams.id)
-    })
-  }, [params])
+      setLeaseId(resolvedParams.id);
+    });
+  }, [params]);
 
   useEffect(() => {
     if (leaseId) {
-      fetchLease()
+      fetchLease();
     }
-  }, [leaseId])
+  }, [leaseId]);
 
   const fetchLease = async () => {
     try {
-      setIsLoading(true)
-      const response = await fetch(`/api/leases/${leaseId}`)
+      setIsLoading(true);
+      const response = await fetch(`/api/leases/${leaseId}`);
 
       if (!response.ok) {
-        throw new Error("Failed to fetch lease")
+        throw new Error("Failed to fetch lease");
       }
 
-      const data = await response.json()
-      setLease(data)
+      const data = await response.json();
+      setLease(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load lease")
+      setError(err instanceof Error ? err.message : "Failed to load lease");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
-
+  };
 
   const formatCurrency = (value: string | number | null | undefined) => {
-    if (value === null || value === undefined || value === "") return "—"
-    const num = typeof value === "string" ? parseFloat(value) : value
-    if (isNaN(num)) return "—"
+    if (value === null || value === undefined || value === "") return "—";
+    const num = typeof value === "string" ? parseFloat(value) : value;
+    if (isNaN(num)) return "—";
     return new Intl.NumberFormat("en-US", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    }).format(num)
-  }
+    }).format(num);
+  };
 
   const getDaysRemaining = () => {
-    if (!lease) return 0
-    const today = new Date()
-    const endDate = new Date(lease.endDate)
-    const diffTime = endDate.getTime() - today.getTime()
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    return diffDays
-  }
+    if (!lease) return 0;
+    const today = new Date();
+    const endDate = new Date(lease.endDate);
+    const diffTime = endDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
 
   const getLastCancellationDate = () => {
-    if (!lease || !lease.isAutoRenew || !lease.autoRenewalNoticeDays) return null
-    const endDate = new Date(lease.endDate)
-    endDate.setDate(endDate.getDate() - lease.autoRenewalNoticeDays)
-    return endDate
-  }
+    if (!lease || !lease.isAutoRenew || !lease.autoRenewalNoticeDays)
+      return null;
+    const endDate = new Date(lease.endDate);
+    endDate.setDate(endDate.getDate() - lease.autoRenewalNoticeDays);
+    return endDate;
+  };
 
   const getLastPaymentDate = () => {
-    if (!lease || !lease.gracePeriodDays) return null
-    const endDate = new Date(lease.endDate)
-    endDate.setDate(endDate.getDate() + lease.gracePeriodDays)
-    return endDate
-  }
+    if (!lease || !lease.gracePeriodDays) return null;
+    const endDate = new Date(lease.endDate);
+    endDate.setDate(endDate.getDate() + lease.gracePeriodDays);
+    return endDate;
+  };
 
   const isNoticePeriodPassed = () => {
-    if (!lease || !lease.isAutoRenew || !lease.autoRenewalNoticeDays || lease.status !== "ACTIVE") return false
-    const deadline = new Date(lease.endDate)
-    deadline.setDate(deadline.getDate() - lease.autoRenewalNoticeDays)
-    return new Date() >= deadline
-  }
+    if (
+      !lease ||
+      !lease.isAutoRenew ||
+      !lease.autoRenewalNoticeDays ||
+      lease.status !== "ACTIVE"
+    )
+      return false;
+    const deadline = new Date(lease.endDate);
+    deadline.setDate(deadline.getDate() - lease.autoRenewalNoticeDays);
+    return new Date() >= deadline;
+  };
 
-  const [hasFutureLeaseOnUnit, setHasFutureLeaseOnUnit] = useState(false)
+  const [hasFutureLeaseOnUnit, setHasFutureLeaseOnUnit] = useState(false);
 
   useEffect(() => {
     if (!lease || lease.status !== "ACTIVE") {
-      setHasFutureLeaseOnUnit(false)
-      return
+      setHasFutureLeaseOnUnit(false);
+      return;
     }
     const checkFutureLeases = async () => {
       try {
-        const response = await fetch(`/api/leases/${leaseId}/check-future-lease`)
+        const response = await fetch(
+          `/api/leases/${leaseId}/check-future-lease`,
+        );
         if (response.ok) {
-          const data = await response.json()
-          setHasFutureLeaseOnUnit(data.hasFutureLease)
+          const data = await response.json();
+          setHasFutureLeaseOnUnit(data.hasFutureLease);
         }
       } catch {
         // ignore
       }
-    }
-    checkFutureLeases()
-  }, [lease, leaseId])
+    };
+    checkFutureLeases();
+  }, [lease, leaseId]);
 
   const handleOpenPaymentDialog = () => {
-    setPaymentDate(new Date().toISOString().split("T")[0])
-    setPaymentMethod("CASH")
-    setIsPaymentDialogOpen(true)
-  }
+    setPaymentDate(new Date().toISOString().split("T")[0]);
+    setPaymentMethod("CASH");
+    setIsPaymentDialogOpen(true);
+  };
 
   const handleRecordPayment = async () => {
-    if (!lease || !paymentDate || !paymentMethod) return
+    if (!lease || !paymentDate || !paymentMethod) return;
 
     // Validate payment date is not in the future
-    const selectedDate = new Date(paymentDate)
-    const today = new Date()
-    today.setHours(23, 59, 59, 999) // Set to end of today
+    const selectedDate = new Date(paymentDate);
+    const today = new Date();
+    today.setHours(23, 59, 59, 999); // Set to end of today
 
     if (selectedDate > today) {
-      setError("Payment date cannot be in the future")
-      return
+      setError("Payment date cannot be in the future");
+      return;
     }
 
-    setIsUpdating(true)
-    setError(null)
+    setIsUpdating(true);
+    setError(null);
 
     try {
       const response = await fetch(`/api/leases/${leaseId}`, {
@@ -317,47 +331,47 @@ export default function LeaseDetailClient({
         },
         body: JSON.stringify({
           paidAt: new Date(paymentDate).toISOString(),
-          paymentMethod: paymentMethod
+          paymentMethod: paymentMethod,
         }),
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to record payment")
+        throw new Error(data.error || "Failed to record payment");
       }
 
-      await fetchLease()
-      setIsPaymentDialogOpen(false)
+      await fetchLease();
+      setIsPaymentDialogOpen(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to record payment")
+      setError(err instanceof Error ? err.message : "Failed to record payment");
     } finally {
-      setIsUpdating(false)
+      setIsUpdating(false);
     }
-  }
+  };
 
   const handleEditAutoRenewal = () => {
-    if (!lease) return
+    if (!lease) return;
     if (lease.isAutoRenew && isNoticePeriodPassed()) {
-      setIsNoticePeriodAlertOpen(true)
-      return
+      setIsNoticePeriodAlertOpen(true);
+      return;
     }
     if (!lease.isAutoRenew && hasFutureLeaseOnUnit) {
-      setIsFutureLeaseAlertOpen(true)
-      return
+      setIsFutureLeaseAlertOpen(true);
+      return;
     }
     setAutoRenewForm({
       isAutoRenew: lease.isAutoRenew,
       gracePeriodDays: lease.gracePeriodDays || 3,
       autoRenewalNoticeDays: lease.autoRenewalNoticeDays || 5,
-    })
-    setIsAutoRenewEditing(true)
-  }
+    });
+    setIsAutoRenewEditing(true);
+  };
 
   const handleSaveAutoRenewal = async () => {
-    if (!lease) return
-    setIsUpdating(true)
-    setError(null)
+    if (!lease) return;
+    setIsUpdating(true);
+    setError(null);
 
     try {
       const response = await fetch(`/api/leases/${leaseId}`, {
@@ -365,94 +379,102 @@ export default function LeaseDetailClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           isAutoRenew: autoRenewForm.isAutoRenew,
-          gracePeriodDays: autoRenewForm.isAutoRenew ? autoRenewForm.gracePeriodDays : null,
-          autoRenewalNoticeDays: autoRenewForm.isAutoRenew ? autoRenewForm.autoRenewalNoticeDays : null,
+          gracePeriodDays: autoRenewForm.isAutoRenew
+            ? autoRenewForm.gracePeriodDays
+            : null,
+          autoRenewalNoticeDays: autoRenewForm.isAutoRenew
+            ? autoRenewForm.autoRenewalNoticeDays
+            : null,
         }),
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to update auto-renewal")
+        throw new Error(data.error || "Failed to update auto-renewal");
       }
 
-      await fetchLease()
-      setIsAutoRenewEditing(false)
+      await fetchLease();
+      setIsAutoRenewEditing(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update auto-renewal")
+      setError(
+        err instanceof Error ? err.message : "Failed to update auto-renewal",
+      );
     } finally {
-      setIsUpdating(false)
+      setIsUpdating(false);
     }
-  }
+  };
 
   const handleEditDepositStatus = () => {
-    if (!lease) return
-    setDepositStatusForm(lease.depositStatus || "HELD")
-    setIsDepositEditing(true)
-  }
+    if (!lease) return;
+    setDepositStatusForm(lease.depositStatus || "HELD");
+    setIsDepositEditing(true);
+  };
 
   const handleSaveDepositStatus = async () => {
-    if (!lease) return
-    setIsUpdating(true)
-    setError(null)
+    if (!lease) return;
+    setIsUpdating(true);
+    setError(null);
 
     try {
       const response = await fetch(`/api/leases/${leaseId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ depositStatus: depositStatusForm }),
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to update deposit status")
+        throw new Error(data.error || "Failed to update deposit status");
       }
 
-      await fetchLease()
-      setIsDepositEditing(false)
+      await fetchLease();
+      setIsDepositEditing(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update deposit status")
+      setError(
+        err instanceof Error ? err.message : "Failed to update deposit status",
+      );
     } finally {
-      setIsUpdating(false)
+      setIsUpdating(false);
     }
-  }
+  };
 
   const formatDateForDisplay = (dateString: string | null) => {
-    if (!dateString) return ""
-    const date = new Date(dateString)
-    const day = String(date.getDate()).padStart(2, "0")
-    const month = String(date.getMonth() + 1).padStart(2, "0")
-    const year = date.getFullYear()
-    return `${day}/${month}/${year}`
-  }
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
 
   const formatPaymentMethod = (method: PaymentMethod | null) => {
-    if (!method) return "—"
+    if (!method) return "—";
     const methods: Record<PaymentMethod, string> = {
       CASH: "Cash",
       BANK_TRANSFER: "Bank Transfer",
       VIRTUAL_ACCOUNT: "Virtual Account",
       QRIS: "QRIS",
-      MANUAL: "Manual"
-    }
-    return methods[method] || method
-  }
+      MANUAL: "Manual",
+    };
+    return methods[method] || method;
+  };
 
   const formatRelativeTime = (dateString: string) => {
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffMins = Math.floor(diffMs / 60000)
-    const diffHours = Math.floor(diffMs / 3600000)
-    const diffDays = Math.floor(diffMs / 86400000)
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
 
-    if (diffMins < 1) return "Just now"
-    if (diffMins < 60) return `${diffMins}m ago`
-    if (diffHours < 24) return `${diffHours}h ago`
-    if (diffDays < 7) return `${diffDays}d ago`
-    return formatDateForDisplay(dateString)
-  }
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return formatDateForDisplay(dateString);
+  };
 
   if (!lease && !isLoading) {
     return (
@@ -464,16 +486,20 @@ export default function LeaseDetailClient({
           </p>
           <Button asChild>
             <Link href="/leases">
-              <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} data-icon="inline-start" />
+              <HugeiconsIcon
+                icon={ArrowLeft01Icon}
+                strokeWidth={2}
+                data-icon="inline-start"
+              />
               Back to Leases
             </Link>
           </Button>
         </div>
       </div>
-    )
+    );
   }
 
-  const daysRemaining = getDaysRemaining()
+  const daysRemaining = getDaysRemaining();
 
   return (
     <div className="space-y-6">
@@ -487,9 +513,7 @@ export default function LeaseDetailClient({
           <h1 className="text-3xl font-bold">
             {lease?.tenant.fullName || "Loading..."}
           </h1>
-          <p className="text-muted-foreground mt-1">
-            Lease agreement details
-          </p>
+          <p className="text-muted-foreground mt-1">Lease agreement details</p>
         </div>
         {lease && lease.status === "ACTIVE" && daysRemaining > 0 && (
           <div className="text-right">
@@ -590,34 +614,51 @@ export default function LeaseDetailClient({
               <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Tenant</p>
-                  <Link href={`/tenants/${lease?.tenant.id}`} className="font-medium hover:underline">
+                  <Link
+                    href={`/tenants/${lease?.tenant.id}`}
+                    className="font-medium hover:underline"
+                  >
                     {lease?.tenant.fullName}
                   </Link>
                 </div>
 
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Property / Unit</p>
-                  <Link href={`/properties/${lease?.unit.property.id}`} className="font-medium hover:underline">
+                  <p className="text-xs text-muted-foreground mb-1">
+                    Property / Unit
+                  </p>
+                  <Link
+                    href={`/properties/${lease?.unit.property.id}`}
+                    className="font-medium hover:underline"
+                  >
                     {lease?.unit.property.name} / {lease?.unit.name}
                   </Link>
                 </div>
 
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Rent Amount</p>
-                  <p className="font-bold">{formatCurrency(lease?.rentAmount)}</p>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    Rent Amount
+                  </p>
+                  <p className="font-bold">
+                    {formatCurrency(lease?.rentAmount)}
+                  </p>
                 </div>
 
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Payment Cycle</p>
-                  <p className="font-medium capitalize">{lease?.paymentCycle.toLowerCase()}</p>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    Payment Cycle
+                  </p>
+                  <p className="font-medium capitalize">
+                    {lease?.paymentCycle.toLowerCase()}
+                  </p>
                 </div>
 
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Status</p>
-                  <p className="font-medium capitalize">{lease?.status.toLowerCase()}</p>
+                  <p className="font-medium capitalize">
+                    {lease?.status.toLowerCase()}
+                  </p>
                 </div>
               </div>
-
             </CardContent>
           </Card>
 
@@ -666,25 +707,36 @@ export default function LeaseDetailClient({
               <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                 {/* Start Date */}
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Start Date</p>
-                  <p className="font-medium">{formatDateForDisplay(lease?.startDate || null)}</p>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    Start Date
+                  </p>
+                  <p className="font-medium">
+                    {formatDateForDisplay(lease?.startDate || null)}
+                  </p>
                 </div>
 
                 {/* End Date */}
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">End Date</p>
-                  <p className="font-medium">{formatDateForDisplay(lease?.endDate || null)}</p>
+                  <p className="font-medium">
+                    {formatDateForDisplay(lease?.endDate || null)}
+                  </p>
                 </div>
 
                 {/* Is Renewable */}
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Auto-Renewal</p>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    Auto-Renewal
+                  </p>
                   {isAutoRenewEditing ? (
                     <div>
                       <Switch
                         checked={autoRenewForm.isAutoRenew}
                         onCheckedChange={(checked) =>
-                          setAutoRenewForm({ ...autoRenewForm, isAutoRenew: checked })
+                          setAutoRenewForm({
+                            ...autoRenewForm,
+                            isAutoRenew: checked,
+                          })
                         }
                         disabled={
                           isUpdating ||
@@ -693,20 +745,28 @@ export default function LeaseDetailClient({
                         }
                       />
                       {lease?.isAutoRenew && isNoticePeriodPassed() && (
-                        <p className="text-xs text-destructive mt-1">Notice period has passed</p>
+                        <p className="text-xs text-destructive mt-1">
+                          Notice period has passed
+                        </p>
                       )}
                       {!lease?.isAutoRenew && hasFutureLeaseOnUnit && (
-                        <p className="text-xs text-destructive mt-1">Unit has a future lease</p>
+                        <p className="text-xs text-destructive mt-1">
+                          Unit has a future lease
+                        </p>
                       )}
                     </div>
                   ) : (
-                    <p className="font-medium">{lease?.isAutoRenew ? "Yes" : "No"}</p>
+                    <p className="font-medium">
+                      {lease?.isAutoRenew ? "Yes" : "No"}
+                    </p>
                   )}
                 </div>
 
                 {/* Grace Period */}
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Grace Period</p>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    Grace Period
+                  </p>
                   {isAutoRenewEditing ? (
                     autoRenewForm.isAutoRenew ? (
                       <Input
@@ -731,15 +791,16 @@ export default function LeaseDetailClient({
                         ? `${formatDateForDisplay(getLastPaymentDate()?.toISOString() || null)} | ${lease.gracePeriodDays} days`
                         : lease?.gracePeriodDays
                           ? `${lease.gracePeriodDays} days`
-                          : "—"
-                      }
+                          : "—"}
                     </p>
                   )}
                 </div>
 
                 {/* Notice Period */}
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Notice Period</p>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    Notice Period
+                  </p>
                   {isAutoRenewEditing ? (
                     autoRenewForm.isAutoRenew ? (
                       <Input
@@ -749,7 +810,8 @@ export default function LeaseDetailClient({
                         onChange={(e) =>
                           setAutoRenewForm({
                             ...autoRenewForm,
-                            autoRenewalNoticeDays: parseInt(e.target.value) || 1,
+                            autoRenewalNoticeDays:
+                              parseInt(e.target.value) || 1,
                           })
                         }
                         disabled={isUpdating}
@@ -764,8 +826,7 @@ export default function LeaseDetailClient({
                         ? `${formatDateForDisplay(getLastCancellationDate()?.toISOString() || null)} | ${lease.autoRenewalNoticeDays} days`
                         : lease?.autoRenewalNoticeDays
                           ? `${lease.autoRenewalNoticeDays} days`
-                          : "—"
-                      }
+                          : "—"}
                     </p>
                   )}
                 </div>
@@ -774,30 +835,42 @@ export default function LeaseDetailClient({
               {/* Renewal Chain */}
               {(lease?.renewedFrom || lease?.renewedTo) && (
                 <div className="border-t pt-4 mt-4">
-                  <p className="text-xs text-muted-foreground mb-2">Renewal Chain</p>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Renewal Chain
+                  </p>
                   <div className="flex flex-col gap-2">
                     {lease.renewedFrom && (
                       <div className="flex items-center gap-2 text-sm">
-                        <span className="text-muted-foreground">Previous lease:</span>
+                        <span className="text-muted-foreground">
+                          Previous lease:
+                        </span>
                         <Link
                           href={`/leases/${lease.renewedFrom.id}`}
                           className="font-medium hover:underline"
                         >
-                          {formatDateForDisplay(lease.renewedFrom.startDate)} – {formatDateForDisplay(lease.renewedFrom.endDate)}
+                          {formatDateForDisplay(lease.renewedFrom.startDate)} –{" "}
+                          {formatDateForDisplay(lease.renewedFrom.endDate)}
                         </Link>
-                        <span className="text-xs text-muted-foreground capitalize">({lease.renewedFrom.status.toLowerCase()})</span>
+                        <span className="text-xs text-muted-foreground capitalize">
+                          ({lease.renewedFrom.status.toLowerCase()})
+                        </span>
                       </div>
                     )}
                     {lease.renewedTo && (
                       <div className="flex items-center gap-2 text-sm">
-                        <span className="text-muted-foreground">Next lease:</span>
+                        <span className="text-muted-foreground">
+                          Next lease:
+                        </span>
                         <Link
                           href={`/leases/${lease.renewedTo.id}`}
                           className="font-medium hover:underline"
                         >
-                          {formatDateForDisplay(lease.renewedTo.startDate)} – {formatDateForDisplay(lease.renewedTo.endDate)}
+                          {formatDateForDisplay(lease.renewedTo.startDate)} –{" "}
+                          {formatDateForDisplay(lease.renewedTo.endDate)}
                         </Link>
-                        <span className="text-xs text-muted-foreground capitalize">({lease.renewedTo.status.toLowerCase()})</span>
+                        <span className="text-xs text-muted-foreground capitalize">
+                          ({lease.renewedTo.status.toLowerCase()})
+                        </span>
                       </div>
                     )}
                   </div>
@@ -815,53 +888,66 @@ export default function LeaseDetailClient({
                   Security deposit and payment status
                 </CardDescription>
               </div>
-              {lease?.status === "ENDED" && !lease?.renewedTo && lease?.depositAmount && (!lease.depositStatus || lease.depositStatus === "HELD") && (
-                <div>
-                  {isDepositEditing ? (
-                    <div className="flex gap-2">
+              {lease?.status === "ENDED" &&
+                !lease?.renewedTo &&
+                lease?.depositAmount &&
+                (!lease.depositStatus || lease.depositStatus === "HELD") && (
+                  <div>
+                    {isDepositEditing ? (
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          onClick={handleSaveDepositStatus}
+                          disabled={isUpdating}
+                        >
+                          {isUpdating ? "Saving..." : "Save"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setIsDepositEditing(false)}
+                          disabled={isUpdating}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    ) : (
                       <Button
                         size="sm"
-                        onClick={handleSaveDepositStatus}
-                        disabled={isUpdating}
+                        variant="outline"
+                        onClick={handleEditDepositStatus}
                       >
-                        {isUpdating ? "Saving..." : "Save"}
+                        Edit Deposit Status
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setIsDepositEditing(false)}
-                        disabled={isUpdating}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={handleEditDepositStatus}
-                    >
-                      Edit Deposit Status
-                    </Button>
-                  )}
-                </div>
-              )}
+                    )}
+                  </div>
+                )}
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                 {/* Deposit Amount */}
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Deposit Amount</p>
-                  <p className="font-bold">{lease?.depositAmount ? formatCurrency(lease.depositAmount) : "—"}</p>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    Deposit Amount
+                  </p>
+                  <p className="font-bold">
+                    {lease?.depositAmount
+                      ? formatCurrency(lease.depositAmount)
+                      : "—"}
+                  </p>
                 </div>
 
                 {/* Deposit Status */}
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Deposit Status</p>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    Deposit Status
+                  </p>
                   {isDepositEditing ? (
                     <Select
                       value={depositStatusForm}
-                      onValueChange={(value) => setDepositStatusForm(value as DepositStatus)}
+                      onValueChange={(value) =>
+                        setDepositStatusForm(value as DepositStatus)
+                      }
                       disabled={isUpdating}
                     >
                       <SelectTrigger className="h-8">
@@ -875,33 +961,51 @@ export default function LeaseDetailClient({
                     </Select>
                   ) : (
                     <p className="font-medium capitalize">
-                      {lease?.depositAmount ? (lease.depositStatus?.toLowerCase() || "held") : "—"}
+                      {lease?.depositAmount
+                        ? lease.depositStatus?.toLowerCase() || "held"
+                        : "—"}
                     </p>
                   )}
                 </div>
 
                 {/* Payment Status */}
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Payment Status</p>
-                  <p className="font-medium">{lease?.paidAt ? "Paid" : "Unpaid"}</p>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    Payment Status
+                  </p>
+                  <p className="font-medium">
+                    {lease?.paidAt ? "Paid" : "Unpaid"}
+                  </p>
                 </div>
 
                 {/* Payment Date */}
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Payment Date</p>
-                  <p className="font-medium">{lease?.paidAt ? formatDateForDisplay(lease.paidAt) : "—"}</p>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    Payment Date
+                  </p>
+                  <p className="font-medium">
+                    {lease?.paidAt ? formatDateForDisplay(lease.paidAt) : "—"}
+                  </p>
                 </div>
 
                 {/* Payment Method */}
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Payment Method</p>
-                  <p className="font-medium">{formatPaymentMethod(lease?.paymentMethod || null)}</p>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    Payment Method
+                  </p>
+                  <p className="font-medium">
+                    {formatPaymentMethod(lease?.paymentMethod || null)}
+                  </p>
                 </div>
               </div>
 
               {/* Mark as Paid Button */}
-              {!lease?.paidAt && (lease?.status === "DRAFT") && (
-                <Button onClick={handleOpenPaymentDialog} disabled={isUpdating} className="w-full">
+              {!lease?.paidAt && lease?.status === "DRAFT" && (
+                <Button
+                  onClick={handleOpenPaymentDialog}
+                  disabled={isUpdating}
+                  className="w-full"
+                >
                   Mark as Paid
                 </Button>
               )}
@@ -926,13 +1030,22 @@ export default function LeaseDetailClient({
                   <div className="absolute left-[17px] top-0 bottom-0 w-px bg-border" />
                   <div className="space-y-0">
                     {lease.activities.map((activity) => {
-                      const IconComponent = ACTIVITY_ICON_MAP[activity.type] || MoreHorizontalIcon
-                      const colorClass = ACTIVITY_COLOR_MAP[activity.type] || "text-muted-foreground"
-                      const bgClass = ACTIVITY_BG_MAP[activity.type] || "bg-muted"
+                      const IconComponent =
+                        ACTIVITY_ICON_MAP[activity.type] || MoreHorizontalIcon;
+                      const colorClass =
+                        ACTIVITY_COLOR_MAP[activity.type] ||
+                        "text-muted-foreground";
+                      const bgClass =
+                        ACTIVITY_BG_MAP[activity.type] || "bg-muted";
 
                       return (
-                        <div key={activity.id} className="relative flex gap-3 pb-6 last:pb-0">
-                          <div className={`relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${bgClass}`}>
+                        <div
+                          key={activity.id}
+                          className="relative flex gap-3 pb-6 last:pb-0"
+                        >
+                          <div
+                            className={`relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${bgClass}`}
+                          >
                             <HugeiconsIcon
                               icon={IconComponent}
                               strokeWidth={2}
@@ -949,13 +1062,16 @@ export default function LeaseDetailClient({
                               </p>
                               {activity.user && (
                                 <p className="text-xs text-muted-foreground">
-                                  by <span className="font-medium">{activity.user.name}</span>
+                                  by{" "}
+                                  <span className="font-medium">
+                                    {activity.user.name}
+                                  </span>
                                 </p>
                               )}
                             </div>
                           </div>
                         </div>
-                      )
+                      );
                     })}
                   </div>
                 </div>
@@ -990,7 +1106,9 @@ export default function LeaseDetailClient({
               <Label htmlFor="payment-method">Payment Method</Label>
               <Select
                 value={paymentMethod}
-                onValueChange={(value) => setPaymentMethod(value as PaymentMethod)}
+                onValueChange={(value) =>
+                  setPaymentMethod(value as PaymentMethod)
+                }
                 disabled={isUpdating}
               >
                 <SelectTrigger id="payment-method" className="w-full">
@@ -999,7 +1117,9 @@ export default function LeaseDetailClient({
                 <SelectContent>
                   <SelectItem value="CASH">Cash</SelectItem>
                   <SelectItem value="BANK_TRANSFER">Bank Transfer</SelectItem>
-                  <SelectItem value="VIRTUAL_ACCOUNT">Virtual Account</SelectItem>
+                  <SelectItem value="VIRTUAL_ACCOUNT">
+                    Virtual Account
+                  </SelectItem>
                   <SelectItem value="QRIS">QRIS</SelectItem>
                   <SelectItem value="MANUAL">Manual</SelectItem>
                 </SelectContent>
@@ -1026,7 +1146,10 @@ export default function LeaseDetailClient({
             >
               Cancel
             </Button>
-            <Button onClick={handleRecordPayment} disabled={isUpdating || !paymentDate}>
+            <Button
+              onClick={handleRecordPayment}
+              disabled={isUpdating || !paymentDate}
+            >
               {isUpdating ? "Recording..." : "Record Payment"}
             </Button>
           </DialogFooter>
@@ -1034,16 +1157,22 @@ export default function LeaseDetailClient({
       </Dialog>
 
       {/* Notice Period Passed Alert */}
-      <AlertDialog open={isNoticePeriodAlertOpen} onOpenChange={setIsNoticePeriodAlertOpen}>
+      <AlertDialog
+        open={isNoticePeriodAlertOpen}
+        onOpenChange={setIsNoticePeriodAlertOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Cannot Modify Auto-Renewal</AlertDialogTitle>
             <AlertDialogDescription>
-              The notice period has already passed. Auto-renewal can no longer be disabled for this lease.
+              The notice period has already passed. Auto-renewal can no longer
+              be disabled for this lease.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogAction onClick={() => setIsNoticePeriodAlertOpen(false)}>
+            <AlertDialogAction
+              onClick={() => setIsNoticePeriodAlertOpen(false)}
+            >
               Understood
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -1051,12 +1180,16 @@ export default function LeaseDetailClient({
       </AlertDialog>
 
       {/* Future Lease Alert */}
-      <AlertDialog open={isFutureLeaseAlertOpen} onOpenChange={setIsFutureLeaseAlertOpen}>
+      <AlertDialog
+        open={isFutureLeaseAlertOpen}
+        onOpenChange={setIsFutureLeaseAlertOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Cannot Enable Auto-Renewal</AlertDialogTitle>
             <AlertDialogDescription>
-              This unit already has a future lease scheduled. Auto-renewal cannot be enabled while another lease exists for this unit.
+              This unit already has a future lease scheduled. Auto-renewal
+              cannot be enabled while another lease exists for this unit.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1067,5 +1200,5 @@ export default function LeaseDetailClient({
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  )
+  );
 }

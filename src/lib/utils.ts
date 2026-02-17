@@ -1,6 +1,6 @@
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
-import { CURRENCY } from "./constants"
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+import { CURRENCY } from "./constants";
 
 // ========================================
 // TAILWIND UTILITIES
@@ -10,7 +10,7 @@ import { CURRENCY } from "./constants"
  * Merge Tailwind CSS classes with proper precedence
  */
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+  return twMerge(clsx(inputs));
 }
 
 // ========================================
@@ -28,20 +28,20 @@ export function cn(...inputs: ClassValue[]) {
 export function formatCurrency(
   amount: number | string | null | undefined,
   currency: string = CURRENCY.DEFAULT,
-  locale: string = CURRENCY.LOCALE
+  locale: string = CURRENCY.LOCALE,
 ): string {
-  if (amount === null || amount === undefined) return "-"
-  
-  const numAmount = typeof amount === "string" ? parseFloat(amount) : amount
-  
-  if (isNaN(numAmount)) return "-"
+  if (amount === null || amount === undefined) return "-";
+
+  const numAmount = typeof amount === "string" ? parseFloat(amount) : amount;
+
+  if (isNaN(numAmount)) return "-";
 
   return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(numAmount)
+  }).format(numAmount);
 }
 
 /**
@@ -53,13 +53,13 @@ export function formatCurrency(
 export function formatCompactCurrency(
   amount: number | string | null | undefined,
   currency: string = CURRENCY.DEFAULT,
-  locale: string = CURRENCY.LOCALE
+  locale: string = CURRENCY.LOCALE,
 ): string {
-  if (amount === null || amount === undefined) return "-"
-  
-  const numAmount = typeof amount === "string" ? parseFloat(amount) : amount
-  
-  if (isNaN(numAmount)) return "-"
+  if (amount === null || amount === undefined) return "-";
+
+  const numAmount = typeof amount === "string" ? parseFloat(amount) : amount;
+
+  if (isNaN(numAmount)) return "-";
 
   return new Intl.NumberFormat(locale, {
     style: "currency",
@@ -67,7 +67,7 @@ export function formatCompactCurrency(
     notation: "compact",
     minimumFractionDigits: 0,
     maximumFractionDigits: 1,
-  }).format(numAmount)
+  }).format(numAmount);
 }
 
 // ========================================
@@ -82,15 +82,15 @@ export function formatCompactCurrency(
  */
 export function formatNumber(
   num: number | string | null | undefined,
-  locale: string = CURRENCY.LOCALE
+  locale: string = CURRENCY.LOCALE,
 ): string {
-  if (num === null || num === undefined) return "-"
-  
-  const numValue = typeof num === "string" ? parseFloat(num) : num
-  
-  if (isNaN(numValue)) return "-"
+  if (num === null || num === undefined) return "-";
 
-  return new Intl.NumberFormat(locale).format(numValue)
+  const numValue = typeof num === "string" ? parseFloat(num) : num;
+
+  if (isNaN(numValue)) return "-";
+
+  return new Intl.NumberFormat(locale).format(numValue);
 }
 
 /**
@@ -105,13 +105,13 @@ export function formatNumber(
 export function formatPercentage(
   value: number | null | undefined,
   decimals: number = 0,
-  isDecimal: boolean = false
+  isDecimal: boolean = false,
 ): string {
-  if (value === null || value === undefined) return "-"
-  
-  const percentage = isDecimal ? value * 100 : value
-  
-  return `${percentage.toFixed(decimals)}%`
+  if (value === null || value === undefined) return "-";
+
+  const percentage = isDecimal ? value * 100 : value;
+
+  return `${percentage.toFixed(decimals)}%`;
 }
 
 // ========================================
@@ -129,11 +129,11 @@ export function formatPercentage(
 export function truncate(
   str: string | null | undefined,
   maxLength: number,
-  suffix: string = "..."
+  suffix: string = "...",
 ): string {
-  if (!str) return ""
-  if (str.length <= maxLength) return str
-  return str.slice(0, maxLength - suffix.length) + suffix
+  if (!str) return "";
+  if (str.length <= maxLength) return str;
+  return str.slice(0, maxLength - suffix.length) + suffix;
 }
 
 /**
@@ -143,8 +143,8 @@ export function truncate(
  * capitalize("hello world") // "Hello world"
  */
 export function capitalize(str: string | null | undefined): string {
-  if (!str) return ""
-  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()
+  if (!str) return "";
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 }
 
 /**
@@ -154,12 +154,12 @@ export function capitalize(str: string | null | undefined): string {
  * titleCase("hello world") // "Hello World"
  */
 export function titleCase(str: string | null | undefined): string {
-  if (!str) return ""
+  if (!str) return "";
   return str
     .toLowerCase()
     .split(" ")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ")
+    .join(" ");
 }
 
 /**
@@ -169,13 +169,13 @@ export function titleCase(str: string | null | undefined): string {
  * slugify("Hello World!") // "hello-world"
  */
 export function slugify(str: string | null | undefined): string {
-  if (!str) return ""
+  if (!str) return "";
   return str
     .toLowerCase()
     .trim()
     .replace(/[^\w\s-]/g, "")
     .replace(/[\s_-]+/g, "-")
-    .replace(/^-+|-+$/g, "")
+    .replace(/^-+|-+$/g, "");
 }
 
 /**
@@ -188,16 +188,16 @@ export function slugify(str: string | null | undefined): string {
  */
 export function getInitials(
   name: string | null | undefined,
-  maxInitials: number = 2
+  maxInitials: number = 2,
 ): string {
-  if (!name) return ""
-  
+  if (!name) return "";
+
   return name
     .split(" ")
     .filter((word) => word.length > 0)
     .slice(0, maxInitials)
     .map((word) => word[0].toUpperCase())
-    .join("")
+    .join("");
 }
 
 // ========================================
@@ -209,11 +209,11 @@ export function getInitials(
  * @param value - The value to check
  */
 export function isEmpty(value: any): boolean {
-  if (value === null || value === undefined) return true
-  if (typeof value === "string") return value.trim().length === 0
-  if (Array.isArray(value)) return value.length === 0
-  if (typeof value === "object") return Object.keys(value).length === 0
-  return false
+  if (value === null || value === undefined) return true;
+  if (typeof value === "string") return value.trim().length === 0;
+  if (Array.isArray(value)) return value.length === 0;
+  if (typeof value === "object") return Object.keys(value).length === 0;
+  return false;
 }
 
 /**
@@ -221,9 +221,9 @@ export function isEmpty(value: any): boolean {
  * @param email - The email to validate
  */
 export function isValidEmail(email: string | null | undefined): boolean {
-  if (!email) return false
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  return emailRegex.test(email)
+  if (!email) return false;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
 }
 
 /**
@@ -231,10 +231,10 @@ export function isValidEmail(email: string | null | undefined): boolean {
  * @param phone - The phone number to validate
  */
 export function isValidPhone(phone: string | null | undefined): boolean {
-  if (!phone) return false
+  if (!phone) return false;
   // Indonesian phone: starts with 08 or +62, 10-13 digits
-  const phoneRegex = /^(\+62|62|0)[0-9]{9,12}$/
-  return phoneRegex.test(phone.replace(/[\s-]/g, ""))
+  const phoneRegex = /^(\+62|62|0)[0-9]{9,12}$/;
+  return phoneRegex.test(phone.replace(/[\s-]/g, ""));
 }
 
 // ========================================
@@ -247,15 +247,15 @@ export function isValidPhone(phone: string | null | undefined): boolean {
  * @param key - Optional key to use for objects
  */
 export function unique<T>(arr: T[], key?: keyof T): T[] {
-  if (!key) return [...new Set(arr)]
-  
-  const seen = new Set()
+  if (!key) return [...new Set(arr)];
+
+  const seen = new Set();
   return arr.filter((item) => {
-    const value = item[key]
-    if (seen.has(value)) return false
-    seen.add(value)
-    return true
-  })
+    const value = item[key];
+    if (seen.has(value)) return false;
+    seen.add(value);
+    return true;
+  });
 }
 
 /**
@@ -264,12 +264,15 @@ export function unique<T>(arr: T[], key?: keyof T): T[] {
  * @param key - The key to group by
  */
 export function groupBy<T>(arr: T[], key: keyof T): Record<string, T[]> {
-  return arr.reduce((acc, item) => {
-    const groupKey = String(item[key])
-    if (!acc[groupKey]) acc[groupKey] = []
-    acc[groupKey].push(item)
-    return acc
-  }, {} as Record<string, T[]>)
+  return arr.reduce(
+    (acc, item) => {
+      const groupKey = String(item[key]);
+      if (!acc[groupKey]) acc[groupKey] = [];
+      acc[groupKey].push(item);
+      return acc;
+    },
+    {} as Record<string, T[]>,
+  );
 }
 
 // ========================================
@@ -281,7 +284,7 @@ export function groupBy<T>(arr: T[], key: keyof T): Record<string, T[]> {
  * @param ms - Milliseconds to sleep
  */
 export function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
@@ -289,12 +292,13 @@ export function sleep(ms: number): Promise<void> {
  * @param length - Length of the string
  */
 export function randomString(length: number = 10): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-  let result = ""
+  const chars =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let result = "";
   for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length))
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
   }
-  return result
+  return result;
 }
 
 /**
@@ -304,5 +308,5 @@ export function randomString(length: number = 10): string {
  * @param max - Maximum value
  */
 export function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max)
+  return Math.min(Math.max(value, min), max);
 }

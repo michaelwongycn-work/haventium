@@ -1,14 +1,14 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -16,7 +16,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
+} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -24,7 +24,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,21 +34,21 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Badge } from "@/components/ui/badge"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { HugeiconsIcon } from "@hugeicons/react"
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { HugeiconsIcon } from "@hugeicons/react";
 import {
   PlusSignIcon,
   Delete02Icon,
@@ -57,28 +57,28 @@ import {
   CheckmarkCircle02Icon,
   Copy01Icon,
   SecurityIcon,
-} from "@hugeicons/core-free-icons"
-import { formatDistanceToNow } from "date-fns"
+} from "@hugeicons/core-free-icons";
+import { formatDistanceToNow } from "date-fns";
 
-type ApiKeyService = "RESEND_EMAIL" | "WHATSAPP_META" | "TELEGRAM_BOT"
+type ApiKeyService = "RESEND_EMAIL" | "WHATSAPP_META" | "TELEGRAM_BOT";
 
 type ApiKey = {
-  id: string
-  name: string
-  service: ApiKeyService
-  lastFourChars: string
-  maskedValue: string
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
-  lastUsedAt: string | null
-}
+  id: string;
+  name: string;
+  service: ApiKeyService;
+  lastFourChars: string;
+  maskedValue: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  lastUsedAt: string | null;
+};
 
 const SERVICE_LABELS: Record<ApiKeyService, string> = {
   RESEND_EMAIL: "Resend Email",
   WHATSAPP_META: "WhatsApp (Meta Cloud API)",
   TELEGRAM_BOT: "Telegram Bot",
-}
+};
 
 const SERVICE_DESCRIPTIONS: Record<ApiKeyService, string> = {
   RESEND_EMAIL: "Email delivery via Resend API",
@@ -86,174 +86,174 @@ const SERVICE_DESCRIPTIONS: Record<ApiKeyService, string> = {
     "WhatsApp messaging via Meta Cloud API (requires JSON with accessToken and phoneNumberId)",
   TELEGRAM_BOT:
     "Telegram bot notifications using phone numbers (get your bot token from @BotFather in Telegram)",
-}
+};
 
 export default function ApiKeysClient() {
-  const [apiKeys, setApiKeys] = useState<ApiKey[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Dialog states
-  const [createDialogOpen, setCreateDialogOpen] = useState(false)
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [keyDisplayDialogOpen, setKeyDisplayDialogOpen] = useState(false)
-  const [selectedKey, setSelectedKey] = useState<ApiKey | null>(null)
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [keyDisplayDialogOpen, setKeyDisplayDialogOpen] = useState(false);
+  const [selectedKey, setSelectedKey] = useState<ApiKey | null>(null);
   const [newKeyData, setNewKeyData] = useState<{
-    fullKey: string
-    maskedValue: string
-  } | null>(null)
+    fullKey: string;
+    maskedValue: string;
+  } | null>(null);
 
   // Form states
   const [formData, setFormData] = useState({
     name: "",
     service: "" as ApiKeyService | "",
     value: "",
-  })
-  const [deletePassword, setDeletePassword] = useState("")
-  const [submitting, setSubmitting] = useState(false)
-  const [testing, setTesting] = useState(false)
+  });
+  const [deletePassword, setDeletePassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{
-    success: boolean
-    message: string
-  } | null>(null)
-  const [copied, setCopied] = useState(false)
+    success: boolean;
+    message: string;
+  } | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    fetchApiKeys()
-  }, [])
+    fetchApiKeys();
+  }, []);
 
   async function fetchApiKeys() {
     try {
-      setLoading(true)
-      setError(null)
-      const response = await fetch("/api/settings/api-keys")
+      setLoading(true);
+      setError(null);
+      const response = await fetch("/api/settings/api-keys");
       if (!response.ok) {
-        throw new Error("Failed to fetch API keys")
+        throw new Error("Failed to fetch API keys");
       }
-      const data = await response.json()
-      setApiKeys(data.data || [])
+      const data = await response.json();
+      setApiKeys(data.data || []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch API keys")
+      setError(err instanceof Error ? err.message : "Failed to fetch API keys");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
   async function handleCreate() {
-    setSubmitting(true)
-    setError(null)
+    setSubmitting(true);
+    setError(null);
 
     try {
       const response = await fetch("/api/settings/api-keys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to create API key")
+        throw new Error(data.error || "Failed to create API key");
       }
 
       // Store the full key to show once
       setNewKeyData({
         fullKey: data.data.fullKey,
         maskedValue: data.data.maskedValue,
-      })
+      });
 
       // Close create dialog and open key display dialog
-      setCreateDialogOpen(false)
-      setKeyDisplayDialogOpen(true)
+      setCreateDialogOpen(false);
+      setKeyDisplayDialogOpen(true);
 
       // Reset form
-      setFormData({ name: "", service: "", value: "" })
+      setFormData({ name: "", service: "", value: "" });
 
       // Refresh list
-      await fetchApiKeys()
+      await fetchApiKeys();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create API key")
+      setError(err instanceof Error ? err.message : "Failed to create API key");
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
   }
 
   async function handleDelete() {
-    if (!selectedKey) return
+    if (!selectedKey) return;
 
-    setSubmitting(true)
-    setError(null)
+    setSubmitting(true);
+    setError(null);
 
     try {
       const response = await fetch(`/api/settings/api-keys/${selectedKey.id}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ currentPassword: deletePassword }),
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to delete API key")
+        throw new Error(data.error || "Failed to delete API key");
       }
 
-      setDeleteDialogOpen(false)
-      setDeletePassword("")
-      setSelectedKey(null)
-      await fetchApiKeys()
+      setDeleteDialogOpen(false);
+      setDeletePassword("");
+      setSelectedKey(null);
+      await fetchApiKeys();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete API key")
+      setError(err instanceof Error ? err.message : "Failed to delete API key");
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
   }
 
   async function handleTestConnection(keyId: string) {
-    setTesting(true)
-    setTestResult(null)
+    setTesting(true);
+    setTestResult(null);
 
     try {
       const response = await fetch(`/api/settings/api-keys/${keyId}/test`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Test failed")
+        throw new Error(data.error || "Test failed");
       }
 
-      setTestResult(data.data)
+      setTestResult(data.data);
     } catch (err) {
       setTestResult({
         success: false,
         message: err instanceof Error ? err.message : "Test failed",
-      })
+      });
     } finally {
-      setTesting(false)
+      setTesting(false);
     }
   }
 
   function copyToClipboard(text: string) {
-    navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }
 
   function openCreateDialog() {
-    setFormData({ name: "", service: "", value: "" })
-    setError(null)
-    setTestResult(null)
-    setCreateDialogOpen(true)
+    setFormData({ name: "", service: "", value: "" });
+    setError(null);
+    setTestResult(null);
+    setCreateDialogOpen(true);
   }
 
   function openDeleteDialog(key: ApiKey) {
-    setSelectedKey(key)
-    setDeletePassword("")
-    setError(null)
-    setDeleteDialogOpen(true)
+    setSelectedKey(key);
+    setDeletePassword("");
+    setError(null);
+    setDeleteDialogOpen(true);
   }
 
   if (loading) {
@@ -269,7 +269,7 @@ export default function ApiKeysClient() {
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   return (
@@ -290,8 +290,8 @@ export default function ApiKeysClient() {
             <div>
               <CardTitle>API Keys</CardTitle>
               <CardDescription>
-                Manage your organization&apos;s API keys for email, WhatsApp, and Telegram
-                notifications
+                Manage your organization&apos;s API keys for email, WhatsApp,
+                and Telegram notifications
               </CardDescription>
             </div>
             <Button onClick={openCreateDialog}>
@@ -515,9 +515,9 @@ export default function ApiKeysClient() {
                 <AlertDescription className="text-xs">
                   To create a Telegram bot: Open Telegram, search for{" "}
                   <code>@BotFather</code>, send <code>/newbot</code>, and follow
-                  the instructions. You&apos;ll receive a bot token that looks like{" "}
-                  <code>123456789:ABCdef...</code>. Tenants will use their phone
-                  numbers for Telegram notifications.
+                  the instructions. You&apos;ll receive a bot token that looks
+                  like <code>123456789:ABCdef...</code>. Tenants will use their
+                  phone numbers for Telegram notifications.
                 </AlertDescription>
               </Alert>
             )}
@@ -534,7 +534,10 @@ export default function ApiKeysClient() {
             <Button
               onClick={handleCreate}
               disabled={
-                !formData.name || !formData.service || !formData.value || submitting
+                !formData.name ||
+                !formData.service ||
+                !formData.value ||
+                submitting
               }
             >
               {submitting ? "Creating..." : "Create API Key"}
@@ -586,8 +589,8 @@ export default function ApiKeysClient() {
           <DialogFooter>
             <Button
               onClick={() => {
-                setKeyDisplayDialogOpen(false)
-                setNewKeyData(null)
+                setKeyDisplayDialogOpen(false);
+                setNewKeyData(null);
               }}
             >
               I&apos;ve Saved the Key
@@ -632,5 +635,5 @@ export default function ApiKeysClient() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  )
+  );
 }

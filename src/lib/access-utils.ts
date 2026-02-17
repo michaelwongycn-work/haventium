@@ -10,11 +10,11 @@
 export type UserRole = {
   roleAccesses?: Array<{
     access: {
-      resource: string
-      action: string
-    }
-  }>
-}
+      resource: string;
+      action: string;
+    };
+  }>;
+};
 
 /**
  * Check if user has permission to perform an action on a resource
@@ -31,11 +31,14 @@ export type UserRole = {
  * }
  * ```
  */
-export function hasAccess(roles: UserRole[], resource: string, action: string): boolean {
+export function hasAccess(
+  roles: UserRole[],
+  resource: string,
+  action: string,
+): boolean {
   return roles.some((role) =>
     role.roleAccesses?.some(
-      (ra) =>
-        ra.access.resource === resource && ra.access.action === action
-    )
-  )
+      (ra) => ra.access.resource === resource && ra.access.action === action,
+    ),
+  );
 }

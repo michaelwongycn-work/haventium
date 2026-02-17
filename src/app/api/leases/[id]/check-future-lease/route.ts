@@ -1,29 +1,29 @@
-import { NextResponse } from "next/server"
-import { checkAccess } from "@/lib/guards"
-import { prisma } from "@/lib/prisma"
+import { NextResponse } from "next/server";
+import { checkAccess } from "@/lib/guards";
+import { prisma } from "@/lib/prisma";
 
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { authorized, response, session } = await checkAccess("leases", "read")
-    if (!authorized) return response
+    const { authorized, response, session } = await checkAccess(
+      "leases",
+      "read",
+    );
+    if (!authorized) return response;
 
-    const { id } = await params
+    const { id } = await params;
 
     const lease = await prisma.leaseAgreement.findFirst({
       where: {
         id,
         organizationId: session.user.organizationId,
       },
-    })
+    });
 
     if (!lease) {
-      return NextResponse.json(
-        { error: "Lease not found" },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: "Lease not found" }, { status: 404 });
     }
 
     const futureLease = await prisma.leaseAgreement.findFirst({
@@ -33,14 +33,14 @@ export async function GET(
         status: { in: ["DRAFT", "ACTIVE"] },
         startDate: { gt: lease.endDate },
       },
-    })
+    });
 
-    return NextResponse.json({ hasFutureLease: !!futureLease })
+    return NextResponse.json({ hasFutureLease: !!futureLease });
   } catch (error) {
-    console.error("Error checking future leases:", error)
+    console.error("Error checking future leases:", error);
     return NextResponse.json(
       { error: "Failed to check future leases" },
-      { status: 500 }
-    )
+      { status: 500 },
+    );
   }
 }

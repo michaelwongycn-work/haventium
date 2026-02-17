@@ -1,7 +1,7 @@
-import { prisma } from "@/lib/prisma"
-import { verifyCronAuth, apiSuccess, handleApiError } from "@/lib/api"
-import { processNotifications } from "@/lib/services/notification-processor"
-import { NOTIFICATION_TRIGGER } from "@/lib/constants"
+import { prisma } from "@/lib/prisma";
+import { verifyCronAuth, apiSuccess, handleApiError } from "@/lib/api";
+import { processNotifications } from "@/lib/services/notification-processor";
+import { NOTIFICATION_TRIGGER } from "@/lib/constants";
 
 /**
  * Cron job to process notification rules and send notifications
@@ -16,11 +16,11 @@ import { NOTIFICATION_TRIGGER } from "@/lib/constants"
  */
 export async function POST(request: Request) {
   try {
-    const authCheck = verifyCronAuth(request)
-    if (!authCheck.authorized) return authCheck.response!
+    const authCheck = verifyCronAuth(request);
+    if (!authCheck.authorized) return authCheck.response!;
 
-    const now = new Date()
-    const results: Record<string, unknown>[] = []
+    const now = new Date();
+    const results: Record<string, unknown>[] = [];
 
     // Get all organizations with active notification rules
     const organizations = await prisma.organization.findMany({
@@ -35,37 +35,37 @@ export async function POST(request: Request) {
         id: true,
         name: true,
       },
-    })
+    });
 
     for (const org of organizations) {
       // Process PAYMENT_REMINDER notifications
-      const paymentReminderResults = await processPaymentReminders(org.id, now)
+      const paymentReminderResults = await processPaymentReminders(org.id, now);
       if (paymentReminderResults.processed > 0) {
         results.push({
           organization: org.name,
           trigger: "PAYMENT_REMINDER",
           ...paymentReminderResults,
-        })
+        });
       }
 
       // Process PAYMENT_LATE notifications
-      const paymentLateResults = await processPaymentLate(org.id, now)
+      const paymentLateResults = await processPaymentLate(org.id, now);
       if (paymentLateResults.processed > 0) {
         results.push({
           organization: org.name,
           trigger: "PAYMENT_LATE",
           ...paymentLateResults,
-        })
+        });
       }
 
       // Process LEASE_EXPIRING notifications
-      const leaseExpiringResults = await processLeaseExpiring(org.id, now)
+      const leaseExpiringResults = await processLeaseExpiring(org.id, now);
       if (leaseExpiringResults.processed > 0) {
         results.push({
           organization: org.name,
           trigger: "LEASE_EXPIRING",
           ...leaseExpiringResults,
-        })
+        });
       }
     }
 
@@ -74,9 +74,9 @@ export async function POST(request: Request) {
       message: `Processed notifications for ${organizations.length} organizations`,
       results,
       processedAt: now.toISOString(),
-    })
+    });
   } catch (error) {
-    return handleApiError(error, "process notifications")
+    return handleApiError(error, "process notifications");
   }
 }
 
@@ -94,7 +94,7 @@ async function processPaymentReminders(organizationId: string, now: Date) {
     sent: 0,
     failed: 0,
     errors: [] as string[],
-  }
+  };
 
   // Get all active notification rules for PAYMENT_REMINDER
   const rules = await prisma.notificationRule.findMany({
@@ -103,16 +103,16 @@ async function processPaymentReminders(organizationId: string, now: Date) {
       trigger: NOTIFICATION_TRIGGER.PAYMENT_REMINDER,
       isActive: true,
     },
-  })
+  });
 
-  if (rules.length === 0) return results
+  if (rules.length === 0) return results;
 
   // For each rule, find leases where payment is due soon
   for (const rule of rules) {
     // Calculate when payment will be due (now + daysOffset days from now)
-    const dueDateTarget = new Date(now)
-    dueDateTarget.setDate(dueDateTarget.getDate() + rule.daysOffset)
-    dueDateTarget.setHours(0, 0, 0, 0)
+    const dueDateTarget = new Date(now);
+    dueDateTarget.setDate(dueDateTarget.getDate() + rule.daysOffset);
+    dueDateTarget.setHours(0, 0, 0, 0);
 
     // Find ACTIVE leases - we need to check if a payment cycle falls on the due date
     const leases = await prisma.leaseAgreement.findMany({
@@ -126,55 +126,62 @@ async function processPaymentReminders(organizationId: string, now: Date) {
           gte: dueDateTarget, // Lease must still be active
         },
       },
-    })
+    });
 
     // Check each lease to see if a payment is due on the target date
     for (const lease of leases) {
-      const paymentDue = isPaymentDueOn(lease, dueDateTarget)
+      const paymentDue = isPaymentDueOn(lease, dueDateTarget);
 
       if (paymentDue) {
         const result = await processNotifications({
           organizationId,
           trigger: NOTIFICATION_TRIGGER.PAYMENT_REMINDER,
           relatedEntityId: lease.id,
-        })
+        });
 
-        results.processed += result.processed
-        results.sent += result.sent
-        results.failed += result.failed
-        results.errors.push(...result.errors)
+        results.processed += result.processed;
+        results.sent += result.sent;
+        results.failed += result.failed;
+        results.errors.push(...result.errors);
       }
     }
   }
 
-  return results
+  return results;
 }
 
 /**
  * Check if a payment is due on a specific date based on payment cycle
  */
-function isPaymentDueOn(lease: { startDate: Date; paymentCycle: string }, targetDate: Date): boolean {
-  const startDate = new Date(lease.startDate)
-  startDate.setHours(0, 0, 0, 0)
+function isPaymentDueOn(
+  lease: { startDate: Date; paymentCycle: string },
+  targetDate: Date,
+): boolean {
+  const startDate = new Date(lease.startDate);
+  startDate.setHours(0, 0, 0, 0);
 
-  const target = new Date(targetDate)
-  target.setHours(0, 0, 0, 0)
+  const target = new Date(targetDate);
+  target.setHours(0, 0, 0, 0);
 
-  const dayOfMonth = startDate.getDate()
+  const dayOfMonth = startDate.getDate();
 
   switch (lease.paymentCycle) {
     case "DAILY":
       // Payment due every day
-      return target >= startDate
+      return target >= startDate;
 
     case "MONTHLY":
       // Payment due on the same day each month (e.g., if start is Jan 15, due on 15th of each month)
       // Handle edge case: if start date is 29-31 and target month doesn't have that day, use last day of month
-      const targetDayOfMonth = target.getDate()
-      const lastDayOfTargetMonth = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate()
-      const dueDayOfMonth = Math.min(dayOfMonth, lastDayOfTargetMonth)
+      const targetDayOfMonth = target.getDate();
+      const lastDayOfTargetMonth = new Date(
+        target.getFullYear(),
+        target.getMonth() + 1,
+        0,
+      ).getDate();
+      const dueDayOfMonth = Math.min(dayOfMonth, lastDayOfTargetMonth);
 
-      return targetDayOfMonth === dueDayOfMonth && target >= startDate
+      return targetDayOfMonth === dueDayOfMonth && target >= startDate;
 
     case "ANNUAL":
       // Payment due on the same date each year
@@ -182,10 +189,10 @@ function isPaymentDueOn(lease: { startDate: Date; paymentCycle: string }, target
         target.getMonth() === startDate.getMonth() &&
         target.getDate() === startDate.getDate() &&
         target >= startDate
-      )
+      );
 
     default:
-      return false
+      return false;
   }
 }
 
@@ -200,7 +207,7 @@ async function processPaymentLate(organizationId: string, now: Date) {
     sent: 0,
     failed: 0,
     errors: [] as string[],
-  }
+  };
 
   // Get all active notification rules for PAYMENT_LATE
   const rules = await prisma.notificationRule.findMany({
@@ -209,12 +216,12 @@ async function processPaymentLate(organizationId: string, now: Date) {
       trigger: NOTIFICATION_TRIGGER.PAYMENT_LATE,
       isActive: true,
     },
-  })
+  });
 
-  if (rules.length === 0) return results
+  if (rules.length === 0) return results;
 
   // Use the daysOffset from rules to determine how late is "late"
-  const maxDaysOffset = Math.max(...rules.map((r) => r.daysOffset))
+  const maxDaysOffset = Math.max(...rules.map((r) => r.daysOffset));
 
   // Find DRAFT leases where grace period has passed (unpaid bookings)
   const unpaidDraftLeases = await prisma.leaseAgreement.findMany({
@@ -226,17 +233,17 @@ async function processPaymentLate(organizationId: string, now: Date) {
       // Calculate if grace period has passed: now > startDate + gracePeriodDays
       // This is handled below as we can't directly query calculated dates
     },
-  })
+  });
 
   // Filter by grace period expiration
   const overdueGraceLeases = unpaidDraftLeases.filter((lease) => {
-    if (!lease.gracePeriodDays) return false
+    if (!lease.gracePeriodDays) return false;
 
-    const graceDeadline = new Date(lease.startDate)
-    graceDeadline.setDate(graceDeadline.getDate() + lease.gracePeriodDays)
+    const graceDeadline = new Date(lease.startDate);
+    graceDeadline.setDate(graceDeadline.getDate() + lease.gracePeriodDays);
 
-    return now > graceDeadline
-  })
+    return now > graceDeadline;
+  });
 
   // Process notifications for overdue grace period leases
   for (const lease of overdueGraceLeases) {
@@ -244,12 +251,12 @@ async function processPaymentLate(organizationId: string, now: Date) {
       organizationId,
       trigger: NOTIFICATION_TRIGGER.PAYMENT_LATE,
       relatedEntityId: lease.id,
-    })
+    });
 
-    results.processed += result.processed
-    results.sent += result.sent
-    results.failed += result.failed
-    results.errors.push(...result.errors)
+    results.processed += result.processed;
+    results.sent += result.sent;
+    results.failed += result.failed;
+    results.errors.push(...result.errors);
   }
 
   // Note: For ACTIVE leases, payment tracking would require a separate payment records table
@@ -259,7 +266,7 @@ async function processPaymentLate(organizationId: string, now: Date) {
   // Future enhancement: Add a PaymentRecord table to track recurring payments
   // For now, we only handle DRAFT lease payment late notifications
 
-  return results
+  return results;
 }
 
 /**
@@ -272,7 +279,7 @@ async function processLeaseExpiring(organizationId: string, now: Date) {
     sent: 0,
     failed: 0,
     errors: [] as string[],
-  }
+  };
 
   // Get all active notification rules for LEASE_EXPIRING
   const rules = await prisma.notificationRule.findMany({
@@ -281,19 +288,19 @@ async function processLeaseExpiring(organizationId: string, now: Date) {
       trigger: NOTIFICATION_TRIGGER.LEASE_EXPIRING,
       isActive: true,
     },
-  })
+  });
 
-  if (rules.length === 0) return results
+  if (rules.length === 0) return results;
 
   // For each rule, find leases that match the daysOffset
   for (const rule of rules) {
     // Calculate target date: now + daysOffset
-    const targetDate = new Date(now)
-    targetDate.setDate(targetDate.getDate() + rule.daysOffset)
-    targetDate.setHours(0, 0, 0, 0)
+    const targetDate = new Date(now);
+    targetDate.setDate(targetDate.getDate() + rule.daysOffset);
+    targetDate.setHours(0, 0, 0, 0);
 
-    const nextDay = new Date(targetDate)
-    nextDay.setDate(nextDay.getDate() + 1)
+    const nextDay = new Date(targetDate);
+    nextDay.setDate(nextDay.getDate() + 1);
 
     // Find ACTIVE leases ending on the target date
     const leases = await prisma.leaseAgreement.findMany({
@@ -305,7 +312,7 @@ async function processLeaseExpiring(organizationId: string, now: Date) {
           lt: nextDay,
         },
       },
-    })
+    });
 
     // Process notifications for each lease
     for (const lease of leases) {
@@ -313,14 +320,14 @@ async function processLeaseExpiring(organizationId: string, now: Date) {
         organizationId,
         trigger: NOTIFICATION_TRIGGER.LEASE_EXPIRING,
         relatedEntityId: lease.id,
-      })
+      });
 
-      results.processed += result.processed
-      results.sent += result.sent
-      results.failed += result.failed
-      results.errors.push(...result.errors)
+      results.processed += result.processed;
+      results.sent += result.sent;
+      results.failed += result.failed;
+      results.errors.push(...result.errors);
     }
   }
 
-  return results
+  return results;
 }

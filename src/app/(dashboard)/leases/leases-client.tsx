@@ -1,14 +1,14 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -16,7 +16,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
+} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -24,7 +24,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,98 +34,98 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
-import { Skeleton } from "@/components/ui/skeleton"
-import { HugeiconsIcon } from "@hugeicons/react"
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { HugeiconsIcon } from "@hugeicons/react";
 import {
   PlusSignIcon,
   Delete02Icon,
   PencilEdit02Icon,
   File02Icon,
   Search01Icon,
-} from "@hugeicons/core-free-icons"
+} from "@hugeicons/core-free-icons";
 
-type LeaseStatus = "DRAFT" | "ACTIVE" | "ENDED"
-type PaymentCycle = "DAILY" | "MONTHLY" | "ANNUAL"
+type LeaseStatus = "DRAFT" | "ACTIVE" | "ENDED";
+type PaymentCycle = "DAILY" | "MONTHLY" | "ANNUAL";
 
 type Lease = {
-  id: string
-  tenantId: string
-  unitId: string
-  startDate: string
-  endDate: string
-  paymentCycle: PaymentCycle
-  rentAmount: string
-  isAutoRenew: boolean
-  gracePeriodDays: number
-  autoRenewalNoticeDays: number | null
-  depositAmount: string | null
-  paidAt: string | null
-  status: LeaseStatus
-  createdAt: string
+  id: string;
+  tenantId: string;
+  unitId: string;
+  startDate: string;
+  endDate: string;
+  paymentCycle: PaymentCycle;
+  rentAmount: string;
+  isAutoRenew: boolean;
+  gracePeriodDays: number;
+  autoRenewalNoticeDays: number | null;
+  depositAmount: string | null;
+  paidAt: string | null;
+  status: LeaseStatus;
+  createdAt: string;
   tenant: {
-    id: string
-    fullName: string
-    email: string
-    phone: string
-  }
+    id: string;
+    fullName: string;
+    email: string;
+    phone: string;
+  };
   unit: {
-    id: string
-    name: string
+    id: string;
+    name: string;
     property: {
-      id: string
-      name: string
-    }
-  }
-}
+      id: string;
+      name: string;
+    };
+  };
+};
 
 type Tenant = {
-  id: string
-  fullName: string
-  email: string
-}
+  id: string;
+  fullName: string;
+  email: string;
+};
 
 type Property = {
-  id: string
-  name: string
-  units: Unit[]
-}
+  id: string;
+  name: string;
+  units: Unit[];
+};
 
 type Unit = {
-  id: string
-  name: string
-  dailyRate: string | null
-  monthlyRate: string | null
-  annualRate: string | null
-  isUnavailable: boolean
-}
+  id: string;
+  name: string;
+  dailyRate: string | null;
+  monthlyRate: string | null;
+  annualRate: string | null;
+  isUnavailable: boolean;
+};
 
 export default function LeasesClient() {
-  const [leases, setLeases] = useState<Lease[]>([])
-  const [filteredLeases, setFilteredLeases] = useState<Lease[]>([])
-  const [tenants, setTenants] = useState<Tenant[]>([])
-  const [properties, setProperties] = useState<Property[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [editingLease, setEditingLease] = useState<Lease | null>(null)
-  const [deletingLease, setDeletingLease] = useState<Lease | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [isSaving, setIsSaving] = useState(false)
-  const [statusFilter, setStatusFilter] = useState<string>("all")
-  const [searchQuery, setSearchQuery] = useState("")
-  const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false)
-  const [createdLease, setCreatedLease] = useState<Lease | null>(null)
+  const [leases, setLeases] = useState<Lease[]>([]);
+  const [filteredLeases, setFilteredLeases] = useState<Lease[]>([]);
+  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [editingLease, setEditingLease] = useState<Lease | null>(null);
+  const [deletingLease, setDeletingLease] = useState<Lease | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
+  const [createdLease, setCreatedLease] = useState<Lease | null>(null);
 
   const [formData, setFormData] = useState({
     tenantId: "",
@@ -139,101 +139,106 @@ export default function LeasesClient() {
     isAutoRenew: false,
     autoRenewalNoticeDays: 5,
     depositAmount: "",
-  })
+  });
 
   useEffect(() => {
-    fetchLeases()
-    fetchTenants()
-    fetchProperties()
-  }, [])
+    fetchLeases();
+    fetchTenants();
+    fetchProperties();
+  }, []);
 
   useEffect(() => {
-    filterLeases()
-  }, [leases, statusFilter, searchQuery])
+    filterLeases();
+  }, [leases, statusFilter, searchQuery]);
 
   const fetchLeases = async () => {
     try {
-      setIsLoading(true)
-      const response = await fetch("/api/leases")
+      setIsLoading(true);
+      const response = await fetch("/api/leases");
 
       if (!response.ok) {
-        throw new Error("Failed to fetch leases")
+        throw new Error("Failed to fetch leases");
       }
 
-      const data = await response.json()
-      setLeases(data)
+      const data = await response.json();
+      setLeases(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load leases")
+      setError(err instanceof Error ? err.message : "Failed to load leases");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const fetchTenants = async () => {
     try {
-      const response = await fetch("/api/tenants")
+      const response = await fetch("/api/tenants");
       if (response.ok) {
-        const data = await response.json()
-        setTenants(data)
+        const data = await response.json();
+        setTenants(data);
       }
     } catch (err) {
-      console.error("Error fetching tenants:", err)
+      console.error("Error fetching tenants:", err);
     }
-  }
+  };
 
   const fetchProperties = async () => {
     try {
-      const response = await fetch("/api/properties")
+      const response = await fetch("/api/properties");
       if (response.ok) {
-        const data = await response.json()
+        const data = await response.json();
 
         // Fetch units for each property
         const propertiesWithUnits = await Promise.all(
           data.map(async (property: Property) => {
-            const unitsResponse = await fetch(`/api/properties/${property.id}/units`)
+            const unitsResponse = await fetch(
+              `/api/properties/${property.id}/units`,
+            );
             if (unitsResponse.ok) {
-              const units = await unitsResponse.json()
-              return { ...property, units: units.filter((u: Unit) => !u.isUnavailable) }
+              const units = await unitsResponse.json();
+              return {
+                ...property,
+                units: units.filter((u: Unit) => !u.isUnavailable),
+              };
             }
-            return { ...property, units: [] }
-          })
-        )
+            return { ...property, units: [] };
+          }),
+        );
 
-        setProperties(propertiesWithUnits)
+        setProperties(propertiesWithUnits);
       }
     } catch (err) {
-      console.error("Error fetching properties:", err)
+      console.error("Error fetching properties:", err);
     }
-  }
+  };
 
   const filterLeases = () => {
-    let filtered = leases
+    let filtered = leases;
 
     // Filter by status
     if (statusFilter !== "all") {
-      filtered = filtered.filter((lease) => lease.status === statusFilter)
+      filtered = filtered.filter((lease) => lease.status === statusFilter);
     }
 
     // Filter by search query
     if (searchQuery) {
-      const query = searchQuery.toLowerCase()
+      const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
         (lease) =>
           lease.tenant.fullName.toLowerCase().includes(query) ||
           lease.unit.name.toLowerCase().includes(query) ||
-          lease.unit.property.name.toLowerCase().includes(query)
-      )
+          lease.unit.property.name.toLowerCase().includes(query),
+      );
     }
 
-    setFilteredLeases(filtered)
-  }
+    setFilteredLeases(filtered);
+  };
 
-  const selectedProperty = properties.find(p => p.id === formData.propertyId)
-  const availableUnits = selectedProperty?.units || []
+  const selectedProperty = properties.find((p) => p.id === formData.propertyId);
+  const availableUnits = selectedProperty?.units || [];
 
   const handleOpenDialog = (lease?: Lease) => {
     if (lease) {
-      setEditingLease(lease)
+      setEditingLease(lease);
       setFormData({
         tenantId: lease.tenantId,
         propertyId: lease.unit.property.id,
@@ -246,9 +251,9 @@ export default function LeasesClient() {
         isAutoRenew: lease.isAutoRenew,
         autoRenewalNoticeDays: lease.autoRenewalNoticeDays || 5,
         depositAmount: lease.depositAmount || "",
-      })
+      });
     } else {
-      setEditingLease(null)
+      setEditingLease(null);
       setFormData({
         tenantId: "",
         propertyId: "",
@@ -261,15 +266,15 @@ export default function LeasesClient() {
         isAutoRenew: false,
         autoRenewalNoticeDays: 5,
         depositAmount: "",
-      })
+      });
     }
-    setError(null)
-    setIsDialogOpen(true)
-  }
+    setError(null);
+    setIsDialogOpen(true);
+  };
 
   const handleCloseDialog = () => {
-    setIsDialogOpen(false)
-    setEditingLease(null)
+    setIsDialogOpen(false);
+    setEditingLease(null);
     setFormData({
       tenantId: "",
       propertyId: "",
@@ -282,146 +287,151 @@ export default function LeasesClient() {
       isAutoRenew: false,
       autoRenewalNoticeDays: 5,
       depositAmount: "",
-    })
-    setError(null)
-  }
+    });
+    setError(null);
+  };
 
   const handlePropertyChange = (propertyId: string) => {
-    setFormData({ ...formData, propertyId, unitId: "" })
-  }
+    setFormData({ ...formData, propertyId, unitId: "" });
+  };
 
   const handleUnitChange = (unitId: string) => {
-    const unit = availableUnits.find(u => u.id === unitId)
+    const unit = availableUnits.find((u) => u.id === unitId);
     if (unit) {
       // Determine first available payment cycle
-      let firstAvailableCycle: PaymentCycle = "MONTHLY"
-      let suggestedRent = ""
+      let firstAvailableCycle: PaymentCycle = "MONTHLY";
+      let suggestedRent = "";
 
       if (unit.dailyRate) {
-        firstAvailableCycle = "DAILY"
-        suggestedRent = unit.dailyRate
+        firstAvailableCycle = "DAILY";
+        suggestedRent = unit.dailyRate;
       } else if (unit.monthlyRate) {
-        firstAvailableCycle = "MONTHLY"
-        suggestedRent = unit.monthlyRate
+        firstAvailableCycle = "MONTHLY";
+        suggestedRent = unit.monthlyRate;
       } else if (unit.annualRate) {
-        firstAvailableCycle = "ANNUAL"
-        suggestedRent = unit.annualRate
+        firstAvailableCycle = "ANNUAL";
+        suggestedRent = unit.annualRate;
       }
 
       setFormData({
         ...formData,
         unitId,
         paymentCycle: firstAvailableCycle,
-        rentAmount: suggestedRent || formData.rentAmount
-      })
+        rentAmount: suggestedRent || formData.rentAmount,
+      });
     }
-  }
+  };
 
   const handlePaymentCycleChange = (paymentCycle: PaymentCycle) => {
-    const unit = availableUnits.find(u => u.id === formData.unitId)
+    const unit = availableUnits.find((u) => u.id === formData.unitId);
     if (unit) {
-      let suggestedRent = ""
+      let suggestedRent = "";
       if (paymentCycle === "DAILY" && unit.dailyRate) {
-        suggestedRent = unit.dailyRate
+        suggestedRent = unit.dailyRate;
       } else if (paymentCycle === "MONTHLY" && unit.monthlyRate) {
-        suggestedRent = unit.monthlyRate
+        suggestedRent = unit.monthlyRate;
       } else if (paymentCycle === "ANNUAL" && unit.annualRate) {
-        suggestedRent = unit.annualRate
+        suggestedRent = unit.annualRate;
       }
 
       // Auto-calculate end date based on payment cycle
-      let newEndDate = formData.endDate
+      let newEndDate = formData.endDate;
       if (formData.startDate) {
-        const start = new Date(formData.startDate)
+        const start = new Date(formData.startDate);
         if (paymentCycle === "DAILY") {
-          start.setDate(start.getDate() + 1)
+          start.setDate(start.getDate() + 1);
         } else if (paymentCycle === "MONTHLY") {
-          start.setMonth(start.getMonth() + 1)
-          start.setDate(start.getDate() - 1)
+          start.setMonth(start.getMonth() + 1);
+          start.setDate(start.getDate() - 1);
         } else if (paymentCycle === "ANNUAL") {
-          start.setFullYear(start.getFullYear() + 1)
-          start.setDate(start.getDate() - 1)
+          start.setFullYear(start.getFullYear() + 1);
+          start.setDate(start.getDate() - 1);
         }
-        newEndDate = start.toISOString().split("T")[0]
+        newEndDate = start.toISOString().split("T")[0];
       }
 
-      setFormData({ ...formData, paymentCycle, rentAmount: suggestedRent || formData.rentAmount, endDate: newEndDate })
+      setFormData({
+        ...formData,
+        paymentCycle,
+        rentAmount: suggestedRent || formData.rentAmount,
+        endDate: newEndDate,
+      });
     } else {
-      setFormData({ ...formData, paymentCycle })
+      setFormData({ ...formData, paymentCycle });
     }
-  }
+  };
 
   const handleStartDateChange = (startDate: string) => {
     if (!startDate) {
-      setFormData({ ...formData, startDate, endDate: "" })
-      return
+      setFormData({ ...formData, startDate, endDate: "" });
+      return;
     }
 
     // Auto-calculate end date based on payment cycle
-    const endDate = new Date(startDate)
+    const endDate = new Date(startDate);
 
     if (formData.paymentCycle === "DAILY") {
-      endDate.setDate(endDate.getDate() + 1)
+      endDate.setDate(endDate.getDate() + 1);
     } else if (formData.paymentCycle === "MONTHLY") {
-      endDate.setMonth(endDate.getMonth() + 1)
-      endDate.setDate(endDate.getDate() - 1)
+      endDate.setMonth(endDate.getMonth() + 1);
+      endDate.setDate(endDate.getDate() - 1);
     } else if (formData.paymentCycle === "ANNUAL") {
-      endDate.setFullYear(endDate.getFullYear() + 1)
-      endDate.setDate(endDate.getDate() - 1)
+      endDate.setFullYear(endDate.getFullYear() + 1);
+      endDate.setDate(endDate.getDate() - 1);
     }
 
     setFormData({
       ...formData,
       startDate,
-      endDate: endDate.toISOString().split("T")[0]
-    })
-  }
+      endDate: endDate.toISOString().split("T")[0],
+    });
+  };
 
   const parseCurrencyInput = (value: string): string => {
-    return value.replace(/[^\d.]/g, "")
-  }
+    return value.replace(/[^\d.]/g, "");
+  };
 
   const isPaymentCycleAvailable = (cycle: PaymentCycle) => {
-    const unit = availableUnits.find(u => u.id === formData.unitId)
-    if (!unit) return false
+    const unit = availableUnits.find((u) => u.id === formData.unitId);
+    if (!unit) return false;
 
-    if (cycle === "DAILY") return !!unit.dailyRate
-    if (cycle === "MONTHLY") return !!unit.monthlyRate
-    if (cycle === "ANNUAL") return !!unit.annualRate
-    return false
-  }
+    if (cycle === "DAILY") return !!unit.dailyRate;
+    if (cycle === "MONTHLY") return !!unit.monthlyRate;
+    if (cycle === "ANNUAL") return !!unit.annualRate;
+    return false;
+  };
 
   const handleSaveLease = async () => {
     if (!formData.tenantId) {
-      setError("Please select a tenant")
-      return
+      setError("Please select a tenant");
+      return;
     }
 
     if (!formData.unitId) {
-      setError("Please select a property and unit")
-      return
+      setError("Please select a property and unit");
+      return;
     }
 
     if (!formData.startDate || !formData.endDate) {
-      setError("Please enter start and end dates")
-      return
+      setError("Please enter start and end dates");
+      return;
     }
 
-    const rentAmount = parseFloat(parseCurrencyInput(formData.rentAmount))
+    const rentAmount = parseFloat(parseCurrencyInput(formData.rentAmount));
     if (isNaN(rentAmount) || rentAmount <= 0) {
-      setError("Please enter a valid rent amount")
-      return
+      setError("Please enter a valid rent amount");
+      return;
     }
 
-    setIsSaving(true)
-    setError(null)
+    setIsSaving(true);
+    setError(null);
 
     try {
       const url = editingLease
         ? `/api/leases/${editingLease.id}`
-        : "/api/leases"
+        : "/api/leases";
 
-      const method = editingLease ? "PATCH" : "POST"
+      const method = editingLease ? "PATCH" : "POST";
 
       const payload: Record<string, string | number | boolean | null> = {
         startDate: formData.startDate,
@@ -430,16 +440,18 @@ export default function LeasesClient() {
         rentAmount,
         gracePeriodDays: formData.isAutoRenew ? formData.gracePeriodDays : null,
         isAutoRenew: formData.isAutoRenew,
-        autoRenewalNoticeDays: formData.isAutoRenew ? formData.autoRenewalNoticeDays : null,
-      }
+        autoRenewalNoticeDays: formData.isAutoRenew
+          ? formData.autoRenewalNoticeDays
+          : null,
+      };
 
       if (!editingLease) {
-        payload.tenantId = formData.tenantId
-        payload.unitId = formData.unitId
+        payload.tenantId = formData.tenantId;
+        payload.unitId = formData.unitId;
       }
 
       if (formData.depositAmount) {
-        payload.depositAmount = parseFloat(formData.depositAmount)
+        payload.depositAmount = parseFloat(formData.depositAmount);
       }
 
       const response = await fetch(url, {
@@ -448,79 +460,79 @@ export default function LeasesClient() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to save lease")
+        throw new Error(data.error || "Failed to save lease");
       }
 
-      await fetchLeases()
-      
+      await fetchLeases();
+
       // Show success dialog for both create and update
-      setCreatedLease(data)
-      setIsSuccessDialogOpen(true)
-      
-      handleCloseDialog()
+      setCreatedLease(data);
+      setIsSuccessDialogOpen(true);
+
+      handleCloseDialog();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save lease")
+      setError(err instanceof Error ? err.message : "Failed to save lease");
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }
+  };
 
   const handleOpenDeleteDialog = (lease: Lease) => {
-    setDeletingLease(lease)
-    setIsDeleteDialogOpen(true)
-  }
+    setDeletingLease(lease);
+    setIsDeleteDialogOpen(true);
+  };
 
   const handleCloseDeleteDialog = () => {
-    setIsDeleteDialogOpen(false)
-    setDeletingLease(null)
-  }
+    setIsDeleteDialogOpen(false);
+    setDeletingLease(null);
+  };
 
   const handleDeleteLease = async () => {
-    if (!deletingLease) return
+    if (!deletingLease) return;
 
-    setIsSaving(true)
+    setIsSaving(true);
 
     try {
       const response = await fetch(`/api/leases/${deletingLease.id}`, {
         method: "DELETE",
-      })
+      });
 
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || "Failed to delete lease")
+        const data = await response.json();
+        throw new Error(data.error || "Failed to delete lease");
       }
 
-      await fetchLeases()
-      handleCloseDeleteDialog()
+      await fetchLeases();
+      handleCloseDeleteDialog();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete lease")
+      setError(err instanceof Error ? err.message : "Failed to delete lease");
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }
+  };
 
   const formatCurrency = (value: string | number) => {
-    const num = typeof value === "string" ? parseFloat(value) : value
-    if (isNaN(num)) return "—"
+    const num = typeof value === "string" ? parseFloat(value) : value;
+    if (isNaN(num)) return "—";
     return new Intl.NumberFormat("en-US", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    }).format(num)
-  }
+    }).format(num);
+  };
 
   const formatDateForDisplay = (dateString: string) => {
-    if (!dateString) return ""
-    const date = new Date(dateString)
-    const day = String(date.getDate()).padStart(2, "0")
-    const month = String(date.getMonth() + 1).padStart(2, "0")
-    const year = date.getFullYear()
-    return `${day}/${month}/${year}`
-  }
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
 
   return (
     <div className="space-y-6">
@@ -532,7 +544,11 @@ export default function LeasesClient() {
           </p>
         </div>
         <Button onClick={() => handleOpenDialog()}>
-          <HugeiconsIcon icon={PlusSignIcon} strokeWidth={2} data-icon="inline-start" />
+          <HugeiconsIcon
+            icon={PlusSignIcon}
+            strokeWidth={2}
+            data-icon="inline-start"
+          />
           Add Lease
         </Button>
       </div>
@@ -597,18 +613,42 @@ export default function LeasesClient() {
               <TableBody>
                 {Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell><Skeleton className="h-4 w-[140px]" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-[140px]" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-[90px]" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-[90px]" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-[100px]" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
-                    <TableCell><Skeleton className="h-6 w-[70px]" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-[60px]" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-[60px]" /></TableCell>
-                    <TableCell><Skeleton className="h-7 w-[100px]" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-[60px]" /></TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-[140px]" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-[140px]" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-[80px]" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-[90px]" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-[90px]" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-[100px]" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-[80px]" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-6 w-[70px]" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-[60px]" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-[60px]" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-7 w-[100px]" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-[60px]" />
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Skeleton className="h-8 w-8" />
@@ -638,7 +678,11 @@ export default function LeasesClient() {
               </p>
               {!searchQuery && statusFilter === "all" && (
                 <Button onClick={() => handleOpenDialog()}>
-                  <HugeiconsIcon icon={PlusSignIcon} strokeWidth={2} data-icon="inline-start" />
+                  <HugeiconsIcon
+                    icon={PlusSignIcon}
+                    strokeWidth={2}
+                    data-icon="inline-start"
+                  />
                   Add Lease
                 </Button>
               )}
@@ -666,7 +710,9 @@ export default function LeasesClient() {
                   <TableRow
                     key={lease.id}
                     className="cursor-pointer"
-                    onClick={() => window.location.href = `/leases/${lease.id}`}
+                    onClick={() =>
+                      (window.location.href = `/leases/${lease.id}`)
+                    }
                   >
                     <TableCell className="font-medium">
                       {lease.tenant.fullName}
@@ -685,15 +731,21 @@ export default function LeasesClient() {
                       {lease.paymentCycle.toLowerCase()}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={lease.isAutoRenew ? "default" : "secondary"}>
+                      <Badge
+                        variant={lease.isAutoRenew ? "default" : "secondary"}
+                      >
                         {lease.isAutoRenew ? "Enabled" : "Disabled"}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {lease.gracePeriodDays ? `${lease.gracePeriodDays} days` : "—"}
+                      {lease.gracePeriodDays
+                        ? `${lease.gracePeriodDays} days`
+                        : "—"}
                     </TableCell>
                     <TableCell>
-                      {lease.autoRenewalNoticeDays ? `${lease.autoRenewalNoticeDays} days` : "—"}
+                      {lease.autoRenewalNoticeDays
+                        ? `${lease.autoRenewalNoticeDays} days`
+                        : "—"}
                     </TableCell>
                     <TableCell>
                       <span className="text-sm">
@@ -705,13 +757,20 @@ export default function LeasesClient() {
                     </TableCell>
                     <TableCell className="text-right py-0">
                       {lease.status === "DRAFT" && (
-                        <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                        <div
+                          className="flex justify-end gap-2"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => handleOpenDialog(lease)}
                           >
-                            <HugeiconsIcon icon={PencilEdit02Icon} strokeWidth={2} className="h-4 w-4" />
+                            <HugeiconsIcon
+                              icon={PencilEdit02Icon}
+                              strokeWidth={2}
+                              className="h-4 w-4"
+                            />
                             <span className="sr-only">Edit</span>
                           </Button>
                           <Button
@@ -719,7 +778,11 @@ export default function LeasesClient() {
                             size="icon"
                             onClick={() => handleOpenDeleteDialog(lease)}
                           >
-                            <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} className="h-4 w-4" />
+                            <HugeiconsIcon
+                              icon={Delete02Icon}
+                              strokeWidth={2}
+                              className="h-4 w-4"
+                            />
                             <span className="sr-only">Delete</span>
                           </Button>
                         </div>
@@ -738,7 +801,9 @@ export default function LeasesClient() {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {editingLease ? "Edit Lease Agreement" : "Add New Lease Agreement"}
+              {editingLease
+                ? "Edit Lease Agreement"
+                : "Add New Lease Agreement"}
             </DialogTitle>
             <DialogDescription>
               {editingLease
@@ -829,14 +894,26 @@ export default function LeasesClient() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="DAILY" disabled={!isPaymentCycleAvailable("DAILY")}>
-                      Daily {!isPaymentCycleAvailable("DAILY") && "(No rate set)"}
+                    <SelectItem
+                      value="DAILY"
+                      disabled={!isPaymentCycleAvailable("DAILY")}
+                    >
+                      Daily{" "}
+                      {!isPaymentCycleAvailable("DAILY") && "(No rate set)"}
                     </SelectItem>
-                    <SelectItem value="MONTHLY" disabled={!isPaymentCycleAvailable("MONTHLY")}>
-                      Monthly {!isPaymentCycleAvailable("MONTHLY") && "(No rate set)"}
+                    <SelectItem
+                      value="MONTHLY"
+                      disabled={!isPaymentCycleAvailable("MONTHLY")}
+                    >
+                      Monthly{" "}
+                      {!isPaymentCycleAvailable("MONTHLY") && "(No rate set)"}
                     </SelectItem>
-                    <SelectItem value="ANNUAL" disabled={!isPaymentCycleAvailable("ANNUAL")}>
-                      Annual {!isPaymentCycleAvailable("ANNUAL") && "(No rate set)"}
+                    <SelectItem
+                      value="ANNUAL"
+                      disabled={!isPaymentCycleAvailable("ANNUAL")}
+                    >
+                      Annual{" "}
+                      {!isPaymentCycleAvailable("ANNUAL") && "(No rate set)"}
                     </SelectItem>
                   </SelectContent>
                 </Select>
@@ -882,7 +959,9 @@ export default function LeasesClient() {
             {formData.isAutoRenew && (
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="auto-renewal-notice">Auto-Renewal Notice Period</Label>
+                  <Label htmlFor="auto-renewal-notice">
+                    Auto-Renewal Notice Period
+                  </Label>
                   <Input
                     id="auto-renewal-notice"
                     type="number"
@@ -923,7 +1002,9 @@ export default function LeasesClient() {
                   id="rent-amount"
                   type="text"
                   value={formData.rentAmount}
-                  onChange={(e) => setFormData({ ...formData, rentAmount: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, rentAmount: e.target.value })
+                  }
                   placeholder="0"
                   disabled={isSaving || !formData.unitId}
                 />
@@ -934,7 +1015,9 @@ export default function LeasesClient() {
                   id="deposit-amount"
                   type="text"
                   value={formData.depositAmount}
-                  onChange={(e) => setFormData({ ...formData, depositAmount: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, depositAmount: e.target.value })
+                  }
                   placeholder="0"
                   disabled={isSaving || !formData.unitId}
                 />
@@ -953,20 +1036,25 @@ export default function LeasesClient() {
               {isSaving
                 ? "Saving..."
                 : editingLease
-                ? "Update Lease"
-                : "Create Lease"}
+                  ? "Update Lease"
+                  : "Create Lease"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              {"This will permanently delete the lease agreement for '"}{deletingLease?.tenant.fullName}{"'."}
+              {"This will permanently delete the lease agreement for '"}
+              {deletingLease?.tenant.fullName}
+              {"'."}
               This action cannot be undone. Only draft leases can be deleted.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -988,101 +1076,155 @@ export default function LeasesClient() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle></DialogTitle>
-            <DialogDescription>
-            </DialogDescription>
+            <DialogDescription></DialogDescription>
           </DialogHeader>
           {createdLease && (
-              <CardContent className="space-y-3">
+            <CardContent className="space-y-3">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Tenant
+                </p>
+                <p className="text-base font-semibold">
+                  {createdLease.tenant.fullName}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {createdLease.tenant.email}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Property / Unit
+                </p>
+                <p className="text-base font-semibold">
+                  {createdLease.unit.property.name} - {createdLease.unit.name}
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Tenant</p>
-                  <p className="text-base font-semibold">{createdLease.tenant.fullName}</p>
-                  <p className="text-sm text-muted-foreground">{createdLease.tenant.email}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Property / Unit</p>
-                  <p className="text-base font-semibold">
-                    {createdLease.unit.property.name} - {createdLease.unit.name}
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Start Date
+                  </p>
+                  <p className="text-base">
+                    {formatDateForDisplay(createdLease.startDate)}
                   </p>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Start Date</p>
-                    <p className="text-base">{formatDateForDisplay(createdLease.startDate)}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">End Date</p>
-                    <p className="text-base">{formatDateForDisplay(createdLease.endDate)}</p>
-                  </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    End Date
+                  </p>
+                  <p className="text-base">
+                    {formatDateForDisplay(createdLease.endDate)}
+                  </p>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Payment Cycle</p>
-                    <p className="text-base capitalize">{createdLease.paymentCycle.toLowerCase()}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Rent Amount</p>
-                    <p className="text-base font-semibold">{formatCurrency(createdLease.rentAmount)}</p>
-                  </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Payment Cycle
+                  </p>
+                  <p className="text-base capitalize">
+                    {createdLease.paymentCycle.toLowerCase()}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Auto-Renewal</p>
-                  <p className="text-base">{createdLease.isAutoRenew ? "Enabled" : "Disabled"}</p>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Rent Amount
+                  </p>
+                  <p className="text-base font-semibold">
+                    {formatCurrency(createdLease.rentAmount)}
+                  </p>
                 </div>
-                {createdLease.isAutoRenew && (
-                  <>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">Notice Period</p>
-                        <p className="text-base">{createdLease.autoRenewalNoticeDays} days</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">Grace Period</p>
-                        <p className="text-base">{createdLease.gracePeriodDays} days</p>
-                      </div>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Auto-Renewal
+                </p>
+                <p className="text-base">
+                  {createdLease.isAutoRenew ? "Enabled" : "Disabled"}
+                </p>
+              </div>
+              {createdLease.isAutoRenew && (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Notice Period
+                      </p>
+                      <p className="text-base">
+                        {createdLease.autoRenewalNoticeDays} days
+                      </p>
                     </div>
-                    {createdLease.autoRenewalNoticeDays && (
-                      <div className="pt-2 border-t">
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <p className="text-sm font-medium text-muted-foreground mb-1">Last Cancellation Day</p>
-                            <p className="text-lg font-bold text-primary">
-                              {(() => {
-                                const cancelDate = new Date(createdLease.endDate)
-                                cancelDate.setDate(cancelDate.getDate() - createdLease.autoRenewalNoticeDays)
-                                return formatDateForDisplay(cancelDate.toISOString().split('T')[0])
-                              })()}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Cancel auto-renewal by this date
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-muted-foreground mb-1">Last Payment Day</p>
-                            <p className="text-lg font-bold text-primary">
-                              {(() => {
-                                const paymentDate = new Date(createdLease.endDate)
-                                paymentDate.setDate(paymentDate.getDate() + createdLease.gracePeriodDays)
-                                return formatDateForDisplay(paymentDate.toISOString().split('T')[0])
-                              })()}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Final payment due by this date
-                            </p>
-                          </div>
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Grace Period
+                      </p>
+                      <p className="text-base">
+                        {createdLease.gracePeriodDays} days
+                      </p>
+                    </div>
+                  </div>
+                  {createdLease.autoRenewalNoticeDays && (
+                    <div className="pt-2 border-t">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground mb-1">
+                            Last Cancellation Day
+                          </p>
+                          <p className="text-lg font-bold text-primary">
+                            {(() => {
+                              const cancelDate = new Date(createdLease.endDate);
+                              cancelDate.setDate(
+                                cancelDate.getDate() -
+                                  createdLease.autoRenewalNoticeDays,
+                              );
+                              return formatDateForDisplay(
+                                cancelDate.toISOString().split("T")[0],
+                              );
+                            })()}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Cancel auto-renewal by this date
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground mb-1">
+                            Last Payment Day
+                          </p>
+                          <p className="text-lg font-bold text-primary">
+                            {(() => {
+                              const paymentDate = new Date(
+                                createdLease.endDate,
+                              );
+                              paymentDate.setDate(
+                                paymentDate.getDate() +
+                                  createdLease.gracePeriodDays,
+                              );
+                              return formatDateForDisplay(
+                                paymentDate.toISOString().split("T")[0],
+                              );
+                            })()}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Final payment due by this date
+                          </p>
                         </div>
                       </div>
-                    )}
-                  </>
-                )}
-              </CardContent>
+                    </div>
+                  )}
+                </>
+              )}
+            </CardContent>
           )}
           <DialogFooter>
-            <Button onClick={() => setIsSuccessDialogOpen(false)} className="w-full">
+            <Button
+              onClick={() => setIsSuccessDialogOpen(false)}
+              className="w-full"
+            >
               Done
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }

@@ -11,7 +11,7 @@ export const AUTH = {
   SALT_ROUNDS: 10,
   SESSION_STRATEGY: "jwt" as const,
   LOGIN_PATH: "/login",
-} as const
+} as const;
 
 // ========================================
 // SUBSCRIPTION STATUS
@@ -22,9 +22,10 @@ export const SUBSCRIPTION_STATUS = {
   CANCELLED: "CANCELLED",
   EXPIRED: "EXPIRED",
   TRIAL: "TRIAL",
-} as const
+} as const;
 
-export type SubscriptionStatus = typeof SUBSCRIPTION_STATUS[keyof typeof SUBSCRIPTION_STATUS]
+export type SubscriptionStatus =
+  (typeof SUBSCRIPTION_STATUS)[keyof typeof SUBSCRIPTION_STATUS];
 
 // ========================================
 // LEASE STATUS
@@ -35,9 +36,9 @@ export const LEASE_STATUS = {
   ACTIVE: "ACTIVE",
   ENDED: "ENDED",
   CANCELLED: "CANCELLED",
-} as const
+} as const;
 
-export type LeaseStatus = typeof LEASE_STATUS[keyof typeof LEASE_STATUS]
+export type LeaseStatus = (typeof LEASE_STATUS)[keyof typeof LEASE_STATUS];
 
 // ========================================
 // TENANT STATUS
@@ -48,9 +49,9 @@ export const TENANT_STATUS = {
   BOOKED: "BOOKED",
   ACTIVE: "ACTIVE",
   EXPIRED: "EXPIRED",
-} as const
+} as const;
 
-export type TenantStatus = typeof TENANT_STATUS[keyof typeof TENANT_STATUS]
+export type TenantStatus = (typeof TENANT_STATUS)[keyof typeof TENANT_STATUS];
 
 // ========================================
 // PAYMENT STATUS
@@ -62,9 +63,10 @@ export const PAYMENT_STATUS = {
   COMPLETED: "COMPLETED",
   FAILED: "FAILED",
   REFUNDED: "REFUNDED",
-} as const
+} as const;
 
-export type PaymentStatus = typeof PAYMENT_STATUS[keyof typeof PAYMENT_STATUS]
+export type PaymentStatus =
+  (typeof PAYMENT_STATUS)[keyof typeof PAYMENT_STATUS];
 
 // ========================================
 // PAYMENT METHOD
@@ -76,9 +78,10 @@ export const PAYMENT_METHOD = {
   VIRTUAL_ACCOUNT: "VIRTUAL_ACCOUNT",
   QRIS: "QRIS",
   MANUAL: "MANUAL",
-} as const
+} as const;
 
-export type PaymentMethod = typeof PAYMENT_METHOD[keyof typeof PAYMENT_METHOD]
+export type PaymentMethod =
+  (typeof PAYMENT_METHOD)[keyof typeof PAYMENT_METHOD];
 
 // ========================================
 // DEPOSIT STATUS
@@ -88,9 +91,10 @@ export const DEPOSIT_STATUS = {
   HELD: "HELD",
   RETURNED: "RETURNED",
   FORFEITED: "FORFEITED",
-} as const
+} as const;
 
-export type DepositStatus = typeof DEPOSIT_STATUS[keyof typeof DEPOSIT_STATUS]
+export type DepositStatus =
+  (typeof DEPOSIT_STATUS)[keyof typeof DEPOSIT_STATUS];
 
 // ========================================
 // PAYMENT CYCLE
@@ -100,9 +104,9 @@ export const PAYMENT_CYCLE = {
   DAILY: "DAILY",
   MONTHLY: "MONTHLY",
   ANNUAL: "ANNUAL",
-} as const
+} as const;
 
-export type PaymentCycle = typeof PAYMENT_CYCLE[keyof typeof PAYMENT_CYCLE]
+export type PaymentCycle = (typeof PAYMENT_CYCLE)[keyof typeof PAYMENT_CYCLE];
 
 // ========================================
 // ACTIVITY TYPES
@@ -126,9 +130,9 @@ export const ACTIVITY_TYPE = {
   UNIT_UPDATED: "UNIT_UPDATED",
   USER_LOGIN: "USER_LOGIN",
   OTHER: "OTHER",
-} as const
+} as const;
 
-export type ActivityType = typeof ACTIVITY_TYPE[keyof typeof ACTIVITY_TYPE]
+export type ActivityType = (typeof ACTIVITY_TYPE)[keyof typeof ACTIVITY_TYPE];
 
 // ========================================
 // NOTIFICATION
@@ -138,9 +142,10 @@ export const NOTIFICATION_CHANNEL = {
   EMAIL: "EMAIL",
   WHATSAPP: "WHATSAPP",
   TELEGRAM: "TELEGRAM",
-} as const
+} as const;
 
-export type NotificationChannel = typeof NOTIFICATION_CHANNEL[keyof typeof NOTIFICATION_CHANNEL]
+export type NotificationChannel =
+  (typeof NOTIFICATION_CHANNEL)[keyof typeof NOTIFICATION_CHANNEL];
 
 export const NOTIFICATION_TRIGGER = {
   PAYMENT_REMINDER: "PAYMENT_REMINDER",
@@ -149,17 +154,19 @@ export const NOTIFICATION_TRIGGER = {
   LEASE_EXPIRING: "LEASE_EXPIRING",
   LEASE_EXPIRED: "LEASE_EXPIRED",
   MANUAL: "MANUAL",
-} as const
+} as const;
 
-export type NotificationTrigger = typeof NOTIFICATION_TRIGGER[keyof typeof NOTIFICATION_TRIGGER]
+export type NotificationTrigger =
+  (typeof NOTIFICATION_TRIGGER)[keyof typeof NOTIFICATION_TRIGGER];
 
 export const NOTIFICATION_STATUS = {
   PENDING: "PENDING",
   SENT: "SENT",
   FAILED: "FAILED",
-} as const
+} as const;
 
-export type NotificationStatus = typeof NOTIFICATION_STATUS[keyof typeof NOTIFICATION_STATUS]
+export type NotificationStatus =
+  (typeof NOTIFICATION_STATUS)[keyof typeof NOTIFICATION_STATUS];
 
 // ========================================
 // ACCESS CONTROL RESOURCES
@@ -175,9 +182,9 @@ export const RESOURCE = {
   SETTINGS: "settings",
   REPORTS: "reports",
   NOTIFICATIONS: "notifications",
-} as const
+} as const;
 
-export type Resource = typeof RESOURCE[keyof typeof RESOURCE]
+export type Resource = (typeof RESOURCE)[keyof typeof RESOURCE];
 
 // ========================================
 // ACCESS CONTROL ACTIONS
@@ -189,9 +196,9 @@ export const ACTION = {
   UPDATE: "update",
   DELETE: "delete",
   MANAGE: "manage",
-} as const
+} as const;
 
-export type Action = typeof ACTION[keyof typeof ACTION]
+export type Action = (typeof ACTION)[keyof typeof ACTION];
 
 // ========================================
 // HTTP STATUS CODES
@@ -208,9 +215,9 @@ export const HTTP_STATUS = {
   CONFLICT: 409,
   UNPROCESSABLE_ENTITY: 422,
   INTERNAL_SERVER_ERROR: 500,
-} as const
+} as const;
 
-export type HttpStatus = typeof HTTP_STATUS[keyof typeof HTTP_STATUS]
+export type HttpStatus = (typeof HTTP_STATUS)[keyof typeof HTTP_STATUS];
 
 // ========================================
 // DATE & TIME
@@ -221,13 +228,13 @@ export const DATE_FORMAT = {
   LONG: "MMMM d, yyyy",
   WITH_TIME: "MMM d, yyyy h:mm a",
   ISO: "yyyy-MM-dd",
-} as const
+} as const;
 
 export const TIME_FORMAT = {
   SHORT: "h:mm a",
   LONG: "h:mm:ss a",
   MILITARY: "HH:mm",
-} as const
+} as const;
 
 // ========================================
 // CURRENCY
@@ -236,4 +243,4 @@ export const TIME_FORMAT = {
 export const CURRENCY = {
   DEFAULT: "IDR",
   LOCALE: "id-ID",
-} as const
+} as const;

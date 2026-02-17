@@ -1,14 +1,14 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -16,7 +16,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
+} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -24,7 +24,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,57 +34,57 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
-import { Skeleton } from "@/components/ui/skeleton"
-import { HugeiconsIcon } from "@hugeicons/react"
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Skeleton } from "@/components/ui/skeleton";
+import { HugeiconsIcon } from "@hugeicons/react";
 import {
   PlusSignIcon,
   Delete02Icon,
   PencilEdit02Icon,
   UserIcon,
   Search01Icon,
-} from "@hugeicons/core-free-icons"
+} from "@hugeicons/core-free-icons";
 
-type TenantStatus = "LEAD" | "BOOKED" | "ACTIVE" | "EXPIRED"
+type TenantStatus = "LEAD" | "BOOKED" | "ACTIVE" | "EXPIRED";
 
 type Tenant = {
-  id: string
-  fullName: string
-  email: string
-  phone: string
-  status: TenantStatus
-  preferEmail: boolean
-  preferWhatsapp: boolean
-  preferTelegram: boolean
-  createdAt: string
-  updatedAt: string
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  status: TenantStatus;
+  preferEmail: boolean;
+  preferWhatsapp: boolean;
+  preferTelegram: boolean;
+  createdAt: string;
+  updatedAt: string;
   _count: {
-    leaseAgreements: number
-  }
-}
+    leaseAgreements: number;
+  };
+};
 
 export default function TenantsClient() {
-  const [tenants, setTenants] = useState<Tenant[]>([])
-  const [filteredTenants, setFilteredTenants] = useState<Tenant[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [editingTenant, setEditingTenant] = useState<Tenant | null>(null)
-  const [deletingTenant, setDeletingTenant] = useState<Tenant | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [isSaving, setIsSaving] = useState(false)
-  const [statusFilter, setStatusFilter] = useState<string>("all")
-  const [searchQuery, setSearchQuery] = useState("")
+  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [filteredTenants, setFilteredTenants] = useState<Tenant[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
+  const [deletingTenant, setDeletingTenant] = useState<Tenant | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -94,59 +94,59 @@ export default function TenantsClient() {
     preferEmail: false,
     preferWhatsapp: false,
     preferTelegram: false,
-  })
+  });
 
   useEffect(() => {
-    fetchTenants()
-  }, [])
+    fetchTenants();
+  }, []);
 
   useEffect(() => {
-    filterTenants()
-  }, [tenants, statusFilter, searchQuery])
+    filterTenants();
+  }, [tenants, statusFilter, searchQuery]);
 
   const fetchTenants = async () => {
     try {
-      setIsLoading(true)
-      const response = await fetch("/api/tenants")
+      setIsLoading(true);
+      const response = await fetch("/api/tenants");
 
       if (!response.ok) {
-        throw new Error("Failed to fetch tenants")
+        throw new Error("Failed to fetch tenants");
       }
 
-      const data = await response.json()
-      setTenants(data)
+      const data = await response.json();
+      setTenants(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load tenants")
+      setError(err instanceof Error ? err.message : "Failed to load tenants");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const filterTenants = () => {
-    let filtered = tenants
+    let filtered = tenants;
 
     // Filter by status
     if (statusFilter !== "all") {
-      filtered = filtered.filter((tenant) => tenant.status === statusFilter)
+      filtered = filtered.filter((tenant) => tenant.status === statusFilter);
     }
 
     // Filter by search query
     if (searchQuery) {
-      const query = searchQuery.toLowerCase()
+      const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
         (tenant) =>
           tenant.fullName.toLowerCase().includes(query) ||
           tenant.email.toLowerCase().includes(query) ||
-          tenant.phone.toLowerCase().includes(query)
-      )
+          tenant.phone.toLowerCase().includes(query),
+      );
     }
 
-    setFilteredTenants(filtered)
-  }
+    setFilteredTenants(filtered);
+  };
 
   const handleOpenDialog = (tenant?: Tenant) => {
     if (tenant) {
-      setEditingTenant(tenant)
+      setEditingTenant(tenant);
       setFormData({
         fullName: tenant.fullName,
         email: tenant.email,
@@ -155,9 +155,9 @@ export default function TenantsClient() {
         preferEmail: tenant.preferEmail,
         preferWhatsapp: tenant.preferWhatsapp,
         preferTelegram: tenant.preferTelegram,
-      })
+      });
     } else {
-      setEditingTenant(null)
+      setEditingTenant(null);
       setFormData({
         fullName: "",
         email: "",
@@ -166,15 +166,15 @@ export default function TenantsClient() {
         preferEmail: false,
         preferWhatsapp: false,
         preferTelegram: false,
-      })
+      });
     }
-    setError(null)
-    setIsDialogOpen(true)
-  }
+    setError(null);
+    setIsDialogOpen(true);
+  };
 
   const handleCloseDialog = () => {
-    setIsDialogOpen(false)
-    setEditingTenant(null)
+    setIsDialogOpen(false);
+    setEditingTenant(null);
     setFormData({
       fullName: "",
       email: "",
@@ -183,65 +183,68 @@ export default function TenantsClient() {
       preferEmail: false,
       preferWhatsapp: false,
       preferTelegram: false,
-    })
-    setError(null)
-  }
+    });
+    setError(null);
+  };
 
   const handleSaveTenant = async () => {
     if (!formData.fullName.trim()) {
-      setError("Full name is required")
-      return
+      setError("Full name is required");
+      return;
     }
 
     // At least one contact method required
     if (!formData.email.trim() && !formData.phone.trim()) {
-      setError("At least one contact method (email or phone) is required")
-      return
+      setError("At least one contact method (email or phone) is required");
+      return;
     }
 
     // Validate email format if provided
     if (formData.email.trim()) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(formData.email)) {
-        setError("Please enter a valid email address")
-        return
+        setError("Please enter a valid email address");
+        return;
       }
     }
 
     // Validate phone format if provided
     if (formData.phone.trim()) {
-      const phoneRegex = /^[\d\s\-\+\(\)]+$/
-      if (!phoneRegex.test(formData.phone) || formData.phone.replace(/\D/g, "").length < 8) {
-        setError("Please enter a valid phone number (at least 8 digits)")
-        return
+      const phoneRegex = /^[\d\s\-\+\(\)]+$/;
+      if (
+        !phoneRegex.test(formData.phone) ||
+        formData.phone.replace(/\D/g, "").length < 8
+      ) {
+        setError("Please enter a valid phone number (at least 8 digits)");
+        return;
       }
     }
 
     // Validate preferences match available contact methods
     if (formData.preferEmail && !formData.email.trim()) {
-      setError("Cannot prefer email without providing an email address")
-      return
+      setError("Cannot prefer email without providing an email address");
+      return;
     }
 
     if (formData.preferWhatsapp && !formData.phone.trim()) {
-      setError("Cannot prefer WhatsApp without providing a phone number")
-      return
+      setError("Cannot prefer WhatsApp without providing a phone number");
+      return;
     }
 
     if (formData.preferTelegram && !formData.phone.trim()) {
-      setError("Cannot prefer Telegram without providing a phone number")
-      return
+      setError("Cannot prefer Telegram without providing a phone number");
+      return;
     }
 
-    setIsSaving(true)
-    setError(null)
+    setIsSaving(true);
+    setError(null);
 
     try {
       const url = editingTenant
         ? `/api/tenants/${editingTenant.id}`
-        : "/api/tenants"
+        : "/api/tenants";
 
-      const method = editingTenant ? "PATCH" : "POST"
+      const method = editingTenant ? "PATCH" : "POST";
 
       const response = await fetch(url, {
         method,
@@ -249,56 +252,56 @@ export default function TenantsClient() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(formData),
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to save tenant")
+        throw new Error(data.error || "Failed to save tenant");
       }
 
-      await fetchTenants()
-      handleCloseDialog()
+      await fetchTenants();
+      handleCloseDialog();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save tenant")
+      setError(err instanceof Error ? err.message : "Failed to save tenant");
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }
+  };
 
   const handleOpenDeleteDialog = (tenant: Tenant) => {
-    setDeletingTenant(tenant)
-    setIsDeleteDialogOpen(true)
-  }
+    setDeletingTenant(tenant);
+    setIsDeleteDialogOpen(true);
+  };
 
   const handleCloseDeleteDialog = () => {
-    setIsDeleteDialogOpen(false)
-    setDeletingTenant(null)
-  }
+    setIsDeleteDialogOpen(false);
+    setDeletingTenant(null);
+  };
 
   const handleDeleteTenant = async () => {
-    if (!deletingTenant) return
+    if (!deletingTenant) return;
 
-    setIsSaving(true)
+    setIsSaving(true);
 
     try {
       const response = await fetch(`/api/tenants/${deletingTenant.id}`, {
         method: "DELETE",
-      })
+      });
 
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || "Failed to delete tenant")
+        const data = await response.json();
+        throw new Error(data.error || "Failed to delete tenant");
       }
 
-      await fetchTenants()
-      handleCloseDeleteDialog()
+      await fetchTenants();
+      handleCloseDeleteDialog();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete tenant")
+      setError(err instanceof Error ? err.message : "Failed to delete tenant");
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
@@ -310,7 +313,11 @@ export default function TenantsClient() {
           </p>
         </div>
         <Button onClick={() => handleOpenDialog()}>
-          <HugeiconsIcon icon={PlusSignIcon} strokeWidth={2} data-icon="inline-start" />
+          <HugeiconsIcon
+            icon={PlusSignIcon}
+            strokeWidth={2}
+            data-icon="inline-start"
+          />
           Add Tenant
         </Button>
       </div>
@@ -369,11 +376,21 @@ export default function TenantsClient() {
               <TableBody>
                 {Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell><Skeleton className="h-4 w-[150px]" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-[180px]" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-[120px]" /></TableCell>
-                    <TableCell><Skeleton className="h-6 w-[70px]" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-[30px]" /></TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-[150px]" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-[180px]" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-[120px]" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-6 w-[70px]" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-[30px]" />
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Skeleton className="h-8 w-8" />
@@ -403,7 +420,11 @@ export default function TenantsClient() {
               </p>
               {!searchQuery && statusFilter === "all" && (
                 <Button onClick={() => handleOpenDialog()}>
-                  <HugeiconsIcon icon={PlusSignIcon} strokeWidth={2} data-icon="inline-start" />
+                  <HugeiconsIcon
+                    icon={PlusSignIcon}
+                    strokeWidth={2}
+                    data-icon="inline-start"
+                  />
                   Add Tenant
                 </Button>
               )}
@@ -425,9 +446,13 @@ export default function TenantsClient() {
                   <TableRow
                     key={tenant.id}
                     className="cursor-pointer"
-                    onClick={() => window.location.href = `/tenants/${tenant.id}`}
+                    onClick={() =>
+                      (window.location.href = `/tenants/${tenant.id}`)
+                    }
                   >
-                    <TableCell className="font-medium">{tenant.fullName}</TableCell>
+                    <TableCell className="font-medium">
+                      {tenant.fullName}
+                    </TableCell>
                     <TableCell>{tenant.email || "—"}</TableCell>
                     <TableCell>{tenant.phone || "—"}</TableCell>
                     <TableCell className="capitalize text-muted-foreground">
@@ -437,13 +462,20 @@ export default function TenantsClient() {
                       {new Date(tenant.createdAt).toLocaleDateString()}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                      <div
+                        className="flex justify-end gap-2"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => handleOpenDialog(tenant)}
                         >
-                          <HugeiconsIcon icon={PencilEdit02Icon} strokeWidth={2} className="h-4 w-4" />
+                          <HugeiconsIcon
+                            icon={PencilEdit02Icon}
+                            strokeWidth={2}
+                            className="h-4 w-4"
+                          />
                           <span className="sr-only">Edit</span>
                         </Button>
                         <Button
@@ -451,7 +483,11 @@ export default function TenantsClient() {
                           size="icon"
                           onClick={() => handleOpenDeleteDialog(tenant)}
                         >
-                          <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} className="h-4 w-4" />
+                          <HugeiconsIcon
+                            icon={Delete02Icon}
+                            strokeWidth={2}
+                            className="h-4 w-4"
+                          />
                           <span className="sr-only">Delete</span>
                         </Button>
                       </div>
@@ -525,7 +561,9 @@ export default function TenantsClient() {
               </p>
             </div>
             <div className="space-y-3 pt-2">
-              <Label className="text-sm font-medium">Preferred Communication Channel</Label>
+              <Label className="text-sm font-medium">
+                Preferred Communication Channel
+              </Label>
               <p className="text-xs text-muted-foreground">
                 Select how you prefer to contact this tenant
               </p>
@@ -543,7 +581,10 @@ export default function TenantsClient() {
                 />
               </div>
               <div className="flex items-center justify-between">
-                <Label htmlFor="prefer-whatsapp" className="text-sm font-normal">
+                <Label
+                  htmlFor="prefer-whatsapp"
+                  className="text-sm font-normal"
+                >
                   Prefer WhatsApp
                 </Label>
                 <Switch
@@ -556,7 +597,10 @@ export default function TenantsClient() {
                 />
               </div>
               <div className="flex items-center justify-between">
-                <Label htmlFor="prefer-telegram" className="text-sm font-normal">
+                <Label
+                  htmlFor="prefer-telegram"
+                  className="text-sm font-normal"
+                >
                   Prefer Telegram
                 </Label>
                 <Switch
@@ -582,20 +626,25 @@ export default function TenantsClient() {
               {isSaving
                 ? "Saving..."
                 : editingTenant
-                ? "Update Tenant"
-                : "Create Tenant"}
+                  ? "Update Tenant"
+                  : "Create Tenant"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              {"This will permanently delete the tenant '"}{deletingTenant?.fullName}{"' and all"}
+              {"This will permanently delete the tenant '"}
+              {deletingTenant?.fullName}
+              {"' and all"}
               associated data. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -612,5 +661,5 @@ export default function TenantsClient() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  )
+  );
 }

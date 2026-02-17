@@ -1,5 +1,5 @@
-import { prisma } from "@/lib/prisma"
-import type { Session } from "next-auth"
+import { prisma } from "@/lib/prisma";
+import type { Session } from "next-auth";
 
 /**
  * Activity Logger Service
@@ -26,22 +26,21 @@ export type ActivityType =
   | "API_KEY_UPDATED"
   | "API_KEY_DELETED"
   | "USER_LOGIN"
-  | "OTHER"
-
+  | "OTHER";
 
 export interface ActivityLogData {
-  type: ActivityType
-  description: string
-  tenantId?: string
-  propertyId?: string
-  unitId?: string
-  leaseId?: string
-  metadata?: Record<string, any>
+  type: ActivityType;
+  description: string;
+  tenantId?: string;
+  propertyId?: string;
+  unitId?: string;
+  leaseId?: string;
+  metadata?: Record<string, any>;
 }
 
 export async function logActivity(
   session: Session,
-  data: ActivityLogData
+  data: ActivityLogData,
 ): Promise<void> {
   try {
     await prisma.activity.create({
@@ -55,10 +54,10 @@ export async function logActivity(
         unitId: data.unitId,
         leaseId: data.leaseId,
       },
-    })
+    });
   } catch (error) {
     // Log but don't throw - activity logging shouldn't break the main operation
-    console.error("Failed to log activity:", error)
+    console.error("Failed to log activity:", error);
   }
 }
 
@@ -67,7 +66,10 @@ export async function logActivity(
  */
 
 export const ActivityLogger = {
-  tenantCreated: (session: Session, tenant: { id: string; fullName: string; email: string }) =>
+  tenantCreated: (
+    session: Session,
+    tenant: { id: string; fullName: string; email: string },
+  ) =>
     logActivity(session, {
       type: "TENANT_CREATED",
       description: `Created tenant: ${tenant.fullName} (${tenant.email})`,
@@ -98,7 +100,7 @@ export const ActivityLogger = {
   unitCreated: (
     session: Session,
     unit: { id: string; name: string; propertyId: string },
-    propertyName: string
+    propertyName: string,
   ) =>
     logActivity(session, {
       type: "UNIT_CREATED",
@@ -110,7 +112,7 @@ export const ActivityLogger = {
   unitUpdated: (
     session: Session,
     unit: { id: string; name: string; propertyId: string },
-    propertyName: string
+    propertyName: string,
   ) =>
     logActivity(session, {
       type: "UNIT_UPDATED",
@@ -122,16 +124,16 @@ export const ActivityLogger = {
   leaseCreated: (
     session: Session,
     lease: {
-      id: string
-      tenantId: string
-      unitId: string
+      id: string;
+      tenantId: string;
+      unitId: string;
     },
     details: {
-      tenantName: string
-      propertyName: string
-      unitName: string
-      propertyId: string
-    }
+      tenantName: string;
+      propertyName: string;
+      unitName: string;
+      propertyId: string;
+    },
   ) =>
     logActivity(session, {
       type: "LEASE_CREATED",
@@ -145,16 +147,16 @@ export const ActivityLogger = {
   leaseUpdated: (
     session: Session,
     lease: {
-      id: string
-      tenantId: string
-      unitId: string
+      id: string;
+      tenantId: string;
+      unitId: string;
     },
     details: {
-      tenantName: string
-      propertyName: string
-      unitName: string
-      propertyId: string
-    }
+      tenantName: string;
+      propertyName: string;
+      unitName: string;
+      propertyId: string;
+    },
   ) =>
     logActivity(session, {
       type: "LEASE_UPDATED",
@@ -165,20 +167,19 @@ export const ActivityLogger = {
       propertyId: details.propertyId,
     }),
 
-
   leaseTerminated: (
     session: Session,
     lease: {
-      id: string
-      tenantId: string
-      unitId: string
+      id: string;
+      tenantId: string;
+      unitId: string;
     },
     details: {
-      tenantName: string
-      propertyName: string
-      unitName: string
-      propertyId: string
-    }
+      tenantName: string;
+      propertyName: string;
+      unitName: string;
+      propertyId: string;
+    },
   ) =>
     logActivity(session, {
       type: "LEASE_TERMINATED",
@@ -206,4 +207,4 @@ export const ActivityLogger = {
       type: "OTHER",
       description: `Deleted user: ${user.name} (${user.email})`,
     }),
-}
+};

@@ -1,26 +1,41 @@
-import { NextResponse } from "next/server"
-import { z } from "zod"
-import { checkAccess } from "@/lib/guards"
-import { prisma } from "@/lib/prisma"
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { checkAccess } from "@/lib/guards";
+import { prisma } from "@/lib/prisma";
 
 const updateUnitSchema = z.object({
   name: z.string().min(1, "Unit name is required"),
-  dailyRate: z.number().min(0, "Daily rate must be positive").optional().nullable(),
-  monthlyRate: z.number().min(0, "Monthly rate must be positive").optional().nullable(),
-  annualRate: z.number().min(0, "Annual rate must be positive").optional().nullable(),
+  dailyRate: z
+    .number()
+    .min(0, "Daily rate must be positive")
+    .optional()
+    .nullable(),
+  monthlyRate: z
+    .number()
+    .min(0, "Monthly rate must be positive")
+    .optional()
+    .nullable(),
+  annualRate: z
+    .number()
+    .min(0, "Annual rate must be positive")
+    .optional()
+    .nullable(),
   isUnavailable: z.boolean().optional(),
-})
+});
 
 // GET /api/units/[id] - Get single unit
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { authorized, response, session } = await checkAccess("properties", "read")
-    if (!authorized) return response
+    const { authorized, response, session } = await checkAccess(
+      "properties",
+      "read",
+    );
+    if (!authorized) return response;
 
-    const { id } = await params
+    const { id } = await params;
 
     const unit = await prisma.unit.findFirst({
       where: {
@@ -32,44 +47,51 @@ export async function GET(
       include: {
         property: true,
       },
-    })
+    });
 
     if (!unit) {
-      return NextResponse.json(
-        { error: "Unit not found" },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: "Unit not found" }, { status: 404 });
     }
 
-    return NextResponse.json(unit)
+    return NextResponse.json(unit);
   } catch (error) {
-    console.error("Error fetching unit:", error)
+    console.error("Error fetching unit:", error);
     return NextResponse.json(
       { error: "Failed to fetch unit" },
-      { status: 500 }
-    )
+      { status: 500 },
+    );
   }
 }
 
 // PATCH /api/units/[id] - Update unit
 export async function PATCH(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { authorized, response, session } = await checkAccess("properties", "update")
-    if (!authorized) return response
+    const { authorized, response, session } = await checkAccess(
+      "properties",
+      "update",
+    );
+    if (!authorized) return response;
 
-    const { id } = await params
-    const body = await request.json()
-    const validatedData = updateUnitSchema.parse(body)
+    const { id } = await params;
+    const body = await request.json();
+    const validatedData = updateUnitSchema.parse(body);
 
     // At least one rate must be provided
-    if (!validatedData.dailyRate && !validatedData.monthlyRate && !validatedData.annualRate) {
+    if (
+      !validatedData.dailyRate &&
+      !validatedData.monthlyRate &&
+      !validatedData.annualRate
+    ) {
       return NextResponse.json(
-        { error: "At least one rate (daily, monthly, or annual) must be provided" },
-        { status: 400 }
-      )
+        {
+          error:
+            "At least one rate (daily, monthly, or annual) must be provided",
+        },
+        { status: 400 },
+      );
     }
 
     // Verify unit belongs to organization
@@ -83,13 +105,10 @@ export async function PATCH(
       include: {
         property: true,
       },
-    })
+    });
 
     if (!existingUnit) {
-      return NextResponse.json(
-        { error: "Unit not found" },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: "Unit not found" }, { status: 404 });
     }
 
     const unit = await prisma.unit.update({
@@ -103,7 +122,7 @@ export async function PATCH(
         annualRate: validatedData.annualRate,
         isUnavailable: validatedData.isUnavailable,
       },
-    })
+    });
 
     // Log activity
     await prisma.activity.create({
@@ -115,35 +134,38 @@ export async function PATCH(
         propertyId: existingUnit.property.id,
         unitId: id,
       },
-    })
+    });
 
-    return NextResponse.json(unit)
+    return NextResponse.json(unit);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: error.issues[0].message },
-        { status: 400 }
-      )
+        { status: 400 },
+      );
     }
 
-    console.error("Error updating unit:", error)
+    console.error("Error updating unit:", error);
     return NextResponse.json(
       { error: "Failed to update unit" },
-      { status: 500 }
-    )
+      { status: 500 },
+    );
   }
 }
 
 // DELETE /api/units/[id] - Delete unit
 export async function DELETE(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { authorized, response, session } = await checkAccess("properties", "delete")
-    if (!authorized) return response
+    const { authorized, response, session } = await checkAccess(
+      "properties",
+      "delete",
+    );
+    if (!authorized) return response;
 
-    const { id } = await params
+    const { id } = await params;
 
     // Verify unit belongs to organization
     const existingUnit = await prisma.unit.findFirst({
@@ -156,13 +178,10 @@ export async function DELETE(
       include: {
         property: true,
       },
-    })
+    });
 
     if (!existingUnit) {
-      return NextResponse.json(
-        { error: "Unit not found" },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: "Unit not found" }, { status: 404 });
     }
 
     // Log activity before deletion so unitId FK is valid
@@ -175,20 +194,20 @@ export async function DELETE(
         propertyId: existingUnit.property.id,
         unitId: id,
       },
-    })
+    });
 
     await prisma.unit.delete({
       where: {
         id,
       },
-    })
+    });
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error deleting unit:", error)
+    console.error("Error deleting unit:", error);
     return NextResponse.json(
       { error: "Failed to delete unit" },
-      { status: 500 }
-    )
+      { status: 500 },
+    );
   }
 }

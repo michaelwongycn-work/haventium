@@ -1,25 +1,25 @@
-import type { NextAuthConfig } from "next-auth"
+import type { NextAuthConfig } from "next-auth";
 
 export const authConfig = {
   providers: [],
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.id = user.id as string
-        token.organizationId = user.organizationId
-        token.subscription = user.subscription
-        token.roles = user.roles
+        token.id = user.id as string;
+        token.organizationId = user.organizationId;
+        token.subscription = user.subscription;
+        token.roles = user.roles;
       }
-      return token
+      return token;
     },
     async session({ session, token }) {
       if (token && session.user) {
-        session.user.id = token.id as string
-        session.user.organizationId = token.organizationId as string
-        session.user.subscription = token.subscription as any
-        session.user.roles = token.roles as any
+        session.user.id = token.id as string;
+        session.user.organizationId = token.organizationId as string;
+        session.user.subscription = token.subscription as any;
+        session.user.roles = token.roles as any;
       }
-      return session
+      return session;
     },
   },
   pages: {
@@ -28,4 +28,4 @@ export const authConfig = {
   session: {
     strategy: "jwt",
   },
-} satisfies NextAuthConfig
+} satisfies NextAuthConfig;

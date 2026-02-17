@@ -1,27 +1,27 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { usePathname } from "next/navigation"
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 export default function NotificationsLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
-  const pathname = usePathname()
+  const pathname = usePathname();
 
   const links = [
     { href: "/notifications/templates", label: "Templates" },
     { href: "/notifications/rules", label: "Rules" },
     { href: "/notifications/logs", label: "Logs" },
-  ]
+  ];
 
   return (
     <div className="space-y-6">
       <div className="border-b">
         <nav className="flex space-x-6">
           {links.map((link) => {
-            const isActive = pathname.startsWith(link.href)
+            const isActive = pathname.startsWith(link.href);
 
             return (
               <Link
@@ -35,11 +35,11 @@ export default function NotificationsLayout({
               >
                 {link.label}
               </Link>
-            )
+            );
           })}
         </nav>
       </div>
       {children}
     </div>
-  )
+  );
 }

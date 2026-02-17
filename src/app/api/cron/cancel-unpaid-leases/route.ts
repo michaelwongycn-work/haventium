@@ -1,24 +1,29 @@
-import { prisma } from "@/lib/prisma"
-import { verifyCronAuth, isLeaseOverdue, apiSuccess, handleApiError } from "@/lib/api"
+import { prisma } from "@/lib/prisma";
+import {
+  verifyCronAuth,
+  isLeaseOverdue,
+  apiSuccess,
+  handleApiError,
+} from "@/lib/api";
 
 /**
  * Cron job to cancel draft leases that have passed their grace period unpaid
- * 
+ *
  * Logic:
  * - Find all DRAFT leases
  * - Calculate grace period deadline: startDate + gracePeriodDays
  * - If current date > grace period deadline, cancel the lease
- * 
+ *
  * Example: Lease from Feb 1 to Feb 28, grace period 5 days
  * - Grace period deadline: Feb 1 + 5 days = Feb 6
  * - If today is Feb 7 and still DRAFT, cancel it
  */
 export async function POST(request: Request) {
   try {
-    const authCheck = verifyCronAuth(request)
-    if (!authCheck.authorized) return authCheck.response!
+    const authCheck = verifyCronAuth(request);
+    if (!authCheck.authorized) return authCheck.response!;
 
-    const now = new Date()
+    const now = new Date();
 
     const draftLeases = await prisma.leaseAgreement.findMany({
       where: {
@@ -35,16 +40,18 @@ export async function POST(request: Request) {
           },
         },
       },
-    })
+    });
 
-    const cancelledLeases = []
+    const cancelledLeases = [];
 
     for (const lease of draftLeases) {
-      if (lease.gracePeriodDays === null) continue
+      if (lease.gracePeriodDays === null) continue;
 
       if (isLeaseOverdue(lease.startDate, lease.gracePeriodDays)) {
-        const gracePeriodDeadline = new Date(lease.startDate)
-        gracePeriodDeadline.setDate(gracePeriodDeadline.getDate() + lease.gracePeriodDays)
+        const gracePeriodDeadline = new Date(lease.startDate);
+        gracePeriodDeadline.setDate(
+          gracePeriodDeadline.getDate() + lease.gracePeriodDays,
+        );
 
         const updatedLease = await prisma.leaseAgreement.update({
           where: { id: lease.id },
@@ -57,7 +64,7 @@ export async function POST(request: Request) {
               },
             },
           },
-        })
+        });
 
         await prisma.activity.create({
           data: {
@@ -69,7 +76,7 @@ export async function POST(request: Request) {
             leaseId: lease.id,
             unitId: lease.unitId,
           },
-        })
+        });
 
         cancelledLeases.push({
           id: updatedLease.id,
@@ -77,7 +84,7 @@ export async function POST(request: Request) {
           unit: `${lease.unit.property.name} - ${lease.unit.name}`,
           startDate: lease.startDate,
           gracePeriodDeadline,
-        })
+        });
       }
     }
 
@@ -86,8 +93,8 @@ export async function POST(request: Request) {
       message: `Processed ${draftLeases.length} draft leases, cancelled ${cancelledLeases.length}`,
       cancelledLeases,
       processedAt: now.toISOString(),
-    })
+    });
   } catch (error) {
-    return handleApiError(error, "process unpaid leases")
+    return handleApiError(error, "process unpaid leases");
   }
 }

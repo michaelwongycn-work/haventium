@@ -1,17 +1,24 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@/lib/zod-resolver"
-import { z } from "zod"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { PasswordInput } from "@/components/ui/password-input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@/lib/zod-resolver";
+import { z } from "zod";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const signupSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -25,9 +32,9 @@ const signupSchema = z.object({
   name: z.string().min(1, "Name is required"),
   organizationName: z.string().min(1, "Organization name is required"),
   tier: z.enum(["FREE", "NORMAL", "PRO"]),
-})
+});
 
-type SignupForm = z.infer<typeof signupSchema>
+type SignupForm = z.infer<typeof signupSchema>;
 
 const tiers = [
   {
@@ -35,12 +42,7 @@ const tiers = [
     name: "Free Plan",
     price: "$0",
     period: "/month",
-    features: [
-      "1 user",
-      "1 property",
-      "10 tenants",
-      "Email notifications",
-    ],
+    features: ["1 user", "1 property", "10 tenants", "Email notifications"],
   },
   {
     type: "NORMAL" as const,
@@ -68,12 +70,12 @@ const tiers = [
       "API access",
     ],
   },
-]
+];
 
 export default function SignupPage() {
-  const router = useRouter()
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const {
     register,
@@ -86,13 +88,13 @@ export default function SignupPage() {
     defaultValues: {
       tier: "FREE",
     },
-  })
+  });
 
-  const selectedTier = watch("tier")
+  const selectedTier = watch("tier");
 
   const onSubmit = async (data: SignupForm) => {
-    setIsLoading(true)
-    setError(null)
+    setIsLoading(true);
+    setError(null);
 
     try {
       const response = await fetch("/api/signup", {
@@ -101,22 +103,22 @@ export default function SignupPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(data),
-      })
+      });
 
-      const result = await response.json()
+      const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || "Signup failed")
+        throw new Error(result.error || "Signup failed");
       }
 
       // Redirect to login page after successful signup
-      router.push("/login?signup=success")
+      router.push("/login?signup=success");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred")
+      setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
@@ -145,7 +147,9 @@ export default function SignupPage() {
                   disabled={isLoading}
                 />
                 {errors.name && (
-                  <p className="text-sm text-destructive">{errors.name.message}</p>
+                  <p className="text-sm text-destructive">
+                    {errors.name.message}
+                  </p>
                 )}
               </div>
 
@@ -159,7 +163,9 @@ export default function SignupPage() {
                   disabled={isLoading}
                 />
                 {errors.email && (
-                  <p className="text-sm text-destructive">{errors.email.message}</p>
+                  <p className="text-sm text-destructive">
+                    {errors.email.message}
+                  </p>
                 )}
               </div>
 
@@ -172,7 +178,9 @@ export default function SignupPage() {
                   disabled={isLoading}
                 />
                 {errors.password && (
-                  <p className="text-sm text-destructive">{errors.password.message}</p>
+                  <p className="text-sm text-destructive">
+                    {errors.password.message}
+                  </p>
                 )}
               </div>
 
@@ -203,10 +211,7 @@ export default function SignupPage() {
               >
                 <div className="grid gap-4 md:grid-cols-3">
                   {tiers.map((tier) => (
-                    <label
-                      key={tier.type}
-                      className="relative cursor-pointer"
-                    >
+                    <label key={tier.type} className="relative cursor-pointer">
                       <RadioGroupItem
                         value={tier.type}
                         className="peer sr-only"
@@ -215,7 +220,9 @@ export default function SignupPage() {
                         <CardHeader>
                           <CardTitle className="text-lg">{tier.name}</CardTitle>
                           <div className="flex items-baseline gap-1">
-                            <span className="text-3xl font-bold">{tier.price}</span>
+                            <span className="text-3xl font-bold">
+                              {tier.price}
+                            </span>
                             <span className="text-sm text-muted-foreground">
                               {tier.period}
                             </span>
@@ -224,7 +231,10 @@ export default function SignupPage() {
                         <CardContent>
                           <ul className="space-y-2 text-sm">
                             {tier.features.map((feature, index) => (
-                              <li key={index} className="flex items-start gap-2">
+                              <li
+                                key={index}
+                                className="flex items-start gap-2"
+                              >
                                 <span className="text-primary">✓</span>
                                 <span>{feature}</span>
                               </li>
@@ -237,7 +247,9 @@ export default function SignupPage() {
                 </div>
               </RadioGroup>
               {errors.tier && (
-                <p className="text-sm text-destructive">{errors.tier.message}</p>
+                <p className="text-sm text-destructive">
+                  {errors.tier.message}
+                </p>
               )}
             </div>
           </CardContent>
@@ -255,5 +267,5 @@ export default function SignupPage() {
         </form>
       </Card>
     </div>
-  )
+  );
 }

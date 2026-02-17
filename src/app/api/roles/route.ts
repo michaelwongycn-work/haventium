@@ -1,19 +1,22 @@
-import { NextResponse } from "next/server"
-import { z } from "zod"
-import { checkAccess } from "@/lib/guards"
-import { prisma } from "@/lib/prisma"
-import { Prisma } from "@prisma/client"
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { checkAccess } from "@/lib/guards";
+import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 
 const createRoleSchema = z.object({
   name: z.string().min(1, "Role name is required"),
   accessIds: z.array(z.string()).min(1, "At least one permission is required"),
-})
+});
 
 // GET /api/roles - List all roles for the organization
 export async function GET() {
   try {
-    const { authorized, response, session } = await checkAccess("settings", "manage")
-    if (!authorized) return response
+    const { authorized, response, session } = await checkAccess(
+      "settings",
+      "manage",
+    );
+    if (!authorized) return response;
 
     const roles = await prisma.role.findMany({
       where: {
@@ -34,33 +37,36 @@ export async function GET() {
       orderBy: {
         createdAt: "asc",
       },
-    })
+    });
 
-    return NextResponse.json(roles)
+    return NextResponse.json(roles);
   } catch (error) {
-    console.error("Error fetching roles:", error)
+    console.error("Error fetching roles:", error);
     return NextResponse.json(
       { error: "Failed to fetch roles" },
-      { status: 500 }
-    )
+      { status: 500 },
+    );
   }
 }
 
 // POST /api/roles - Create a new role
 export async function POST(request: Request) {
   try {
-    const { authorized, response, session } = await checkAccess("settings", "manage")
-    if (!authorized) return response
+    const { authorized, response, session } = await checkAccess(
+      "settings",
+      "manage",
+    );
+    if (!authorized) return response;
 
-    const body = await request.json()
-    const validatedData = createRoleSchema.parse(body)
+    const body = await request.json();
+    const validatedData = createRoleSchema.parse(body);
 
     // Block creating a role named "Owner" (reserved)
     if (validatedData.name.toLowerCase() === "owner") {
       return NextResponse.json(
-        { error: "The role name \"Owner\" is reserved" },
-        { status: 400 }
-      )
+        { error: 'The role name "Owner" is reserved' },
+        { status: 400 },
+      );
     }
 
     const role = await prisma.$transaction(async (tx) => {
@@ -69,14 +75,14 @@ export async function POST(request: Request) {
           name: validatedData.name,
           organizationId: session.user.organizationId,
         },
-      })
+      });
 
       await tx.roleAccess.createMany({
         data: validatedData.accessIds.map((accessId) => ({
           roleId: newRole.id,
           accessId,
         })),
-      })
+      });
 
       return tx.role.findUnique({
         where: { id: newRole.id },
@@ -92,8 +98,8 @@ export async function POST(request: Request) {
             },
           },
         },
-      })
-    })
+      });
+    });
 
     // Log activity
     await prisma.activity.create({
@@ -103,28 +109,31 @@ export async function POST(request: Request) {
         userId: session.user.id,
         organizationId: session.user.organizationId,
       },
-    })
+    });
 
-    return NextResponse.json(role, { status: 201 })
+    return NextResponse.json(role, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: error.issues[0].message },
-        { status: 400 }
-      )
+        { status: 400 },
+      );
     }
 
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
       return NextResponse.json(
         { error: "A role with this name already exists" },
-        { status: 400 }
-      )
+        { status: 400 },
+      );
     }
 
-    console.error("Error creating role:", error)
+    console.error("Error creating role:", error);
     return NextResponse.json(
       { error: "Failed to create role" },
-      { status: 500 }
-    )
+      { status: 500 },
+    );
   }
 }

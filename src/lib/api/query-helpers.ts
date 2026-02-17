@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma"
+import { prisma } from "@/lib/prisma";
 
 /**
  * Reusable Prisma Query Fragments
@@ -15,7 +15,7 @@ export const USER_SELECT = {
       role: true,
     },
   },
-} as const
+} as const;
 
 export const TENANT_SELECT = {
   id: true,
@@ -27,7 +27,7 @@ export const TENANT_SELECT = {
   preferWhatsapp: true,
   createdAt: true,
   updatedAt: true,
-} as const
+} as const;
 
 export const PROPERTY_WITH_UNITS = {
   include: {
@@ -37,13 +37,13 @@ export const PROPERTY_WITH_UNITS = {
       },
     },
   },
-} as const
+} as const;
 
 export const UNIT_WITH_PROPERTY = {
   include: {
     property: true,
   },
-} as const
+} as const;
 
 export const LEASE_WITH_RELATIONS = {
   include: {
@@ -54,7 +54,7 @@ export const LEASE_WITH_RELATIONS = {
       },
     },
   },
-} as const
+} as const;
 
 /**
  * Organization-scoped query helpers
@@ -62,60 +62,72 @@ export const LEASE_WITH_RELATIONS = {
 
 export function scopeToOrganization<T extends Record<string, any>>(
   where: T,
-  organizationId: string
+  organizationId: string,
 ): T & { organizationId: string } {
   return {
     ...where,
     organizationId,
-  }
+  };
 }
 
 export function scopeToOrganizationViaRelation<T extends Record<string, any>>(
   where: T,
   organizationId: string,
-  relation: string
+  relation: string,
 ): T {
   return {
     ...where,
     [relation]: {
       organizationId,
     },
-  }
+  };
 }
 
 /**
  * Common query builders
  */
 
-export async function findUserInOrganization(userId: string, organizationId: string) {
+export async function findUserInOrganization(
+  userId: string,
+  organizationId: string,
+) {
   return prisma.user.findFirst({
     where: {
       id: userId,
       organizationId,
     },
     select: USER_SELECT,
-  })
+  });
 }
 
-export async function findTenantInOrganization(tenantId: string, organizationId: string) {
+export async function findTenantInOrganization(
+  tenantId: string,
+  organizationId: string,
+) {
   return prisma.tenant.findFirst({
     where: {
       id: tenantId,
       organizationId,
     },
-  })
+  });
 }
 
-export async function findPropertyInOrganization(propertyId: string, organizationId: string) {
+export async function findPropertyInOrganization(
+  propertyId: string,
+  organizationId: string,
+) {
   return prisma.property.findFirst({
     where: {
       id: propertyId,
       organizationId,
     },
-  })
+  });
 }
 
-export async function findUnitInOrganization(unitId: string, organizationId: string) {
+export async function findUnitInOrganization(
+  unitId: string,
+  organizationId: string,
+) {
   return prisma.unit.findFirst({
     where: {
       id: unitId,
@@ -126,15 +138,18 @@ export async function findUnitInOrganization(unitId: string, organizationId: str
     include: {
       property: true,
     },
-  })
+  });
 }
 
-export async function findLeaseInOrganization(leaseId: string, organizationId: string) {
+export async function findLeaseInOrganization(
+  leaseId: string,
+  organizationId: string,
+) {
   return prisma.leaseAgreement.findFirst({
     where: {
       id: leaseId,
       organizationId,
     },
     ...LEASE_WITH_RELATIONS,
-  })
+  });
 }

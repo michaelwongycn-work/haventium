@@ -1,14 +1,14 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -16,22 +16,22 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
+} from "@/components/ui/table";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Badge } from "@/components/ui/badge"
-import { HugeiconsIcon } from "@hugeicons/react"
+} from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { HugeiconsIcon } from "@hugeicons/react";
 import {
   Notification03Icon,
   ArrowLeft01Icon,
   ArrowRight01Icon,
-} from "@hugeicons/core-free-icons"
+} from "@hugeicons/core-free-icons";
 
 type NotificationTrigger =
   | "PAYMENT_REMINDER"
@@ -39,36 +39,36 @@ type NotificationTrigger =
   | "PAYMENT_CONFIRMED"
   | "LEASE_EXPIRING"
   | "LEASE_EXPIRED"
-  | "MANUAL"
+  | "MANUAL";
 
-type NotificationChannel = "EMAIL" | "WHATSAPP" | "TELEGRAM"
+type NotificationChannel = "EMAIL" | "WHATSAPP" | "TELEGRAM";
 
-type NotificationStatus = "PENDING" | "SENT" | "FAILED"
+type NotificationStatus = "PENDING" | "SENT" | "FAILED";
 
 type NotificationLog = {
-  id: string
-  recipientEmail: string | null
-  recipientPhone: string | null
-  trigger: NotificationTrigger
-  channel: NotificationChannel
-  subject: string | null
-  body: string
-  status: NotificationStatus
-  sentAt: string | null
-  failedReason: string | null
-  createdAt: string
-  updatedAt: string
-}
+  id: string;
+  recipientEmail: string | null;
+  recipientPhone: string | null;
+  trigger: NotificationTrigger;
+  channel: NotificationChannel;
+  subject: string | null;
+  body: string;
+  status: NotificationStatus;
+  sentAt: string | null;
+  failedReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
 
 type PaginatedResponse = {
-  logs: NotificationLog[]
+  logs: NotificationLog[];
   pagination: {
-    page: number
-    limit: number
-    total: number
-    totalPages: number
-  }
-}
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+};
 
 const TRIGGER_LABELS: Record<NotificationTrigger, string> = {
   PAYMENT_REMINDER: "Payment Reminder",
@@ -77,82 +77,82 @@ const TRIGGER_LABELS: Record<NotificationTrigger, string> = {
   LEASE_EXPIRING: "Lease Expiring",
   LEASE_EXPIRED: "Lease Expired",
   MANUAL: "Manual",
-}
+};
 
 const CHANNEL_LABELS: Record<NotificationChannel, string> = {
   EMAIL: "Email",
   WHATSAPP: "WhatsApp",
   TELEGRAM: "Telegram",
-}
+};
 
 const STATUS_LABELS: Record<NotificationStatus, string> = {
   PENDING: "Pending",
   SENT: "Sent",
   FAILED: "Failed",
-}
+};
 
 export default function NotificationLogsClient() {
-  const [logs, setLogs] = useState<NotificationLog[]>([])
+  const [logs, setLogs] = useState<NotificationLog[]>([]);
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 50,
     total: 0,
     totalPages: 0,
-  })
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [statusFilter, setStatusFilter] = useState<string>("all")
-  const [triggerFilter, setTriggerFilter] = useState<string>("all")
-  const [channelFilter, setChannelFilter] = useState<string>("all")
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [triggerFilter, setTriggerFilter] = useState<string>("all");
+  const [channelFilter, setChannelFilter] = useState<string>("all");
 
   useEffect(() => {
-    fetchLogs()
-  }, [pagination.page, statusFilter, triggerFilter, channelFilter])
+    fetchLogs();
+  }, [pagination.page, statusFilter, triggerFilter, channelFilter]);
 
   const fetchLogs = async () => {
     try {
-      setIsLoading(true)
+      setIsLoading(true);
       const params = new URLSearchParams({
         page: pagination.page.toString(),
         limit: pagination.limit.toString(),
-      })
+      });
 
-      if (statusFilter !== "all") params.append("status", statusFilter)
-      if (triggerFilter !== "all") params.append("trigger", triggerFilter)
-      if (channelFilter !== "all") params.append("channel", channelFilter)
+      if (statusFilter !== "all") params.append("status", statusFilter);
+      if (triggerFilter !== "all") params.append("trigger", triggerFilter);
+      if (channelFilter !== "all") params.append("channel", channelFilter);
 
-      const response = await fetch(`/api/notifications/logs?${params}`)
-      if (!response.ok) throw new Error("Failed to fetch logs")
+      const response = await fetch(`/api/notifications/logs?${params}`);
+      if (!response.ok) throw new Error("Failed to fetch logs");
 
-      const data: PaginatedResponse = await response.json()
-      setLogs(data.logs)
-      setPagination(data.pagination)
+      const data: PaginatedResponse = await response.json();
+      setLogs(data.logs);
+      setPagination(data.pagination);
     } catch (err) {
-      console.error("Error fetching logs:", err)
-      setError("Failed to load notification logs")
+      console.error("Error fetching logs:", err);
+      setError("Failed to load notification logs");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const goToPage = (page: number) => {
-    setPagination((prev) => ({ ...prev, page }))
-  }
+    setPagination((prev) => ({ ...prev, page }));
+  };
 
   const getStatusBadge = (status: NotificationStatus) => {
     switch (status) {
       case "SENT":
-        return <Badge variant="default">Sent</Badge>
+        return <Badge variant="default">Sent</Badge>;
       case "FAILED":
-        return <Badge variant="destructive">Failed</Badge>
+        return <Badge variant="destructive">Failed</Badge>;
       case "PENDING":
-        return <Badge variant="secondary">Pending</Badge>
+        return <Badge variant="secondary">Pending</Badge>;
     }
-  }
+  };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString()
-  }
+    return new Date(dateString).toLocaleString();
+  };
 
   return (
     <div className="space-y-6">
@@ -239,8 +239,8 @@ export default function NotificationLogsClient() {
                 className="mb-4 h-12 w-12 text-muted-foreground"
               />
               <p className="text-sm text-muted-foreground">
-                No notification logs found. Notifications will appear here once they are
-                sent.
+                No notification logs found. Notifications will appear here once
+                they are sent.
               </p>
             </div>
           ) : (
@@ -261,7 +261,9 @@ export default function NotificationLogsClient() {
                     <TableRow key={log.id}>
                       <TableCell>
                         <div className="text-sm">
-                          {log.recipientEmail || log.recipientPhone || "Unknown"}
+                          {log.recipientEmail ||
+                            log.recipientPhone ||
+                            "Unknown"}
                         </div>
                         {log.subject && (
                           <div className="text-xs text-muted-foreground">
@@ -278,7 +280,9 @@ export default function NotificationLogsClient() {
                       <TableCell>{getStatusBadge(log.status)}</TableCell>
                       <TableCell>
                         {log.sentAt ? (
-                          <span className="text-sm">{formatDate(log.sentAt)}</span>
+                          <span className="text-sm">
+                            {formatDate(log.sentAt)}
+                          </span>
                         ) : log.failedReason ? (
                           <span
                             className="text-xs text-destructive"
@@ -287,11 +291,15 @@ export default function NotificationLogsClient() {
                             {log.failedReason.substring(0, 30)}...
                           </span>
                         ) : (
-                          <span className="text-sm text-muted-foreground">-</span>
+                          <span className="text-sm text-muted-foreground">
+                            -
+                          </span>
                         )}
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm">{formatDate(log.createdAt)}</span>
+                        <span className="text-sm">
+                          {formatDate(log.createdAt)}
+                        </span>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -302,8 +310,11 @@ export default function NotificationLogsClient() {
                 <div className="flex items-center justify-between pt-4">
                   <div className="text-sm text-muted-foreground">
                     Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
-                    {Math.min(pagination.page * pagination.limit, pagination.total)} of{" "}
-                    {pagination.total} logs
+                    {Math.min(
+                      pagination.page * pagination.limit,
+                      pagination.total,
+                    )}{" "}
+                    of {pagination.total} logs
                   </div>
                   <div className="flex gap-2">
                     <Button
@@ -312,15 +323,21 @@ export default function NotificationLogsClient() {
                       onClick={() => goToPage(pagination.page - 1)}
                       disabled={pagination.page === 1}
                     >
-                      <HugeiconsIcon icon={ArrowLeft01Icon} className="h-4 w-4" />
+                      <HugeiconsIcon
+                        icon={ArrowLeft01Icon}
+                        className="h-4 w-4"
+                      />
                     </Button>
                     <div className="flex items-center gap-1">
-                      {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
+                      {Array.from(
+                        { length: pagination.totalPages },
+                        (_, i) => i + 1,
+                      )
                         .filter(
                           (p) =>
                             p === 1 ||
                             p === pagination.totalPages ||
-                            Math.abs(p - pagination.page) <= 1
+                            Math.abs(p - pagination.page) <= 1,
                         )
                         .map((p, i, arr) => (
                           <div key={p}>
@@ -328,7 +345,9 @@ export default function NotificationLogsClient() {
                               <span className="px-2">...</span>
                             )}
                             <Button
-                              variant={p === pagination.page ? "default" : "outline"}
+                              variant={
+                                p === pagination.page ? "default" : "outline"
+                              }
                               size="sm"
                               onClick={() => goToPage(p)}
                             >
@@ -343,7 +362,10 @@ export default function NotificationLogsClient() {
                       onClick={() => goToPage(pagination.page + 1)}
                       disabled={pagination.page === pagination.totalPages}
                     >
-                      <HugeiconsIcon icon={ArrowRight01Icon} className="h-4 w-4" />
+                      <HugeiconsIcon
+                        icon={ArrowRight01Icon}
+                        className="h-4 w-4"
+                      />
                     </Button>
                   </div>
                 </div>
@@ -353,5 +375,5 @@ export default function NotificationLogsClient() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

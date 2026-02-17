@@ -1,15 +1,15 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
-import { hasAccess, type UserRole } from "@/lib/access-utils"
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { hasAccess, type UserRole } from "@/lib/access-utils";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -17,7 +17,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
+} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -25,7 +25,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,95 +35,99 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Skeleton } from "@/components/ui/skeleton"
-import { HugeiconsIcon } from "@hugeicons/react"
+} from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
+import { HugeiconsIcon } from "@hugeicons/react";
 import {
   PlusSignIcon,
   Delete02Icon,
   PencilEdit02Icon,
   Building03Icon,
-} from "@hugeicons/core-free-icons"
+} from "@hugeicons/core-free-icons";
 
 type Property = {
-  id: string
-  name: string
-  createdAt: string
-  updatedAt: string
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
   _count: {
-    units: number
-  }
-}
+    units: number;
+  };
+};
 
 export default function PropertiesClient({ roles }: { roles: UserRole[] }) {
-  const [properties, setProperties] = useState<Property[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [editingProperty, setEditingProperty] = useState<Property | null>(null)
-  const [deletingProperty, setDeletingProperty] = useState<Property | null>(null)
-  const [propertyName, setPropertyName] = useState("")
-  const [error, setError] = useState<string | null>(null)
-  const [isSaving, setIsSaving] = useState(false)
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [editingProperty, setEditingProperty] = useState<Property | null>(null);
+  const [deletingProperty, setDeletingProperty] = useState<Property | null>(
+    null,
+  );
+  const [propertyName, setPropertyName] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    fetchProperties()
-  }, [])
+    fetchProperties();
+  }, []);
 
   const fetchProperties = async () => {
     try {
-      setIsLoading(true)
-      const response = await fetch("/api/properties")
+      setIsLoading(true);
+      const response = await fetch("/api/properties");
 
       if (!response.ok) {
-        throw new Error("Failed to fetch properties")
+        throw new Error("Failed to fetch properties");
       }
 
-      const data = await response.json()
-      setProperties(data)
+      const data = await response.json();
+      setProperties(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load properties")
+      setError(
+        err instanceof Error ? err.message : "Failed to load properties",
+      );
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleOpenDialog = (property?: Property) => {
     if (property) {
-      setEditingProperty(property)
-      setPropertyName(property.name)
+      setEditingProperty(property);
+      setPropertyName(property.name);
     } else {
-      setEditingProperty(null)
-      setPropertyName("")
+      setEditingProperty(null);
+      setPropertyName("");
     }
-    setError(null)
-    setIsDialogOpen(true)
-  }
+    setError(null);
+    setIsDialogOpen(true);
+  };
 
   const handleCloseDialog = () => {
-    setIsDialogOpen(false)
-    setEditingProperty(null)
-    setPropertyName("")
-    setError(null)
-  }
+    setIsDialogOpen(false);
+    setEditingProperty(null);
+    setPropertyName("");
+    setError(null);
+  };
 
   const handleSaveProperty = async () => {
     if (!propertyName.trim()) {
-      setError("Property name is required")
-      return
+      setError("Property name is required");
+      return;
     }
 
-    setIsSaving(true)
-    setError(null)
+    setIsSaving(true);
+    setError(null);
 
     try {
       const url = editingProperty
         ? `/api/properties/${editingProperty.id}`
-        : "/api/properties"
+        : "/api/properties";
 
-      const method = editingProperty ? "PATCH" : "POST"
+      const method = editingProperty ? "PATCH" : "POST";
 
       const response = await fetch(url, {
         method,
@@ -131,56 +135,58 @@ export default function PropertiesClient({ roles }: { roles: UserRole[] }) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ name: propertyName }),
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to save property")
+        throw new Error(data.error || "Failed to save property");
       }
 
-      await fetchProperties()
-      handleCloseDialog()
+      await fetchProperties();
+      handleCloseDialog();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save property")
+      setError(err instanceof Error ? err.message : "Failed to save property");
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }
+  };
 
   const handleOpenDeleteDialog = (property: Property) => {
-    setDeletingProperty(property)
-    setIsDeleteDialogOpen(true)
-  }
+    setDeletingProperty(property);
+    setIsDeleteDialogOpen(true);
+  };
 
   const handleCloseDeleteDialog = () => {
-    setIsDeleteDialogOpen(false)
-    setDeletingProperty(null)
-  }
+    setIsDeleteDialogOpen(false);
+    setDeletingProperty(null);
+  };
 
   const handleDeleteProperty = async () => {
-    if (!deletingProperty) return
+    if (!deletingProperty) return;
 
-    setIsSaving(true)
+    setIsSaving(true);
 
     try {
       const response = await fetch(`/api/properties/${deletingProperty.id}`, {
         method: "DELETE",
-      })
+      });
 
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || "Failed to delete property")
+        const data = await response.json();
+        throw new Error(data.error || "Failed to delete property");
       }
 
-      await fetchProperties()
-      handleCloseDeleteDialog()
+      await fetchProperties();
+      handleCloseDeleteDialog();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete property")
+      setError(
+        err instanceof Error ? err.message : "Failed to delete property",
+      );
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
@@ -193,7 +199,11 @@ export default function PropertiesClient({ roles }: { roles: UserRole[] }) {
         </div>
         {hasAccess(roles, "properties", "create") && (
           <Button onClick={() => handleOpenDialog()}>
-            <HugeiconsIcon icon={PlusSignIcon} strokeWidth={2} data-icon="inline-start" />
+            <HugeiconsIcon
+              icon={PlusSignIcon}
+              strokeWidth={2}
+              data-icon="inline-start"
+            />
             Add Property
           </Button>
         )}
@@ -221,10 +231,18 @@ export default function PropertiesClient({ roles }: { roles: UserRole[] }) {
               <TableBody>
                 {Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell><Skeleton className="h-4 w-[180px]" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-[220px]" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-[100px]" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-[30px]" /></TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-[180px]" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-[220px]" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-[100px]" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-[30px]" />
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Skeleton className="h-8 w-8" />
@@ -248,7 +266,11 @@ export default function PropertiesClient({ roles }: { roles: UserRole[] }) {
               </p>
               {hasAccess(roles, "properties", "create") && (
                 <Button onClick={() => handleOpenDialog()}>
-                  <HugeiconsIcon icon={PlusSignIcon} strokeWidth={2} data-icon="inline-start" />
+                  <HugeiconsIcon
+                    icon={PlusSignIcon}
+                    strokeWidth={2}
+                    data-icon="inline-start"
+                  />
                   Add Property
                 </Button>
               )}
@@ -268,7 +290,9 @@ export default function PropertiesClient({ roles }: { roles: UserRole[] }) {
                   <TableRow
                     key={property.id}
                     className="cursor-pointer"
-                    onClick={() => window.location.href = `/properties/${property.id}`}
+                    onClick={() =>
+                      (window.location.href = `/properties/${property.id}`)
+                    }
                   >
                     <TableCell className="font-medium">
                       {property.name}
@@ -278,14 +302,21 @@ export default function PropertiesClient({ roles }: { roles: UserRole[] }) {
                       {new Date(property.createdAt).toLocaleDateString()}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                      <div
+                        className="flex justify-end gap-2"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         {hasAccess(roles, "properties", "update") && (
                           <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => handleOpenDialog(property)}
                           >
-                            <HugeiconsIcon icon={PencilEdit02Icon} strokeWidth={2} className="h-4 w-4" />
+                            <HugeiconsIcon
+                              icon={PencilEdit02Icon}
+                              strokeWidth={2}
+                              className="h-4 w-4"
+                            />
                             <span className="sr-only">Edit</span>
                           </Button>
                         )}
@@ -295,7 +326,11 @@ export default function PropertiesClient({ roles }: { roles: UserRole[] }) {
                             size="icon"
                             onClick={() => handleOpenDeleteDialog(property)}
                           >
-                            <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} className="h-4 w-4" />
+                            <HugeiconsIcon
+                              icon={Delete02Icon}
+                              strokeWidth={2}
+                              className="h-4 w-4"
+                            />
                             <span className="sr-only">Delete</span>
                           </Button>
                         )}
@@ -351,20 +386,25 @@ export default function PropertiesClient({ roles }: { roles: UserRole[] }) {
               {isSaving
                 ? "Saving..."
                 : editingProperty
-                ? "Update Property"
-                : "Create Property"}
+                  ? "Update Property"
+                  : "Create Property"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              {"This will permanently delete the property '"}{deletingProperty?.name}{"' and all"}
+              {"This will permanently delete the property '"}
+              {deletingProperty?.name}
+              {"' and all"}
               associated units. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -381,5 +421,5 @@ export default function PropertiesClient({ roles }: { roles: UserRole[] }) {
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  )
+  );
 }

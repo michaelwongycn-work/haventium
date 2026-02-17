@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     if (!cronSecret) {
       return NextResponse.json(
         { error: "CRON_SECRET environment variable not configured" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -31,7 +31,12 @@ export async function POST(request: Request) {
 
     const now = new Date();
     let processedCount = 0;
-    let notificationResults: { organizationId: string; processed: number; sent: number; failed: number }[] = [];
+    let notificationResults: {
+      organizationId: string;
+      processed: number;
+      sent: number;
+      failed: number;
+    }[] = [];
 
     // Find all ACTIVE leases that have expired
     const expiredLeases = await prisma.leaseAgreement.findMany({
@@ -52,7 +57,9 @@ export async function POST(request: Request) {
       },
     });
 
-    console.log(`[end-expired-leases] Found ${expiredLeases.length} expired leases to process`);
+    console.log(
+      `[end-expired-leases] Found ${expiredLeases.length} expired leases to process`,
+    );
 
     // Process each expired lease
     for (const lease of expiredLeases) {
@@ -111,7 +118,7 @@ export async function POST(request: Request) {
 
         // Track notification results
         const existingResult = notificationResults.find(
-          (r) => r.organizationId === lease.organizationId
+          (r) => r.organizationId === lease.organizationId,
         );
         if (existingResult) {
           existingResult.processed += notificationResult.processed;
@@ -125,14 +132,21 @@ export async function POST(request: Request) {
         }
 
         processedCount++;
-        console.log(`[end-expired-leases] Processed lease ${lease.id} for tenant ${lease.tenant.fullName}`);
+        console.log(
+          `[end-expired-leases] Processed lease ${lease.id} for tenant ${lease.tenant.fullName}`,
+        );
       } catch (error) {
-        console.error(`[end-expired-leases] Error processing lease ${lease.id}:`, error);
+        console.error(
+          `[end-expired-leases] Error processing lease ${lease.id}:`,
+          error,
+        );
         // Continue processing other leases even if one fails
       }
     }
 
-    console.log(`[end-expired-leases] Completed: ${processedCount} leases ended`);
+    console.log(
+      `[end-expired-leases] Completed: ${processedCount} leases ended`,
+    );
 
     return NextResponse.json({
       success: true,
@@ -148,7 +162,7 @@ export async function POST(request: Request) {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
