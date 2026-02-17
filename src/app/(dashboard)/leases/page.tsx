@@ -378,28 +378,9 @@ export default function LeasesPage() {
     })
   }
 
-  const formatCurrencyInput = (value: string) => {
-    // Remove all non-numeric characters except decimal point
-    const numericValue = value.replace(/[^\d.]/g, "")
-
-    // Split by decimal point
-    const parts = numericValue.split(".")
-
-    // Format the integer part with thousand separators
-    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".")
-
-    // Rejoin with decimal point if it exists
-    return parts.join(".")
-  }
-
   const parseCurrencyInput = (value: string): string => {
-    // Remove thousand separators and return numeric string
-    return value.replace(/\./g, "").replace(",", ".")
-  }
-
-  const handleRentAmountChange = (value: string) => {
-    const formatted = formatCurrencyInput(value)
-    setFormData({ ...formData, rentAmount: formatted })
+    // Remove any non-numeric characters except decimal point
+    return value.replace(/[^\d.]/g, "")
   }
 
   const getLatestPaymentDate = () => {
@@ -734,12 +715,12 @@ export default function LeasesPage() {
                           {lease.paidAt ? "Paid" : "Mark as Paid"}
                         </Button>
                       ) : (
-                        <Badge variant={lease.paidAt ? "default" : "secondary"}>
+                        <span className="text-sm">
                           {lease.paidAt ? "Paid" : "Unpaid"}
-                        </Badge>
+                        </span>
                       )}
                     </TableCell>
-                    <TableCell className="capitalize text-muted-foreground">
+                    <TableCell className="capitalize">
                       {lease.status.toLowerCase()}
                     </TableCell>
                     <TableCell className="text-right">
@@ -794,7 +775,7 @@ export default function LeasesPage() {
             {!editingLease && (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="tenant">Tenant</Label>
+                  <Label htmlFor="tenant">Tenant *</Label>
                   <Select
                     value={formData.tenantId}
                     onValueChange={(value) =>
@@ -815,7 +796,7 @@ export default function LeasesPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="property">Property</Label>
+                  <Label htmlFor="property">Property *</Label>
                   <Select
                     value={formData.propertyId}
                     onValueChange={handlePropertyChange}
@@ -834,7 +815,7 @@ export default function LeasesPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="unit">Unit</Label>
+                  <Label htmlFor="unit">Unit *</Label>
                   <Select
                     value={formData.unitId}
                     onValueChange={handleUnitChange}
@@ -856,7 +837,7 @@ export default function LeasesPage() {
             )}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="payment-cycle">Payment Cycle</Label>
+                <Label htmlFor="payment-cycle">Payment Cycle *</Label>
                 <Select
                   value={formData.paymentCycle}
                   onValueChange={(value) =>
@@ -881,7 +862,7 @@ export default function LeasesPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="start-date">Start Date</Label>
+                <Label htmlFor="start-date">Start Date *</Label>
                 <Input
                   id="start-date"
                   type="date"
@@ -892,7 +873,7 @@ export default function LeasesPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="end-date">End Date</Label>
+              <Label htmlFor="end-date">End Date *</Label>
               <Input
                 id="end-date"
                 type="date"
@@ -957,26 +938,23 @@ export default function LeasesPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="rent-amount">Rent Amount</Label>
+                <Label htmlFor="rent-amount">Rent Amount *</Label>
                 <Input
                   id="rent-amount"
                   type="text"
                   value={formData.rentAmount}
-                  onChange={(e) => handleRentAmountChange(e.target.value)}
+                  onChange={(e) => setFormData({ ...formData, rentAmount: e.target.value })}
                   placeholder="0"
                   disabled={isSaving || !formData.unitId}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="deposit-amount">Deposit Amount (Optional)</Label>
+                <Label htmlFor="deposit-amount">Deposit Amount</Label>
                 <Input
                   id="deposit-amount"
                   type="text"
                   value={formData.depositAmount}
-                  onChange={(e) => {
-                    const formatted = formatCurrencyInput(e.target.value)
-                    setFormData({ ...formData, depositAmount: formatted })
-                  }}
+                  onChange={(e) => setFormData({ ...formData, depositAmount: e.target.value })}
                   placeholder="0"
                   disabled={isSaving || !formData.unitId}
                 />
@@ -1029,14 +1007,12 @@ export default function LeasesPage() {
       <Dialog open={isSuccessDialogOpen} onOpenChange={setIsSuccessDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>✅ Lease {createdLease?.id ? "Updated" : "Created"} Successfully!</DialogTitle>
+            <DialogTitle></DialogTitle>
             <DialogDescription>
-              Your lease agreement has been {createdLease?.id ? "updated" : "created"}. Here are the details:
             </DialogDescription>
           </DialogHeader>
           {createdLease && (
-            <Card>
-              <CardContent className="pt-6 space-y-3">
+              <CardContent className="space-y-3">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Tenant</p>
                   <p className="text-base font-semibold">{createdLease.tenant.fullName}</p>
@@ -1119,7 +1095,6 @@ export default function LeasesPage() {
                   </>
                 )}
               </CardContent>
-            </Card>
           )}
           <DialogFooter>
             <Button onClick={() => setIsSuccessDialogOpen(false)} className="w-full">

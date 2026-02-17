@@ -1,5 +1,6 @@
 import { PrismaPg } from "@prisma/adapter-pg"
 import { PrismaClient } from "@prisma/client"
+import bcrypt from "bcryptjs"
 import "dotenv/config"
 
 const connectionString = `${process.env.DATABASE_URL}`
@@ -9,6 +10,15 @@ const prisma = new PrismaClient({ adapter })
 
 async function main() {
   console.log("🌱 Starting seed...")
+
+  // Cleanup existing data to avoid duplicates when using .create()
+  console.log("🧹 Cleaning up existing data...")
+  await prisma.leaseAgreement.deleteMany({})
+  await prisma.activity.deleteMany({})
+  await prisma.tenant.deleteMany({})
+  await prisma.unit.deleteMany({})
+  await prisma.property.deleteMany({})
+  console.log("✓ Cleanup finished")
 
   // Create subscription tiers
   const freeTier = await prisma.subscriptionTier.upsert({
@@ -176,8 +186,9 @@ async function main() {
     { resource: "users", action: "manage" },
   ]
 
+  const accesses = []
   for (const accessData of defaultAccesses) {
-    await prisma.access.upsert({
+    const access = await prisma.access.upsert({
       where: {
         resource_action: {
           resource: accessData.resource,
@@ -187,8 +198,164 @@ async function main() {
       update: {},
       create: accessData,
     })
+    accesses.push(access)
   }
   console.log("✓ Created default accesses")
+
+  // Create Test Organization
+  const org = await prisma.organization.upsert({
+    where: { id: "test-org-id" }, // Using a fixed ID for consistency in local dev
+    update: { name: "Haventium Test Org" },
+    create: {
+      id: "test-org-id",
+      name: "Haventium Test Org",
+    },
+  })
+  console.log("✓ Created Test Organization")
+
+  // Create Subscription for the Org
+  await prisma.subscription.upsert({
+    where: { organizationId: org.id },
+    update: { tierId: proTier.id },
+    create: {
+      organizationId: org.id,
+      tierId: proTier.id,
+      status: "ACTIVE",
+      startDate: new Date(),
+      endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year
+      currentPeriodStart: new Date(),
+      currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 1 month
+    },
+  })
+  console.log("✓ Created PRO Subscription for Test Org")
+
+  // Create Owner Role for Org
+  const ownerRole = await prisma.role.upsert({
+    where: {
+      organizationId_name: {
+        organizationId: org.id,
+        name: "Owner",
+      },
+    },
+    update: {},
+    create: {
+      name: "Owner",
+      organizationId: org.id,
+    },
+  })
+
+  // Link all accesses to Owner role
+  for (const access of accesses) {
+    await prisma.roleAccess.upsert({
+      where: {
+        roleId_accessId: {
+          roleId: ownerRole.id,
+          accessId: access.id,
+        },
+      },
+      update: {},
+      create: {
+        roleId: ownerRole.id,
+        accessId: access.id,
+      },
+    })
+  }
+  console.log("✓ Created Owner Role and linked all accesses")
+
+  // Create Test User
+  const email = "test@test.com"
+  const hashedPassword = await bcrypt.hash("Password1!", 10)
+  const testUser = await prisma.user.upsert({
+    where: { email },
+    update: { hashedPassword },
+    create: {
+      email,
+      name: "Test User",
+      hashedPassword,
+      organizationId: org.id,
+    },
+  })
+
+  // Assign Owner role to user
+  await prisma.userRole.upsert({
+    where: {
+      userId_roleId: {
+        userId: testUser.id,
+        roleId: ownerRole.id,
+      },
+    },
+    update: {},
+    create: {
+      userId: testUser.id,
+      roleId: ownerRole.id,
+    },
+  })
+  console.log(`✓ Created user ${email} and assigned Owner role`)
+
+  // Create Properties
+  const prop1 = await prisma.property.create({
+    data: {
+      name: "Grand View Apartments",
+      organizationId: org.id,
+      units: {
+        create: [
+          { name: "Unit 101", monthlyRate: 1500, annualRate: 17000 },
+          { name: "Unit 102", monthlyRate: 1600, annualRate: 18000 },
+          { name: "Unit 201", monthlyRate: 2000, annualRate: 22000 },
+          { name: "Penthouse A", monthlyRate: 5000, annualRate: 55000 },
+        ]
+      }
+    },
+    include: { units: true }
+  })
+
+  const prop2 = await prisma.property.create({
+    data: {
+      name: "Sunset Villas",
+      organizationId: org.id,
+      units: {
+        create: [
+          { name: "Villa 1", dailyRate: 150, monthlyRate: 3500 },
+          { name: "Villa 2", dailyRate: 150, monthlyRate: 3500 },
+          { name: "Villa 3", dailyRate: 200, monthlyRate: 4500 },
+        ]
+      }
+    },
+    include: { units: true }
+  })
+  console.log("✓ Created 2 Properties and 7 Units")
+
+  // Create Tenants
+  const tenant1 = await prisma.tenant.create({
+    data: {
+      fullName: "John Doe",
+      email: "john@example.com",
+      phone: "+1234567890",
+      status: "ACTIVE",
+      organizationId: org.id,
+    }
+  })
+
+  const tenant2 = await prisma.tenant.create({
+    data: {
+      fullName: "Jane Smith",
+      email: "jane@example.com",
+      phone: "+0987654321",
+      status: "ACTIVE",
+      organizationId: org.id,
+    }
+  })
+
+  const tenant3 = await prisma.tenant.create({
+    data: {
+      fullName: "Bob Wilson",
+      email: "bob@example.com",
+      phone: "+1122334455",
+      status: "LEAD",
+      organizationId: org.id,
+    }
+  })
+  console.log("✓ Created 3 Tenants")
 
   console.log("✓ Linked features to tiers")
 

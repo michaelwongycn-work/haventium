@@ -17,7 +17,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   ArrowLeft01Icon,
@@ -27,11 +37,13 @@ import {
   MoneyBag02Icon,
   CheckmarkCircle02Icon,
   Cancel01Icon,
+  Tick02Icon,
 } from "@hugeicons/core-free-icons"
 
 type LeaseStatus = "DRAFT" | "ACTIVE" | "ENDED"
 type PaymentCycle = "DAILY" | "MONTHLY" | "ANNUAL"
 type DepositStatus = "HELD" | "RETURNED" | "FORFEITED"
+type PaymentMethod = "CASH" | "BANK_TRANSFER" | "VIRTUAL_ACCOUNT" | "QRIS" | "MANUAL"
 
 type Lease = {
   id: string
@@ -41,8 +53,11 @@ type Lease = {
   rentAmount: string | null
   gracePeriodDays: number | null
   isAutoRenew: boolean
+  autoRenewalNoticeDays: number | null
   depositAmount: string | null
   depositStatus: DepositStatus | null
+  paidAt: string | null
+  paymentMethod: PaymentMethod | null
   status: LeaseStatus
   createdAt: string
   updatedAt: string
@@ -60,6 +75,16 @@ type Lease = {
       name: string
     }
   }
+  activities: Array<{
+    id: string
+    type: string
+    description: string
+    createdAt: string
+    user: {
+      name: string
+      email: string
+    } | null
+  }>
 }
 
 export default function LeaseDetailPage({
@@ -72,6 +97,9 @@ export default function LeaseDetailPage({
   const [error, setError] = useState<string | null>(null)
   const [leaseId, setLeaseId] = useState<string>("")
   const [isUpdating, setIsUpdating] = useState(false)
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false)
+  const [paymentDate, setPaymentDate] = useState("")
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH")
 
   useEffect(() => {
     Promise.resolve(params).then((resolvedParams) => {
@@ -103,63 +131,6 @@ export default function LeaseDetailPage({
     }
   }
 
-  const handleStatusChange = async (newStatus: LeaseStatus) => {
-    if (!lease) return
-
-    setIsUpdating(true)
-    setError(null)
-
-    try {
-      const response = await fetch(`/api/leases/${leaseId}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ status: newStatus }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to update lease status")
-      }
-
-      await fetchLease()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update lease")
-    } finally {
-      setIsUpdating(false)
-    }
-  }
-
-  const handleDepositStatusChange = async (depositStatus: DepositStatus) => {
-    if (!lease) return
-
-    setIsUpdating(true)
-    setError(null)
-
-    try {
-      const response = await fetch(`/api/leases/${leaseId}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ depositStatus }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to update deposit status")
-      }
-
-      await fetchLease()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update deposit")
-    } finally {
-      setIsUpdating(false)
-    }
-  }
 
   const formatCurrency = (value: string | number | null | undefined) => {
     if (value === null || value === undefined || value === "") return "—"
@@ -178,6 +149,90 @@ export default function LeaseDetailPage({
     const diffTime = endDate.getTime() - today.getTime()
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
     return diffDays
+  }
+
+  const getLastCancellationDate = () => {
+    if (!lease || !lease.isAutoRenew || !lease.autoRenewalNoticeDays) return null
+    const endDate = new Date(lease.endDate)
+    endDate.setDate(endDate.getDate() - lease.autoRenewalNoticeDays)
+    return endDate
+  }
+
+  const getLastPaymentDate = () => {
+    if (!lease || !lease.gracePeriodDays) return null
+    const endDate = new Date(lease.endDate)
+    endDate.setDate(endDate.getDate() + lease.gracePeriodDays)
+    return endDate
+  }
+
+  const handleOpenPaymentDialog = () => {
+    setPaymentDate(new Date().toISOString().split("T")[0])
+    setPaymentMethod("CASH")
+    setIsPaymentDialogOpen(true)
+  }
+
+  const handleRecordPayment = async () => {
+    if (!lease || !paymentDate || !paymentMethod) return
+
+    // Validate payment date is not in the future
+    const selectedDate = new Date(paymentDate)
+    const today = new Date()
+    today.setHours(23, 59, 59, 999) // Set to end of today
+
+    if (selectedDate > today) {
+      setError("Payment date cannot be in the future")
+      return
+    }
+
+    setIsUpdating(true)
+    setError(null)
+
+    try {
+      const response = await fetch(`/api/leases/${leaseId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          paidAt: new Date(paymentDate).toISOString(),
+          paymentMethod: paymentMethod
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to record payment")
+      }
+
+      await fetchLease()
+      setIsPaymentDialogOpen(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to record payment")
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  const formatDateForDisplay = (dateString: string | null) => {
+    if (!dateString) return ""
+    const date = new Date(dateString)
+    const day = String(date.getDate()).padStart(2, "0")
+    const month = String(date.getMonth() + 1).padStart(2, "0")
+    const year = date.getFullYear()
+    return `${day}/${month}/${year}`
+  }
+
+  const formatPaymentMethod = (method: PaymentMethod | null) => {
+    if (!method) return "—"
+    const methods: Record<PaymentMethod, string> = {
+      CASH: "Cash",
+      BANK_TRANSFER: "Bank Transfer",
+      VIRTUAL_ACCOUNT: "Virtual Account",
+      QRIS: "QRIS",
+      MANUAL: "Manual"
+    }
+    return methods[method] || method
   }
 
   if (!lease && !isLoading) {
@@ -237,204 +292,260 @@ export default function LeaseDetailPage({
         </div>
       ) : (
         <>
-          {/* Lease Overview */}
+          {/* Lease Information Card */}
           <Card>
             <CardHeader>
-              <CardTitle>Lease Overview</CardTitle>
+              <CardTitle>Lease Information</CardTitle>
               <CardDescription>
-                General information about this lease agreement
+                Complete details about this lease agreement
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div className="flex items-start gap-3">
-                    <HugeiconsIcon icon={UserIcon} strokeWidth={2} className="h-5 w-5 text-muted-foreground mt-0.5" />
-                    <div>
-                      <p className="text-sm text-muted-foreground">Tenant</p>
-                      <Link href={`/tenants/${lease?.tenant.id}`} className="font-medium hover:underline">
-                        {lease?.tenant.fullName}
-                      </Link>
-                      <p className="text-sm text-muted-foreground">{lease?.tenant.email}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <HugeiconsIcon icon={Home01Icon} strokeWidth={2} className="h-5 w-5 text-muted-foreground mt-0.5" />
-                    <div>
-                      <p className="text-sm text-muted-foreground">Property & Unit</p>
-                      <Link href={`/properties/${lease?.unit.property.id}`} className="font-medium hover:underline">
-                        {lease?.unit.property.name}
-                      </Link>
-                      <p className="text-sm">{lease?.unit.name}</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <div className="flex items-start gap-3">
-                    <HugeiconsIcon icon={Calendar03Icon} strokeWidth={2} className="h-5 w-5 text-muted-foreground mt-0.5" />
-                    <div>
-                      <p className="text-sm text-muted-foreground">Lease Period</p>
-                      <p className="font-medium">
-                        {lease && new Date(lease.startDate).toLocaleDateString()} - {lease && new Date(lease.endDate).toLocaleDateString()}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {lease && Math.ceil((new Date(lease.endDate).getTime() - new Date(lease.startDate).getTime()) / (1000 * 60 * 60 * 24))} days total
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <HugeiconsIcon icon={MoneyBag02Icon} strokeWidth={2} className="h-5 w-5 text-muted-foreground mt-0.5" />
-                    <div>
-                      <p className="text-sm text-muted-foreground">Rent Amount</p>
-                      <p className="font-medium text-xl">{formatCurrency(lease?.rentAmount)}</p>
-                      <p className="text-sm text-muted-foreground capitalize">
-                        Per {lease?.paymentCycle.toLowerCase()}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Payment Terms */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Payment Terms</CardTitle>
-              <CardDescription>
-                Payment cycle and grace period settings
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <CardContent className="space-y-4">
+              {/* Main lease info in one row */}
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">Payment Cycle</p>
+                  <p className="text-xs text-muted-foreground mb-1">Tenant</p>
+                  <Link href={`/tenants/${lease?.tenant.id}`} className="font-medium hover:underline">
+                    {lease?.tenant.fullName}
+                  </Link>
+                </div>
+
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Property / Unit</p>
+                  <Link href={`/properties/${lease?.unit.property.id}`} className="font-medium hover:underline">
+                    {lease?.unit.property.name} / {lease?.unit.name}
+                  </Link>
+                </div>
+
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Rent Amount</p>
+                  <p className="font-bold">{formatCurrency(lease?.rentAmount)}</p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Payment Cycle</p>
                   <p className="font-medium capitalize">{lease?.paymentCycle.toLowerCase()}</p>
                 </div>
+
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">Grace Period</p>
-                  <p className="font-medium">{lease?.gracePeriodDays} days</p>
+                  <p className="text-xs text-muted-foreground mb-1">Status</p>
+                  <p className="font-medium capitalize">{lease?.status.toLowerCase()}</p>
                 </div>
+              </div>
+
+            </CardContent>
+          </Card>
+
+          {/* Lease Period & Renewal Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Lease Period & Renewal</CardTitle>
+              <CardDescription>
+                Lease duration and auto-renewal settings
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                {/* Start Date */}
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">Auto-Renewal</p>
-                  <div className="flex items-center gap-2">
-                    {lease?.isAutoRenew ? (
-                      <>
-                        <HugeiconsIcon icon={CheckmarkCircle02Icon} strokeWidth={2} className="h-4 w-4 text-green-500" />
-                        <span className="font-medium">Enabled</span>
-                      </>
-                    ) : (
-                      <>
-                        <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">Disabled</span>
-                      </>
-                    )}
-                  </div>
+                  <p className="text-xs text-muted-foreground mb-1">Start Date</p>
+                  <p className="font-medium">{formatDateForDisplay(lease?.startDate || null)}</p>
+                </div>
+
+                {/* End Date */}
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">End Date</p>
+                  <p className="font-medium">{formatDateForDisplay(lease?.endDate || null)}</p>
+                </div>
+
+                {/* Is Renewable */}
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Auto-Renewal</p>
+                  <p className="font-medium">{lease?.isAutoRenew ? "Yes" : "No"}</p>
+                </div>
+
+                {/* Grace Period */}
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Grace Period</p>
+                  <p className="font-medium">
+                    {lease?.isAutoRenew && getLastPaymentDate()
+                      ? `${formatDateForDisplay(getLastPaymentDate()?.toISOString() || null)} | ${lease.gracePeriodDays} days`
+                      : `${lease?.gracePeriodDays || 0} days`
+                    }
+                  </p>
+                </div>
+
+                {/* Notice Period */}
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Notice Period</p>
+                  <p className="font-medium">
+                    {lease?.isAutoRenew && getLastCancellationDate()
+                      ? `${formatDateForDisplay(getLastCancellationDate()?.toISOString() || null)} | ${lease.autoRenewalNoticeDays} days`
+                      : lease?.autoRenewalNoticeDays
+                        ? `${lease.autoRenewalNoticeDays} days`
+                        : "—"
+                    }
+                  </p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Deposit & Status Management */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Deposit Card */}
-            {lease?.depositAmount && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Security Deposit</CardTitle>
-                  <CardDescription>
-                    Deposit amount and status
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Deposit Amount</p>
-                    <p className="text-2xl font-bold">{formatCurrency(lease.depositAmount)}</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Deposit Status</Label>
-                    <Select
-                      value={lease.depositStatus || "HELD"}
-                      onValueChange={(value) => handleDepositStatusChange(value as DepositStatus)}
-                      disabled={isUpdating}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="HELD">Held</SelectItem>
-                        <SelectItem value="RETURNED">Returned</SelectItem>
-                        <SelectItem value="FORFEITED">Forfeited</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Status Management Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Lease Status</CardTitle>
-                <CardDescription>
-                  Manage lease agreement status
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Current Status</p>
-                  <p className="text-2xl font-bold capitalize">{lease?.status.toLowerCase()}</p>
-                </div>
-                <div className="space-y-2">
-                  {lease?.status === "DRAFT" && (
-                    <Button
-                      onClick={() => handleStatusChange("ACTIVE")}
-                      disabled={isUpdating}
-                      className="w-full"
-                    >
-                      {isUpdating ? "Activating..." : "Activate Lease"}
-                    </Button>
-                  )}
-                  {lease?.status === "ACTIVE" && (
-                    <Button
-                      onClick={() => handleStatusChange("ENDED")}
-                      disabled={isUpdating}
-                      variant="destructive"
-                      className="w-full"
-                    >
-                      {isUpdating ? "Ending..." : "End Lease"}
-                    </Button>
-                  )}
-                  {lease?.status === "ENDED" && (
-                    <p className="text-sm text-muted-foreground">
-                      This lease has ended and cannot be modified.
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Metadata */}
+          {/* Deposit & Payment Information */}
           <Card>
             <CardHeader>
-              <CardTitle>Additional Information</CardTitle>
+              <CardTitle>Deposit & Payment Information</CardTitle>
+              <CardDescription>
+                Security deposit and payment status
+              </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                {/* Deposit Amount */}
                 <div>
-                  <p className="text-muted-foreground">Created</p>
-                  <p className="font-medium">{lease && new Date(lease.createdAt).toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground mb-1">Deposit Amount</p>
+                  <p className="font-bold">{lease?.depositAmount ? formatCurrency(lease.depositAmount) : "—"}</p>
                 </div>
+
+                {/* Deposit Status */}
                 <div>
-                  <p className="text-muted-foreground">Last Updated</p>
-                  <p className="font-medium">{lease && new Date(lease.updatedAt).toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground mb-1">Deposit Status</p>
+                  <p className="font-medium capitalize">
+                    {lease?.depositAmount ? (lease.depositStatus?.toLowerCase() || "held") : "—"}
+                  </p>
+                </div>
+
+                {/* Payment Status */}
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Payment Status</p>
+                  <p className="font-medium">{lease?.paidAt ? "Paid" : "Unpaid"}</p>
+                </div>
+
+                {/* Payment Date */}
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Payment Date</p>
+                  <p className="font-medium">{lease?.paidAt ? formatDateForDisplay(lease.paidAt) : "—"}</p>
+                </div>
+
+                {/* Payment Method */}
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Payment Method</p>
+                  <p className="font-medium">{formatPaymentMethod(lease?.paymentMethod || null)}</p>
                 </div>
               </div>
+
+              {/* Mark as Paid Button */}
+              {!lease?.paidAt && lease?.status === "ACTIVE" && (
+                <Button onClick={handleOpenPaymentDialog} disabled={isUpdating} className="w-full">
+                  Mark as Paid
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Activity Log */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Activity Log</CardTitle>
+              <CardDescription>
+                Recent activity related to this lease
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {!lease?.activities || lease.activities.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No activity yet
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {lease.activities.map((activity) => (
+                    <div
+                      key={activity.id}
+                      className="flex items-start gap-3 p-3 border rounded-lg"
+                    >
+                      <div className="flex-1">
+                        <p className="text-sm">{activity.description}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {new Date(activity.createdAt).toLocaleString()}
+                          {activity.user && ` by ${activity.user.name}`}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </>
       )}
+
+      {/* Payment Dialog */}
+      <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Record Payment</DialogTitle>
+            <DialogDescription>
+              Enter the payment date for this lease
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="payment-date">Payment Date</Label>
+              <Input
+                id="payment-date"
+                type="date"
+                value={paymentDate}
+                max={new Date().toISOString().split("T")[0]}
+                onChange={(e) => setPaymentDate(e.target.value)}
+                disabled={isUpdating}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="payment-method">Payment Method</Label>
+              <Select
+                value={paymentMethod}
+                onValueChange={(value) => setPaymentMethod(value as PaymentMethod)}
+                disabled={isUpdating}
+              >
+                <SelectTrigger id="payment-method">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="CASH">Cash</SelectItem>
+                  <SelectItem value="BANK_TRANSFER">Bank Transfer</SelectItem>
+                  <SelectItem value="VIRTUAL_ACCOUNT">Virtual Account</SelectItem>
+                  <SelectItem value="QRIS">QRIS</SelectItem>
+                  <SelectItem value="MANUAL">Manual</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="rounded-md bg-muted p-3 text-sm">
+              <p className="font-medium mb-1">Lease Details:</p>
+              <p className="text-muted-foreground">
+                Tenant: {lease?.tenant.fullName}
+              </p>
+              <p className="text-muted-foreground">
+                Amount: {formatCurrency(lease?.rentAmount)}
+              </p>
+              <p className="text-muted-foreground capitalize">
+                Cycle: {lease?.paymentCycle.toLowerCase()}
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => setIsPaymentDialogOpen(false)}
+              disabled={isUpdating}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleRecordPayment} disabled={isUpdating || !paymentDate}>
+              {isUpdating ? "Recording..." : "Record Payment"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

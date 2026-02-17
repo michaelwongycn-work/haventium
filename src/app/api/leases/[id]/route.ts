@@ -15,6 +15,7 @@ const updateLeaseSchema = z.object({
   depositStatus: z.enum(["HELD", "RETURNED", "FORFEITED"]).optional(),
   status: z.enum(["DRAFT", "ACTIVE", "ENDED"]).optional(),
   paidAt: z.string().nullable().optional(),
+  paymentMethod: z.enum(["CASH", "BANK_TRANSFER", "VIRTUAL_ACCOUNT", "QRIS", "MANUAL"]).optional(),
 })
 
 // GET /api/leases/[id] - Get single lease
@@ -56,7 +57,35 @@ export async function GET(
       )
     }
 
-    return NextResponse.json(lease)
+    // Fetch activities related to this lease (tenant and property)
+    const activities = await prisma.activity.findMany({
+      where: {
+        organizationId: session.user.organizationId,
+        OR: [
+          { tenantId: lease.tenantId },
+          { propertyId: lease.unit.propertyId },
+        ],
+      },
+      include: {
+        user: {
+          select: {
+            name: true,
+            email: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: 50,
+    })
+
+    const leaseWithActivities = {
+      ...lease,
+      activities,
+    }
+
+    return NextResponse.json(leaseWithActivities)
   } catch (error) {
     console.error("Error fetching lease:", error)
     return NextResponse.json(
@@ -179,6 +208,7 @@ export async function PATCH(
     if (validatedData.autoRenewalNoticeDays !== undefined) updateData.autoRenewalNoticeDays = validatedData.autoRenewalNoticeDays
     if (validatedData.depositAmount !== undefined) updateData.depositAmount = validatedData.depositAmount
     if (validatedData.depositStatus !== undefined) updateData.depositStatus = validatedData.depositStatus
+    if (validatedData.paymentMethod !== undefined) updateData.paymentMethod = validatedData.paymentMethod
 
     // Handle payment status update
     if (validatedData.paidAt !== undefined) {
@@ -197,6 +227,41 @@ export async function PATCH(
         // Mark as paid
         updateData.paidAt = new Date(validatedData.paidAt)
         updateData.paymentStatus = "COMPLETED"
+
+        // Auto-activate lease if it's in DRAFT status
+        if (existingLease.status === "DRAFT") {
+          updateData.status = "ACTIVE"
+
+          // Update tenant status to ACTIVE
+          await prisma.tenant.update({
+            where: { id: existingLease.tenantId },
+            data: { status: "ACTIVE" },
+          })
+
+          // Log activation activity
+          await prisma.activity.create({
+            data: {
+              type: "LEASE_UPDATED",
+              description: `Activated lease agreement for ${existingLease.tenant.fullName} at ${existingLease.unit.property.name} - ${existingLease.unit.name}`,
+              userId: session.user.id,
+              organizationId: session.user.organizationId,
+              tenantId: existingLease.tenantId,
+              propertyId: existingLease.unit.propertyId,
+            },
+          })
+        }
+
+        // Log payment activity
+        await prisma.activity.create({
+          data: {
+            type: "PAYMENT_RECORDED",
+            description: `Payment recorded for ${existingLease.tenant.fullName} at ${existingLease.unit.property.name} - ${existingLease.unit.name}`,
+            userId: session.user.id,
+            organizationId: session.user.organizationId,
+            tenantId: existingLease.tenantId,
+            propertyId: existingLease.unit.propertyId,
+          },
+        })
       }
     }
 

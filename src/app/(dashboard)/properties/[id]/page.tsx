@@ -146,8 +146,8 @@ export default function PropertyDetailPage({
       setEditingUnit(unit)
       setFormData({
         name: unit.name,
-        dailyRate: unit.dailyRate.toString(),
-        monthlyRate: unit.monthlyRate.toString(),
+        dailyRate: unit.dailyRate?.toString() || "",
+        monthlyRate: unit.monthlyRate?.toString() || "",
         annualRate: unit.annualRate?.toString() || "",
         isUnavailable: unit.isUnavailable,
       })
