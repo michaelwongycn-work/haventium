@@ -83,9 +83,73 @@ Server component running 11 parallel Prisma queries. Shows:
 
 Revenue calculation: "expected" = sum of `rentAmount` for ACTIVE leases overlapping the month; "collected" = sum of `rentAmount` for leases with `paidAt` in that month.
 
+### API Keys
+
+**Organization-specific API key management** for email and WhatsApp integrations.
+
+**Schema:**
+- `ApiKey` — Encrypted storage of organization API keys with service type (RESEND_EMAIL, WHATSAPP_META)
+- Encrypted at rest using AES-256-GCM (encryption utility in `src/lib/encryption.ts`)
+- Master key from `ENCRYPTION_SECRET` environment variable (32+ chars required)
+
+**Security:**
+- API keys encrypted with AES-256-GCM, stored with IV and auth tag
+- Full key shown only once at creation (copy-to-clipboard)
+- Masked display in UI (e.g., `re_••••••••5a3f`)
+- Decrypted only when sending notifications
+- Activity logging for all key operations (create/update/delete)
+- Deletion requires current password confirmation
+
+**Services:**
+- `RESEND_EMAIL` — Resend API key for email delivery
+- `WHATSAPP_META` — WhatsApp Meta Cloud API credentials (JSON with accessToken, phoneNumberId, businessAccountId)
+
+**API:** CRUD at `/api/settings/api-keys` and `/api/settings/api-keys/[id]`. Test endpoint at `/api/settings/api-keys/[id]/test` validates credentials. All protected by `checkAccess('settings', 'manage')`.
+
+**UI:** Management interface at `/settings/api-keys` with create/test/delete operations.
+
+**Migration:** Global `RESEND_API_KEY` environment variable deprecated. Each organization must configure their own API keys. Notifications fail with clear error if keys not configured.
+
 ### Notifications
 
-Schema is fully modeled (NotificationTemplate, NotificationRule, NotificationLog with triggers like PAYMENT_REMINDER, LEASE_EXPIRING, etc.) but no UI or sending logic exists yet.
+**Fully implemented** notification system with email (Resend) and WhatsApp (Meta Cloud API) delivery.
+
+**Schema:**
+- `NotificationTemplate` — Email/WhatsApp message templates with dynamic variables
+- `NotificationRule` — Automated trigger rules (PAYMENT_REMINDER, LEASE_EXPIRING, etc.) with daysOffset, recipient config (TENANT/USER/ROLE)
+- `NotificationLog` — Delivery tracking (PENDING → SENT/FAILED)
+
+**Channels:**
+- `EMAIL` — Via Resend API (requires org RESEND_EMAIL API key)
+- `WHATSAPP` — Via Meta Cloud API (requires org WHATSAPP_META credentials)
+
+**Template Variables:**
+- `{{tenantName}}` — Tenant full name
+- `{{leaseStartDate}}` — Lease start date
+- `{{leaseEndDate}}` — Lease end date
+- `{{rentAmount}}` — Lease rent amount
+- `{{propertyName}}` — Property name
+- `{{unitName}}` — Unit name
+
+**Triggers:**
+- `PAYMENT_REMINDER` — Sent X days before payment due
+- `PAYMENT_LATE` — Sent when payment is overdue
+- `PAYMENT_CONFIRMED` — Sent when lease is paid (paidAt set)
+- `LEASE_EXPIRING` — Sent X days before lease ends
+- `LEASE_EXPIRED` — Sent when lease ends
+- `MANUAL` — Manually triggered
+
+**Tenant Preferences:** Respects `preferEmail` and `preferWhatsapp` flags on Tenant model.
+
+**WhatsApp Integration:** Meta Cloud API direct (no BSP fees). Supports template messages (marketing/utility) and plain text (service messages). Credentials stored as encrypted JSON in ApiKey table.
+
+**API Key Requirement:** All notifications require organization-specific API keys. If not configured, notifications fail with status FAILED and clear error message in NotificationLog.
+
+**API:** Full CRUD for templates and rules at `/api/notifications/templates` and `/api/notifications/rules`. Read-only logs at `/api/notifications/logs`. All endpoints protected by `checkAccess('notifications', action)`.
+
+**Cron Job:** `/api/cron/process-notifications` runs daily to send notifications based on rules and daysOffset.
+
+**UI:** Management interfaces at `/notifications/templates`, `/notifications/rules`, `/notifications/logs`.
 
 ### RBAC
 
@@ -98,7 +162,8 @@ Schema is fully modeled (NotificationTemplate, NotificationRule, NotificationLog
 | properties | read, create, update, delete |
 | tenants | read, create, update, delete |
 | leases | read, create, update, delete |
-| settings | manage (roles/accesses) |
+| notifications | read, create, update, delete |
+| settings | manage (roles/accesses/api-keys) |
 | users | manage |
 
 **API enforcement:** All route handlers use `checkAccess(resource, action)` from `src/lib/guards.ts`. It returns `{ authorized, response, session }` — handlers check `!authorized` and return the response (403 with error message). Session data is returned for convenience.
@@ -125,12 +190,38 @@ src/app/(auth)/           — login, signup pages
 src/app/(dashboard)/      — all authenticated pages (dashboard, properties, tenants, leases)
 src/app/api/              — route handlers (auth, signup, CRUD, crons)
 src/components/ui/        — shadcn/ui components
-src/lib/                  — auth config, prisma client, utilities
+src/lib/                  — utilities, auth, guards, API helpers
 src/middleware.ts         — NextAuth route protection
 prisma/schema.prisma      — database schema
 prisma/seed.ts            — seed data
 generated/prisma/         — generated Prisma client + types
 ```
+
+### Library Utilities (`src/lib/`)
+
+**Core:**
+- `auth.ts` / `auth.config.ts` — NextAuth 5 configuration with Credentials provider
+- `guards.tsx` — RBAC enforcement: `checkAccess()` (API), `checkPageAccess()` (UI), `hasAccess()` (navigation)
+- `access-utils.ts` — Permission checking helpers
+- `prisma.ts` — Singleton Prisma client instance
+- `utils.ts` — `cn()` for Tailwind class merging
+- `constants.ts` — App-wide constants (subscription limits, permissions)
+- `password.ts` — bcryptjs hashing/verification
+- `date-utils.ts` — Date manipulation helpers
+- `zod-resolver.ts` — Zod integration for form validation
+
+**API helpers (`src/lib/api/`):**
+- `auth-middleware.ts` — Auth checking for route handlers
+- `response.ts` — Standardized API response helpers
+- `error-handler.ts` — Centralized error handling
+- `validation.ts` — Zod schema validation utilities
+- `password-verification.ts` — Current password confirmation for sensitive ops
+- `subscription-limits.ts` — Tier limit enforcement
+- `query-helpers.ts` — Common Prisma query patterns
+- `lease-validation.ts` — Lease overlap/auto-renew validation logic
+- `user-validation.ts` — User mutation validation
+- `activity-logger.ts` — Activity timeline logging
+- `index.ts` — Re-exports all API utilities
 
 ### Auth & Middleware
 

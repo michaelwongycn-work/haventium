@@ -98,6 +98,7 @@ type Tenant = {
   status: TenantStatus
   preferEmail: boolean
   preferWhatsapp: boolean
+  preferTelegram: boolean
   createdAt: string
   updatedAt: string
   leaseAgreements: Array<{
@@ -292,6 +293,7 @@ export default function TenantDetailClient({
                   <div>
                     <p className="text-sm text-muted-foreground">Phone</p>
                     <p className="font-medium">{tenant?.phone}</p>
+                    <p className="text-xs text-muted-foreground">WhatsApp & Telegram</p>
                   </div>
                 </div>
               </div>
@@ -310,7 +312,13 @@ export default function TenantDetailClient({
                       <span>WhatsApp</span>
                     </div>
                   )}
-                  {!tenant?.preferEmail && !tenant?.preferWhatsapp && (
+                  {tenant?.preferTelegram && tenant?.phone && (
+                    <div className="flex items-center gap-2">
+                      <HugeiconsIcon icon={CheckmarkCircle02Icon} strokeWidth={2} className="h-4 w-4 text-green-500" />
+                      <span>Telegram</span>
+                    </div>
+                  )}
+                  {!tenant?.preferEmail && !tenant?.preferWhatsapp && !tenant?.preferTelegram && (
                     <p className="text-muted-foreground">No preferred channel selected</p>
                   )}
                 </div>

@@ -33,6 +33,7 @@ model Organization {
   activities            Activity[]
   roles                 Role[]
   subscription          Subscription?
+  apiKeys               ApiKey[]
 }
 
 model User {
@@ -229,6 +230,7 @@ model Tenant {
 
   preferEmail    Boolean @default(true)
   preferWhatsapp Boolean @default(false)
+  preferTelegram Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -343,6 +345,7 @@ enum PaymentStatus {
 enum NotificationChannel {
   EMAIL
   WHATSAPP
+  TELEGRAM
 }
 
 enum NotificationTrigger {
@@ -447,6 +450,44 @@ model NotificationLog {
 }
 
 // ========================================
+// API KEY MANAGEMENT
+// ========================================
+
+enum ApiKeyService {
+  RESEND_EMAIL
+  WHATSAPP_META
+  TELEGRAM_BOT
+}
+
+model ApiKey {
+  id String @id @default(cuid())
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  name    String
+  service ApiKeyService
+
+  // Encrypted storage
+  encryptedValue String @db.Text
+  encryptionIv   String
+  encryptionTag  String
+
+  // Display & metadata
+  lastFourChars String
+  isActive      Boolean @default(true)
+
+  // Audit fields
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  lastUsedAt DateTime?
+
+  @@unique([organizationId, service])
+  @@index([organizationId])
+  @@index([service])
+}
+
+// ========================================
 // ACTIVITY & AUDIT LOG
 // ========================================
 
@@ -467,6 +508,9 @@ enum ActivityType {
   UNIT_CREATED
   UNIT_UPDATED
   USER_LOGIN
+  API_KEY_CREATED
+  API_KEY_UPDATED
+  API_KEY_DELETED
   OTHER
 }
 

@@ -85,13 +85,33 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           updatedAt: ur.role.updatedAt.toISOString(),
         }))
         
-        // Prepare subscription object safely
+        // Prepare subscription object safely - convert Decimals to strings/numbers
         const safeSubscription = subscription ? {
-          ...subscription,
+          id: subscription.id,
+          organizationId: subscription.organizationId,
+          tierId: subscription.tierId,
+          status: subscription.status,
+          billingCycle: subscription.billingCycle,
           startDate: subscription.startDate.toISOString(),
           endDate: subscription.endDate?.toISOString() || null,
+          trialEndsAt: subscription.trialEndsAt?.toISOString() || null,
+          cancelledAt: subscription.cancelledAt?.toISOString() || null,
+          currentPeriodStart: subscription.currentPeriodStart.toISOString(),
+          currentPeriodEnd: subscription.currentPeriodEnd.toISOString(),
+          externalId: subscription.externalId,
           createdAt: subscription.createdAt.toISOString(),
           updatedAt: subscription.updatedAt.toISOString(),
+          tier: subscription.tier ? {
+            id: subscription.tier.id,
+            type: subscription.tier.type,
+            name: subscription.tier.name,
+            monthlyPrice: subscription.tier.monthlyPrice.toNumber(),
+            annualPrice: subscription.tier.annualPrice.toNumber(),
+            maxUsers: subscription.tier.maxUsers,
+            maxProperties: subscription.tier.maxProperties,
+            maxUnits: subscription.tier.maxUnits,
+            maxTenants: subscription.tier.maxTenants,
+          } : null,
         } : null
 
         return {

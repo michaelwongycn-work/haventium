@@ -22,6 +22,9 @@ export type ActivityType =
   | "DEPOSIT_CREATED"
   | "DEPOSIT_RETURNED"
   | "NOTIFICATION_SENT"
+  | "API_KEY_CREATED"
+  | "API_KEY_UPDATED"
+  | "API_KEY_DELETED"
   | "USER_LOGIN"
   | "OTHER"
 

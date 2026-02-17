@@ -65,6 +65,7 @@ type Tenant = {
   status: TenantStatus
   preferEmail: boolean
   preferWhatsapp: boolean
+  preferTelegram: boolean
   createdAt: string
   updatedAt: string
   _count: {
@@ -92,6 +93,7 @@ export default function TenantsClient() {
     status: "LEAD" as TenantStatus,
     preferEmail: false,
     preferWhatsapp: false,
+    preferTelegram: false,
   })
 
   useEffect(() => {
@@ -152,6 +154,7 @@ export default function TenantsClient() {
         status: tenant.status,
         preferEmail: tenant.preferEmail,
         preferWhatsapp: tenant.preferWhatsapp,
+        preferTelegram: tenant.preferTelegram,
       })
     } else {
       setEditingTenant(null)
@@ -162,6 +165,7 @@ export default function TenantsClient() {
         status: "LEAD",
         preferEmail: false,
         preferWhatsapp: false,
+        preferTelegram: false,
       })
     }
     setError(null)
@@ -178,6 +182,7 @@ export default function TenantsClient() {
       status: "LEAD",
       preferEmail: false,
       preferWhatsapp: false,
+      preferTelegram: false,
     })
     setError(null)
   }
@@ -220,6 +225,11 @@ export default function TenantsClient() {
 
     if (formData.preferWhatsapp && !formData.phone.trim()) {
       setError("Cannot prefer WhatsApp without providing a phone number")
+      return
+    }
+
+    if (formData.preferTelegram && !formData.phone.trim()) {
+      setError("Cannot prefer Telegram without providing a phone number")
       return
     }
 
@@ -510,6 +520,9 @@ export default function TenantsClient() {
                 placeholder="+1 234 567 8900"
                 disabled={isSaving}
               />
+              <p className="text-xs text-muted-foreground">
+                Used for WhatsApp and Telegram notifications
+              </p>
             </div>
             <div className="space-y-3 pt-2">
               <Label className="text-sm font-medium">Preferred Communication Channel</Label>
@@ -538,6 +551,19 @@ export default function TenantsClient() {
                   checked={formData.preferWhatsapp}
                   onCheckedChange={(checked) =>
                     setFormData({ ...formData, preferWhatsapp: checked })
+                  }
+                  disabled={isSaving || !formData.phone.trim()}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="prefer-telegram" className="text-sm font-normal">
+                  Prefer Telegram
+                </Label>
+                <Switch
+                  id="prefer-telegram"
+                  checked={formData.preferTelegram}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, preferTelegram: checked })
                   }
                   disabled={isSaving || !formData.phone.trim()}
                 />

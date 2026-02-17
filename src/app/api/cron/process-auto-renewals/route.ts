@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import type { LeaseAgreement, PaymentCycle } from "@prisma/client"
+import { processNotifications } from "@/lib/services/notification-processor"
+import { NOTIFICATION_TRIGGER } from "@/lib/constants"
 
 /**
  * Calculate renewal lease start and end dates based on payment cycle
@@ -84,6 +86,15 @@ async function createRenewalLease(
       leaseId: result.id,
       unitId: originalLease.unitId,
     },
+  })
+
+  // Trigger LEASE_EXPIRED notification for the original lease
+  processNotifications({
+    organizationId: originalLease.organizationId,
+    trigger: NOTIFICATION_TRIGGER.LEASE_EXPIRED,
+    relatedEntityId: originalLease.id,
+  }).catch((err) => {
+    console.error("Failed to send lease expired notification:", err)
   })
 
   return result

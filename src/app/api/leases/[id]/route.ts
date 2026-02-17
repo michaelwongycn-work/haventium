@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { checkAccess } from "@/lib/guards"
 import { prisma } from "@/lib/prisma"
+import { processNotifications } from "@/lib/services/notification-processor"
+import { NOTIFICATION_TRIGGER } from "@/lib/constants"
 
 const updateLeaseSchema = z.object({
   startDate: z.string().optional(),
@@ -324,6 +326,15 @@ export async function PATCH(
             leaseId: id,
             unitId: existingLease.unitId,
           },
+        })
+
+        // Trigger PAYMENT_CONFIRMED notification
+        processNotifications({
+          organizationId: session.user.organizationId,
+          trigger: NOTIFICATION_TRIGGER.PAYMENT_CONFIRMED,
+          relatedEntityId: id,
+        }).catch((err) => {
+          console.error("Failed to send payment confirmation notification:", err)
         })
       }
     }

@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -480,6 +481,12 @@ export default function SettingsClient() {
         >
           Users
         </button>
+        <Link
+          href="/settings/api-keys"
+          className="rounded-md px-4 py-1.5 text-sm font-medium transition-colors text-muted-foreground hover:text-foreground"
+        >
+          API Keys
+        </Link>
       </div>
 
       {/* ======================================== */}

@@ -13,6 +13,10 @@ async function main() {
 
   // Cleanup existing data to avoid duplicates when using .create()
   console.log("🧹 Cleaning up existing data...")
+  await prisma.notificationLog.deleteMany({})
+  await prisma.notificationRule.deleteMany({})
+  await prisma.notificationTemplate.deleteMany({})
+  await prisma.apiKey.deleteMany({})
   await prisma.leaseAgreement.deleteMany({})
   await prisma.activity.deleteMany({})
   await prisma.tenant.deleteMany({})
@@ -184,6 +188,10 @@ async function main() {
     { resource: "payments", action: "update" },
     { resource: "settings", action: "manage" },
     { resource: "users", action: "manage" },
+    { resource: "notifications", action: "read" },
+    { resource: "notifications", action: "create" },
+    { resource: "notifications", action: "update" },
+    { resource: "notifications", action: "delete" },
   ]
 
   const accesses = []
@@ -263,6 +271,80 @@ async function main() {
   }
   console.log("✓ Created Owner Role and linked all accesses")
 
+  // Create Property Manager Role (has access to properties, tenants, leases, notifications)
+  const propertyManagerRole = await prisma.role.upsert({
+    where: {
+      organizationId_name: {
+        organizationId: org.id,
+        name: "Property Manager",
+      },
+    },
+    update: {},
+    create: {
+      name: "Property Manager",
+      isSystem: false,
+      organizationId: org.id,
+    },
+  })
+
+  // Link property manager accesses (everything except settings/users)
+  const propertyManagerResources = ["properties", "tenants", "leases", "payments", "notifications"]
+  for (const access of accesses) {
+    if (propertyManagerResources.includes(access.resource)) {
+      await prisma.roleAccess.upsert({
+        where: {
+          roleId_accessId: {
+            roleId: propertyManagerRole.id,
+            accessId: access.id,
+          },
+        },
+        update: {},
+        create: {
+          roleId: propertyManagerRole.id,
+          accessId: access.id,
+        },
+      })
+    }
+  }
+  console.log("✓ Created Property Manager Role with operational access")
+
+  // Create Notification Manager Role (only notifications access)
+  const notificationManagerRole = await prisma.role.upsert({
+    where: {
+      organizationId_name: {
+        organizationId: org.id,
+        name: "Notification Manager",
+      },
+    },
+    update: {},
+    create: {
+      name: "Notification Manager",
+      isSystem: false,
+      organizationId: org.id,
+    },
+  })
+
+  // Link notification-related accesses to Notification Manager role
+  const notificationAccessResources = ["notifications"]
+  for (const access of accesses) {
+    if (notificationAccessResources.includes(access.resource)) {
+      await prisma.roleAccess.upsert({
+        where: {
+          roleId_accessId: {
+            roleId: notificationManagerRole.id,
+            accessId: access.id,
+          },
+        },
+        update: {},
+        create: {
+          roleId: notificationManagerRole.id,
+          accessId: access.id,
+        },
+      })
+    }
+  }
+  console.log("✓ Created Notification Manager Role with notification access")
+
   // Create Test User
   const email = "test@test.com"
   const hashedPassword = await bcrypt.hash("Password1!", 10)
@@ -292,6 +374,74 @@ async function main() {
     },
   })
   console.log(`✓ Created user ${email} and assigned Owner role`)
+
+  // Create API Keys for the organization (for development/testing)
+  // Note: In production, users should add their own API keys via the UI
+  const { encrypt, getLastFourChars } = await import("../src/lib/encryption")
+
+  // Resend Email API key (use test key for development)
+  const testResendKey = process.env.RESEND_API_KEY || "re_test_key_12345678"
+  const resendEncrypted = encrypt(testResendKey)
+
+  await prisma.apiKey.upsert({
+    where: {
+      organizationId_service: {
+        organizationId: org.id,
+        service: "RESEND_EMAIL",
+      },
+    },
+    update: {
+      encryptedValue: resendEncrypted.encrypted,
+      encryptionIv: resendEncrypted.iv,
+      encryptionTag: resendEncrypted.tag,
+      lastFourChars: getLastFourChars(testResendKey),
+    },
+    create: {
+      organizationId: org.id,
+      name: "Resend Production",
+      service: "RESEND_EMAIL",
+      encryptedValue: resendEncrypted.encrypted,
+      encryptionIv: resendEncrypted.iv,
+      encryptionTag: resendEncrypted.tag,
+      lastFourChars: getLastFourChars(testResendKey),
+      isActive: true,
+    },
+  })
+
+  // WhatsApp Meta API credentials (test credentials)
+  const testWhatsAppCreds = JSON.stringify({
+    accessToken: process.env.WHATSAPP_ACCESS_TOKEN || "test_access_token",
+    phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || "123456789",
+    businessAccountId: process.env.WHATSAPP_BUSINESS_ACCOUNT_ID || "987654321",
+  })
+  const whatsappEncrypted = encrypt(testWhatsAppCreds)
+
+  await prisma.apiKey.upsert({
+    where: {
+      organizationId_service: {
+        organizationId: org.id,
+        service: "WHATSAPP_META",
+      },
+    },
+    update: {
+      encryptedValue: whatsappEncrypted.encrypted,
+      encryptionIv: whatsappEncrypted.iv,
+      encryptionTag: whatsappEncrypted.tag,
+      lastFourChars: getLastFourChars(testWhatsAppCreds),
+    },
+    create: {
+      organizationId: org.id,
+      name: "WhatsApp Business",
+      service: "WHATSAPP_META",
+      encryptedValue: whatsappEncrypted.encrypted,
+      encryptionIv: whatsappEncrypted.iv,
+      encryptionTag: whatsappEncrypted.tag,
+      lastFourChars: getLastFourChars(testWhatsAppCreds),
+      isActive: true,
+    },
+  })
+
+  console.log("✓ Created API keys for Test Organization")
 
   // Create Properties
   const grandView = await prisma.property.create({
@@ -566,6 +716,116 @@ async function main() {
   console.log("✓ Updated tenant statuses")
 
   console.log("✓ Linked features to tiers")
+
+  // Create notification templates
+  const paymentReminderEmailTemplate = await prisma.notificationTemplate.create({
+    data: {
+      organizationId: org.id,
+      name: "Payment Reminder Email",
+      trigger: "PAYMENT_REMINDER",
+      channel: "EMAIL",
+      subject: "Payment Reminder - {{propertyName}}",
+      body: `Dear {{tenantName}},
+
+This is a friendly reminder that your rent payment is due soon.
+
+Property: {{propertyName}} - {{unitName}}
+Amount: {{rentAmount}}
+Due Date: {{leaseStartDate}}
+
+Please ensure payment is made on time to avoid any late fees.
+
+Thank you,
+Haventium Property Management`,
+      isActive: true,
+    },
+  })
+
+  const leaseExpiringEmailTemplate = await prisma.notificationTemplate.create({
+    data: {
+      organizationId: org.id,
+      name: "Lease Expiring Email",
+      trigger: "LEASE_EXPIRING",
+      channel: "EMAIL",
+      subject: "Your Lease is Expiring Soon - {{propertyName}}",
+      body: `Dear {{tenantName}},
+
+We wanted to inform you that your lease agreement is expiring soon.
+
+Property: {{propertyName}} - {{unitName}}
+Lease End Date: {{leaseEndDate}}
+
+Please contact us if you would like to renew your lease or discuss your options.
+
+Thank you,
+Haventium Property Management`,
+      isActive: true,
+    },
+  })
+
+  const paymentConfirmedEmailTemplate = await prisma.notificationTemplate.create({
+    data: {
+      organizationId: org.id,
+      name: "Payment Confirmed Email",
+      trigger: "PAYMENT_CONFIRMED",
+      channel: "EMAIL",
+      subject: "Payment Received - {{propertyName}}",
+      body: `Dear {{tenantName}},
+
+Thank you! We have received your payment.
+
+Property: {{propertyName}} - {{unitName}}
+Amount: {{rentAmount}}
+Payment Date: {{leaseStartDate}}
+
+Your lease is now active. If you have any questions, please don't hesitate to contact us.
+
+Thank you,
+Haventium Property Management`,
+      isActive: true,
+    },
+  })
+
+  console.log("✓ Created notification templates")
+
+  // Create notification rules
+  const paymentReminderRule = await prisma.notificationRule.create({
+    data: {
+      organizationId: org.id,
+      name: "Payment Reminder 7 Days Before",
+      trigger: "PAYMENT_REMINDER",
+      daysOffset: -7, // 7 days before payment due
+      channels: ["EMAIL"],
+      recipientType: "TENANT",
+      isActive: true,
+    },
+  })
+
+  const leaseExpiringRule = await prisma.notificationRule.create({
+    data: {
+      organizationId: org.id,
+      name: "Lease Expiring 14 Days Before",
+      trigger: "LEASE_EXPIRING",
+      daysOffset: -14, // 14 days before lease ends
+      channels: ["EMAIL"],
+      recipientType: "TENANT",
+      isActive: true,
+    },
+  })
+
+  const paymentConfirmedRule = await prisma.notificationRule.create({
+    data: {
+      organizationId: org.id,
+      name: "Payment Confirmed Notification",
+      trigger: "PAYMENT_CONFIRMED",
+      daysOffset: 0, // Same day as payment
+      channels: ["EMAIL"],
+      recipientType: "TENANT",
+      isActive: true,
+    },
+  })
+
+  console.log("✓ Created notification rules")
 
   console.log("🎉 Seed completed successfully!")
 }
