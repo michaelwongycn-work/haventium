@@ -27,6 +27,11 @@ export async function GET(
         organizationId: session.user.organizationId,
       },
       include: {
+        units: {
+          orderBy: {
+            name: "asc",
+          },
+        },
         _count: {
           select: {
             units: true,

@@ -55,11 +55,24 @@ import {
   PencilEdit02Icon,
   Search01Icon,
   ToolsIcon,
+  Download04Icon,
+  Upload04Icon,
+  FileDownloadIcon,
 } from "@hugeicons/core-free-icons";
 import { formatDate } from "@/lib/format";
 import { Pagination } from "@/components/pagination";
+import { BulkImportDialog } from "@/components/bulk-import-dialog";
+import {
+  downloadExcelFile,
+  downloadExcelTemplate,
+  formatDateForExcel,
+} from "@/lib/excel-utils";
 
-type MaintenanceRequestStatus = "OPEN" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+type MaintenanceRequestStatus =
+  | "OPEN"
+  | "IN_PROGRESS"
+  | "COMPLETED"
+  | "CANCELLED";
 type MaintenanceRequestPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
 
 type MaintenanceRequest = {
@@ -102,24 +115,20 @@ type Unit = {
   propertyId: string;
 };
 
-type Tenant = {
-  id: string;
-  fullName: string;
-};
-
 export default function MaintenanceRequestsClient() {
   const [requests, setRequests] = useState<MaintenanceRequest[]>([]);
-  const [filteredRequests, setFilteredRequests] = useState<MaintenanceRequest[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
-  const [tenants, setTenants] = useState<Tenant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [editingRequest, setEditingRequest] = useState<MaintenanceRequest | null>(null);
-  const [deletingRequest, setDeletingRequest] = useState<MaintenanceRequest | null>(null);
+  const [editingRequest, setEditingRequest] =
+    useState<MaintenanceRequest | null>(null);
+  const [deletingRequest, setDeletingRequest] =
+    useState<MaintenanceRequest | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const [propertyFilter, setPropertyFilter] = useState<string>("all");
@@ -135,21 +144,30 @@ export default function MaintenanceRequestsClient() {
     propertyId: "",
     unitId: "",
     tenantId: "",
+    leaseId: "",
     priority: "MEDIUM" as MaintenanceRequestPriority,
     status: "OPEN" as MaintenanceRequestStatus,
     estimatedCost: "",
-    actualCost: "",
   });
+  const [activeLease, setActiveLease] = useState<{
+    id: string;
+    tenant: { id: string; fullName: string };
+  } | null>(null);
+
+  useEffect(() => {
+    fetchProperties();
+  }, []);
 
   useEffect(() => {
     fetchRequests();
-    fetchProperties();
-    fetchTenants();
-  }, [currentPage, pageSize]);
-
-  useEffect(() => {
-    filterRequests();
-  }, [requests, statusFilter, priorityFilter, propertyFilter, searchQuery]);
+  }, [
+    currentPage,
+    pageSize,
+    statusFilter,
+    priorityFilter,
+    propertyFilter,
+    searchQuery,
+  ]);
 
   useEffect(() => {
     if (formData.propertyId) {
@@ -159,6 +177,15 @@ export default function MaintenanceRequestsClient() {
     }
   }, [formData.propertyId]);
 
+  useEffect(() => {
+    if (formData.unitId && !editingRequest) {
+      fetchActiveLeaseForUnit(formData.unitId);
+    } else {
+      setActiveLease(null);
+      setFormData((prev) => ({ ...prev, tenantId: "", leaseId: "" }));
+    }
+  }, [formData.unitId]);
+
   const fetchRequests = async () => {
     try {
       setIsLoading(true);
@@ -166,6 +193,21 @@ export default function MaintenanceRequestsClient() {
         page: currentPage.toString(),
         limit: pageSize.toString(),
       });
+
+      // Add filters to params
+      if (statusFilter && statusFilter !== "all") {
+        params.append("status", statusFilter);
+      }
+      if (priorityFilter && priorityFilter !== "all") {
+        params.append("priority", priorityFilter);
+      }
+      if (propertyFilter && propertyFilter !== "all") {
+        params.append("propertyId", propertyFilter);
+      }
+      if (searchQuery) {
+        params.append("search", searchQuery);
+      }
+
       const response = await fetch(`/api/maintenance-requests?${params}`);
 
       if (!response.ok) {
@@ -207,47 +249,30 @@ export default function MaintenanceRequestsClient() {
     }
   };
 
-  const fetchTenants = async () => {
+  const fetchActiveLeaseForUnit = async (unitId: string) => {
     try {
-      const response = await fetch("/api/tenants");
+      const response = await fetch(`/api/units/${unitId}/active-lease`);
       if (response.ok) {
         const data = await response.json();
-        setTenants(data.items || data);
+        if (data.lease) {
+          setActiveLease(data.lease);
+          setFormData((prev) => ({
+            ...prev,
+            tenantId: data.lease.tenant.id,
+            leaseId: data.lease.id,
+          }));
+        } else {
+          setActiveLease(null);
+          setFormData((prev) => ({ ...prev, tenantId: "", leaseId: "" }));
+        }
       }
     } catch (err) {
-      console.error("Failed to fetch tenants:", err);
+      console.error("Failed to fetch active lease:", err);
+      setActiveLease(null);
     }
   };
 
-  const filterRequests = () => {
-    let filtered = requests;
-
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((request) => request.status === statusFilter);
-    }
-
-    if (priorityFilter !== "all") {
-      filtered = filtered.filter((request) => request.priority === priorityFilter);
-    }
-
-    if (propertyFilter !== "all") {
-      filtered = filtered.filter((request) => request.propertyId === propertyFilter);
-    }
-
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (request) =>
-          request.title.toLowerCase().includes(query) ||
-          request.description.toLowerCase().includes(query) ||
-          request.property.name.toLowerCase().includes(query)
-      );
-    }
-
-    setFilteredRequests(filtered);
-  };
-
-  const handleOpenDialog = (request?: MaintenanceRequest) => {
+  const handleOpenDialog = async (request?: MaintenanceRequest) => {
     if (request) {
       setEditingRequest(request);
       setFormData({
@@ -256,11 +281,15 @@ export default function MaintenanceRequestsClient() {
         propertyId: request.propertyId,
         unitId: request.unitId || "",
         tenantId: request.tenantId || "",
+        leaseId: request.leaseId || "",
         priority: request.priority,
         status: request.status,
         estimatedCost: request.estimatedCost?.toString() || "",
-        actualCost: request.actualCost?.toString() || "",
       });
+      // Fetch units for the property when editing
+      if (request.propertyId) {
+        await fetchUnitsForProperty(request.propertyId);
+      }
     } else {
       setEditingRequest(null);
       setFormData({
@@ -269,10 +298,10 @@ export default function MaintenanceRequestsClient() {
         propertyId: "",
         unitId: "",
         tenantId: "",
+        leaseId: "",
         priority: "MEDIUM",
         status: "OPEN",
         estimatedCost: "",
-        actualCost: "",
       });
     }
     setError(null);
@@ -282,16 +311,17 @@ export default function MaintenanceRequestsClient() {
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
     setEditingRequest(null);
+    setActiveLease(null);
     setFormData({
       title: "",
       description: "",
       propertyId: "",
       unitId: "",
       tenantId: "",
+      leaseId: "",
       priority: "MEDIUM",
       status: "OPEN",
       estimatedCost: "",
-      actualCost: "",
     });
     setError(null);
   };
@@ -336,7 +366,6 @@ export default function MaintenanceRequestsClient() {
         title: formData.title.trim(),
         description: formData.description.trim(),
         priority: formData.priority,
-        status: formData.status,
       };
 
       if (!editingRequest) {
@@ -344,14 +373,12 @@ export default function MaintenanceRequestsClient() {
         payload.propertyId = formData.propertyId;
         payload.unitId = formData.unitId || null;
         payload.tenantId = formData.tenantId || null;
+        payload.leaseId = formData.leaseId || null;
+        payload.status = formData.status;
       }
 
       if (formData.estimatedCost) {
         payload.estimatedCost = parseFloat(formData.estimatedCost);
-      }
-
-      if (formData.actualCost) {
-        payload.actualCost = parseFloat(formData.actualCost);
       }
 
       const response = await fetch(url, {
@@ -384,9 +411,12 @@ export default function MaintenanceRequestsClient() {
     setError(null);
 
     try {
-      const response = await fetch(`/api/maintenance-requests/${deletingRequest.id}`, {
-        method: "DELETE",
-      });
+      const response = await fetch(
+        `/api/maintenance-requests/${deletingRequest.id}`,
+        {
+          method: "DELETE",
+        },
+      );
 
       if (!response.ok) {
         const data = await response.json();
@@ -404,22 +434,24 @@ export default function MaintenanceRequestsClient() {
   };
 
   const getStatusBadge = (status: MaintenanceRequestStatus) => {
-    const variants: Record<MaintenanceRequestStatus, "default" | "secondary" | "destructive" | "outline"> = {
+    const variants: Record<
+      MaintenanceRequestStatus,
+      "default" | "secondary" | "destructive" | "outline"
+    > = {
       OPEN: "default",
       IN_PROGRESS: "secondary",
       COMPLETED: "outline",
       CANCELLED: "destructive",
     };
 
-    return (
-      <Badge variant={variants[status]}>
-        {status.replace("_", " ")}
-      </Badge>
-    );
+    return <Badge variant={variants[status]}>{status.replace("_", " ")}</Badge>;
   };
 
   const getPriorityBadge = (priority: MaintenanceRequestPriority) => {
-    const variants: Record<MaintenanceRequestPriority, "default" | "secondary" | "destructive" | "outline"> = {
+    const variants: Record<
+      MaintenanceRequestPriority,
+      "default" | "secondary" | "destructive" | "outline"
+    > = {
       LOW: "outline",
       MEDIUM: "secondary",
       HIGH: "default",
@@ -427,6 +459,48 @@ export default function MaintenanceRequestsClient() {
     };
 
     return <Badge variant={variants[priority]}>{priority}</Badge>;
+  };
+
+  const handleExportToExcel = () => {
+    const exportData = requests.map((request) => ({
+      Title: request.title,
+      Description: request.description,
+      Property: request.property.name,
+      Unit: request.unit?.name || "No unit",
+      Priority: request.priority,
+      Status: request.status,
+      "Estimated Cost": request.estimatedCost
+        ? parseFloat(request.estimatedCost.toString())
+        : null,
+      "Actual Cost": request.actualCost
+        ? parseFloat(request.actualCost.toString())
+        : null,
+      "Created At": formatDateForExcel(request.createdAt),
+      "Completed At": request.completedAt
+        ? formatDateForExcel(request.completedAt)
+        : null,
+    }));
+
+    const today = new Date().toISOString().split("T")[0];
+    downloadExcelFile(
+      exportData,
+      `haventium-maintenance-${today}.xlsx`,
+      "Maintenance Requests",
+    );
+  };
+
+  const handleDownloadTemplate = () => {
+    const sampleRow = {
+      "Property Name": "Building A",
+      "Unit Name": "Unit 101",
+      Title: "Leaking faucet in bathroom",
+      Description:
+        "The bathroom sink faucet is dripping continuously. Needs immediate repair to prevent water waste.",
+      Priority: "MEDIUM",
+      "Estimated Cost": "150",
+    };
+
+    downloadExcelTemplate(sampleRow, "haventium-maintenance-template.xlsx");
   };
 
   if (isLoading) {
@@ -439,78 +513,135 @@ export default function MaintenanceRequestsClient() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Maintenance Requests</h1>
+          <p className="text-muted-foreground mt-1">
+            Manage property maintenance requests and work orders
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleDownloadTemplate}>
+            <HugeiconsIcon
+              icon={FileDownloadIcon}
+              strokeWidth={2}
+              data-icon="inline-start"
+            />
+            Download Template
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExportToExcel}>
+            <HugeiconsIcon
+              icon={Download04Icon}
+              strokeWidth={2}
+              data-icon="inline-start"
+            />
+            Export to Excel
+          </Button>
+          <Button variant="outline" onClick={() => setIsBulkImportOpen(true)}>
+            <HugeiconsIcon
+              icon={Upload04Icon}
+              strokeWidth={2}
+              data-icon="inline-start"
+            />
+            Import from Excel
+          </Button>
+          <Button onClick={() => handleOpenDialog()}>
+            <HugeiconsIcon
+              icon={PlusSignIcon}
+              strokeWidth={2}
+              data-icon="inline-start"
+            />
+            New Request
+          </Button>
+        </div>
+      </div>
+
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Maintenance Requests</CardTitle>
+              <CardTitle>All Maintenance Requests</CardTitle>
               <CardDescription>
-                Manage property maintenance requests and work orders
+                A list of all your maintenance requests and work orders
               </CardDescription>
             </div>
-            <Button onClick={() => handleOpenDialog()}>
-              <HugeiconsIcon icon={PlusSignIcon} size={16} className="mr-2" />
-              New Request
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="mb-4 flex flex-wrap gap-4">
-            <div className="flex-1 min-w-[200px]">
+            <div className="flex items-center gap-2">
               <div className="relative">
                 <HugeiconsIcon
                   icon={Search01Icon}
-                  size={16}
-                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground"
+                  strokeWidth={2}
+                  className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground"
                 />
                 <Input
                   placeholder="Search requests..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="pl-8 w-[250px]"
                 />
               </div>
+              <Select
+                value={statusFilter}
+                onValueChange={(value) => {
+                  setStatusFilter(value);
+                  setCurrentPage(1);
+                }}
+              >
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="OPEN">Open</SelectItem>
+                  <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+                  <SelectItem value="COMPLETED">Completed</SelectItem>
+                  <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select
+                value={priorityFilter}
+                onValueChange={(value) => {
+                  setPriorityFilter(value);
+                  setCurrentPage(1);
+                }}
+              >
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder="Filter by priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Priority</SelectItem>
+                  <SelectItem value="URGENT">Urgent</SelectItem>
+                  <SelectItem value="HIGH">High</SelectItem>
+                  <SelectItem value="MEDIUM">Medium</SelectItem>
+                  <SelectItem value="LOW">Low</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select
+                value={propertyFilter}
+                onValueChange={(value) => {
+                  setPropertyFilter(value);
+                  setCurrentPage(1);
+                }}
+              >
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder="Filter by property" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Properties</SelectItem>
+                  {properties.map((property) => (
+                    <SelectItem key={property.id} value={property.id}>
+                      {property.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="OPEN">Open</SelectItem>
-                <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
-                <SelectItem value="COMPLETED">Completed</SelectItem>
-                <SelectItem value="CANCELLED">Cancelled</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by priority" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Priorities</SelectItem>
-                <SelectItem value="URGENT">Urgent</SelectItem>
-                <SelectItem value="HIGH">High</SelectItem>
-                <SelectItem value="MEDIUM">Medium</SelectItem>
-                <SelectItem value="LOW">Low</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={propertyFilter} onValueChange={setPropertyFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by property" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Properties</SelectItem>
-                {properties.map((property) => (
-                  <SelectItem key={property.id} value={property.id}>
-                    {property.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
-
+        </CardHeader>
+        <CardContent>
           {error && (
             <div className="mb-4 p-3 bg-destructive/10 text-destructive text-sm rounded-md">
               {error}
@@ -529,49 +660,57 @@ export default function MaintenanceRequestsClient() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredRequests.length === 0 ? (
+              {requests.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
+                  <TableCell
+                    colSpan={6}
+                    className="text-center text-muted-foreground"
+                  >
                     No maintenance requests found
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredRequests.map((request) => (
-                  <TableRow key={request.id}>
+                requests.map((request) => (
+                  <TableRow
+                    key={request.id}
+                    className="cursor-pointer"
+                    onClick={() =>
+                      (window.location.href = `/maintenance-requests/${request.id}`)
+                    }
+                  >
                     <TableCell>
-                      <Link
-                        href={`/maintenance-requests/${request.id}`}
-                        className="font-medium hover:underline"
-                      >
-                        {request.title}
-                      </Link>
+                      <div className="font-medium">{request.title}</div>
                     </TableCell>
                     <TableCell>
                       <div className="text-sm">
                         <div>{request.property.name}</div>
                         {request.unit && (
-                          <div className="text-muted-foreground">{request.unit.name}</div>
+                          <div className="text-muted-foreground">
+                            {request.unit.name}
+                          </div>
                         )}
                       </div>
                     </TableCell>
                     <TableCell>{getPriorityBadge(request.priority)}</TableCell>
                     <TableCell>{getStatusBadge(request.status)}</TableCell>
-                    <TableCell>
-                      {formatDate(request.createdAt)}
-                    </TableCell>
+                    <TableCell>{formatDate(request.createdAt)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleOpenDialog(request)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenDialog(request);
+                          }}
                         >
                           <HugeiconsIcon icon={PencilEdit02Icon} size={16} />
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setDeletingRequest(request);
                             setIsDeleteDialogOpen(true);
                           }}
@@ -585,7 +724,7 @@ export default function MaintenanceRequestsClient() {
               )}
             </TableBody>
           </Table>
-          {!isLoading && filteredRequests.length > 0 && (
+          {!isLoading && requests.length > 0 && (
             <Pagination
               currentPage={currentPage}
               totalPages={totalPages}
@@ -606,7 +745,9 @@ export default function MaintenanceRequestsClient() {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>
-              {editingRequest ? "Edit Maintenance Request" : "New Maintenance Request"}
+              {editingRequest
+                ? "Edit Maintenance Request"
+                : "New Maintenance Request"}
             </DialogTitle>
             <DialogDescription>
               {editingRequest
@@ -627,7 +768,9 @@ export default function MaintenanceRequestsClient() {
               <Input
                 id="title"
                 value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, title: e.target.value })
+                }
                 placeholder="Brief description of the issue"
               />
             </div>
@@ -648,51 +791,71 @@ export default function MaintenanceRequestsClient() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="property">Property *</Label>
-                <Select
-                  value={formData.propertyId}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, propertyId: value, unitId: "" })
-                  }
-                  disabled={!!editingRequest}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select property" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {properties.map((property) => (
-                      <SelectItem key={property.id} value={property.id}>
-                        {property.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {editingRequest ? (
+                  <div className="flex h-10 w-full items-center rounded-md border border-input bg-muted px-3 py-2 text-sm">
+                    {editingRequest.property.name}
+                  </div>
+                ) : (
+                  <Select
+                    value={formData.propertyId}
+                    onValueChange={(value) =>
+                      setFormData({
+                        ...formData,
+                        propertyId: value,
+                        unitId: "",
+                      })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select property" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {properties.map((property) => (
+                        <SelectItem key={property.id} value={property.id}>
+                          {property.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="unit">Unit (optional)</Label>
-                <Select
-                  value={formData.unitId}
-                  onValueChange={(value) => setFormData({ ...formData, unitId: value })}
-                  disabled={!!editingRequest || !formData.propertyId}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select unit" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">No unit</SelectItem>
-                    {units.map((unit) => (
-                      <SelectItem key={unit.id} value={unit.id}>
-                        {unit.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="unit">Unit</Label>
+                {editingRequest ? (
+                  <div className="flex h-10 w-full items-center rounded-md border border-input bg-muted px-3 py-2 text-sm">
+                    {editingRequest.unit?.name || "No unit"}
+                  </div>
+                ) : (
+                  <Select
+                    value={formData.unitId || "NONE"}
+                    onValueChange={(value) =>
+                      setFormData({
+                        ...formData,
+                        unitId: value === "NONE" ? "" : value,
+                      })
+                    }
+                    disabled={!formData.propertyId}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select unit" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="NONE">No unit</SelectItem>
+                      {units.map((unit) => (
+                        <SelectItem key={unit.id} value={unit.id}>
+                          {unit.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="priority">Priority</Label>
+                <Label htmlFor="priority">Priority *</Label>
                 <Select
                   value={formData.priority}
                   onValueChange={(value: MaintenanceRequestPriority) =>
@@ -712,102 +875,68 @@ export default function MaintenanceRequestsClient() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
-                <Select
-                  value={formData.status}
-                  onValueChange={(value: MaintenanceRequestStatus) =>
-                    setFormData({ ...formData, status: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="OPEN">Open</SelectItem>
-                    <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
-                    <SelectItem value="COMPLETED">Completed</SelectItem>
-                    <SelectItem value="CANCELLED">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="estimatedCost">Estimated Cost</Label>
+                <Label htmlFor="tenant">Tenant</Label>
                 <Input
-                  id="estimatedCost"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={formData.estimatedCost}
-                  onChange={(e) =>
-                    setFormData({ ...formData, estimatedCost: e.target.value })
+                  id="tenant"
+                  value={
+                    editingRequest
+                      ? editingRequest.tenant?.fullName || "No tenant linked"
+                      : activeLease
+                        ? activeLease.tenant.fullName
+                        : "No active lease"
                   }
-                  placeholder="0.00"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="actualCost">Actual Cost</Label>
-                <Input
-                  id="actualCost"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={formData.actualCost}
-                  onChange={(e) =>
-                    setFormData({ ...formData, actualCost: e.target.value })
-                  }
-                  placeholder="0.00"
+                  disabled
+                  className="bg-muted"
                 />
               </div>
             </div>
 
-            {!editingRequest && (
-              <div className="space-y-2">
-                <Label htmlFor="tenant">Tenant (optional)</Label>
-                <Select
-                  value={formData.tenantId}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, tenantId: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select tenant" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">No tenant</SelectItem>
-                    {tenants.map((tenant) => (
-                      <SelectItem key={tenant.id} value={tenant.id}>
-                        {tenant.fullName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+            <div className="space-y-2">
+              <Label htmlFor="estimatedCost">Estimated Cost</Label>
+              <Input
+                id="estimatedCost"
+                type="number"
+                min="0"
+                step="0.01"
+                value={formData.estimatedCost}
+                onChange={(e) =>
+                  setFormData({ ...formData, estimatedCost: e.target.value })
+                }
+                placeholder="0.00"
+              />
+            </div>
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={handleCloseDialog} disabled={isSaving}>
+            <Button
+              variant="outline"
+              onClick={handleCloseDialog}
+              disabled={isSaving}
+            >
               Cancel
             </Button>
             <Button onClick={handleSaveRequest} disabled={isSaving}>
-              {isSaving ? "Saving..." : editingRequest ? "Save Changes" : "Create Request"}
+              {isSaving
+                ? "Saving..."
+                : editingRequest
+                  ? "Save Changes"
+                  : "Create Request"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Maintenance Request</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete &ldquo;{deletingRequest?.title}&rdquo;?
-              This action cannot be undone.
+              Are you sure you want to delete &ldquo;{deletingRequest?.title}
+              &rdquo;? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           {error && (
@@ -827,6 +956,30 @@ export default function MaintenanceRequestsClient() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Bulk Import Dialog */}
+      <BulkImportDialog<Record<string, unknown>>
+        isOpen={isBulkImportOpen}
+        onClose={() => setIsBulkImportOpen(false)}
+        title="Import Maintenance Requests from Excel"
+        description="Upload an Excel file (.xlsx or .xls) with maintenance request data. Download the template for the correct format."
+        apiEndpoint="/api/maintenance-requests/bulk-import"
+        onImportComplete={fetchRequests}
+        renderPreview={(data, index) => {
+          const title = (data["Title"] || data.title) as string;
+          const propertyName = (data["Property Name"] ||
+            data.propertyName) as string;
+          const priority = (data["Priority"] || data.priority) as string;
+          return (
+            <div className="text-sm">
+              <span className="font-medium">{title}</span>
+              <span className="text-muted-foreground ml-2">
+                {propertyName} • {priority}
+              </span>
+            </div>
+          );
+        }}
+      />
     </div>
   );
 }

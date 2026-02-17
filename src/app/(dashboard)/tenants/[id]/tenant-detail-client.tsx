@@ -11,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
@@ -27,6 +28,9 @@ import {
   ShieldEnergyIcon,
   Notification01Icon,
   MoreHorizontalIcon,
+  ToolsIcon,
+  PencilEdit02Icon,
+  CheckmarkCircle01Icon,
 } from "@hugeicons/core-free-icons";
 import { formatDate, formatCurrency } from "@/lib/format";
 
@@ -90,6 +94,32 @@ const ACTIVITY_BG_MAP: Record<string, string> = {
   OTHER: "bg-muted",
 };
 
+const getStatusBadge = (status: string) => {
+  const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+    OPEN: "default",
+    IN_PROGRESS: "secondary",
+    COMPLETED: "outline",
+    CANCELLED: "destructive",
+  };
+
+  return (
+    <Badge variant={variants[status] || "default"}>
+      {status.replace("_", " ")}
+    </Badge>
+  );
+};
+
+const getPriorityBadge = (priority: string) => {
+  const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+    LOW: "outline",
+    MEDIUM: "secondary",
+    HIGH: "default",
+    URGENT: "destructive",
+  };
+
+  return <Badge variant={variants[priority] || "default"}>{priority}</Badge>;
+};
+
 type TenantStatus = "LEAD" | "BOOKED" | "ACTIVE" | "EXPIRED";
 
 type Tenant = {
@@ -115,6 +145,23 @@ type Tenant = {
         name: string;
       };
     };
+  }>;
+  maintenanceRequests: Array<{
+    id: string;
+    title: string;
+    description: string;
+    status: string;
+    priority: string;
+    createdAt: string;
+    completedAt: string | null;
+    property: {
+      id: string;
+      name: string;
+    };
+    unit: {
+      id: string;
+      name: string;
+    } | null;
   }>;
   activities: Array<{
     id: string;
@@ -388,6 +435,51 @@ export default function TenantDetailClient({
                         <p className="text-sm text-muted-foreground capitalize">
                           {lease.status.toLowerCase()}
                         </p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Maintenance Requests */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Maintenance Requests</CardTitle>
+              <CardDescription>
+                All maintenance requests for this tenant
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {!tenant?.maintenanceRequests ||
+              tenant.maintenanceRequests.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No maintenance requests yet
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {tenant.maintenanceRequests.map((request) => (
+                    <Link
+                      key={request.id}
+                      href={`/maintenance-requests/${request.id}`}
+                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent transition-colors cursor-pointer"
+                    >
+                      <div className="flex-1">
+                        <p className="font-medium">{request.title}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {request.property.name}
+                          {request.unit && ` - ${request.unit.name}`}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {formatDate(request.createdAt)}
+                          {request.completedAt &&
+                            ` - Completed ${formatDate(request.completedAt)}`}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {getPriorityBadge(request.priority)}
+                        {getStatusBadge(request.status)}
                       </div>
                     </Link>
                   ))}

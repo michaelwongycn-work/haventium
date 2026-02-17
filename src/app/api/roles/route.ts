@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAccess, handleApiError } from "@/lib/api";
+import { requireAccess, handleApiError, parsePaginationParams, createPaginatedResponse } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 
 const createRoleSchema = z.object({
@@ -9,7 +9,7 @@ const createRoleSchema = z.object({
 });
 
 // GET /api/roles - List all roles for the organization
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const { authorized, response, session } = await requireAccess(
       "settings",
@@ -17,28 +17,38 @@ export async function GET() {
     );
     if (!authorized) return response;
 
-    const roles = await prisma.role.findMany({
-      where: {
-        organizationId: session.user.organizationId,
-      },
-      include: {
-        roleAccesses: {
-          include: {
-            access: true,
-          },
-        },
-        _count: {
-          select: {
-            userRoles: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: "asc",
-      },
-    });
+    const { searchParams } = new URL(request.url);
+    const { skip, take, page } = parsePaginationParams(searchParams);
 
-    return NextResponse.json(roles);
+    const where = {
+      organizationId: session.user.organizationId,
+    };
+
+    const [roles, total] = await Promise.all([
+      prisma.role.findMany({
+        where,
+        include: {
+          roleAccesses: {
+            include: {
+              access: true,
+            },
+          },
+          _count: {
+            select: {
+              userRoles: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: "asc",
+        },
+        skip,
+        take,
+      }),
+      prisma.role.count({ where }),
+    ]);
+
+    return NextResponse.json(createPaginatedResponse(roles, page, take, total));
   } catch (error) {
     return handleApiError(error, "fetch roles");
   }

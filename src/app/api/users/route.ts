@@ -1,3 +1,4 @@
+import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { hashPassword, validatePassword } from "@/lib/password";
@@ -12,6 +13,8 @@ import {
   apiError,
   handleApiError,
   validateRequest,
+  parsePaginationParams,
+  createPaginatedResponse,
 } from "@/lib/api";
 
 const createUserSchema = z.object({
@@ -25,7 +28,7 @@ const createUserSchema = z.object({
 });
 
 // GET /api/users - List all users for the organization
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const { authorized, response, session } = await requireAccess(
       "users",
@@ -33,17 +36,27 @@ export async function GET() {
     );
     if (!authorized) return response;
 
-    const users = await prisma.user.findMany({
-      where: {
-        organizationId: session.user.organizationId,
-      },
-      select: USER_SELECT,
-      orderBy: {
-        createdAt: "asc",
-      },
-    });
+    const { searchParams } = new URL(request.url);
+    const { skip, take, page } = parsePaginationParams(searchParams);
 
-    return apiSuccess(users);
+    const where = {
+      organizationId: session.user.organizationId,
+    };
+
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        select: USER_SELECT,
+        orderBy: {
+          createdAt: "asc",
+        },
+        skip,
+        take,
+      }),
+      prisma.user.count({ where }),
+    ]);
+
+    return NextResponse.json(createPaginatedResponse(users, page, take, total));
   } catch (error) {
     return handleApiError(error, "fetch users");
   }

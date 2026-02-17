@@ -58,6 +58,15 @@ export async function GET(
             createdAt: "desc",
           },
         },
+        maintenanceRequests: {
+          include: {
+            property: true,
+            unit: true,
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+        },
         activities: {
           include: {
             user: {

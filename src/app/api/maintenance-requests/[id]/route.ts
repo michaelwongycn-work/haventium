@@ -127,6 +127,36 @@ export async function PATCH(
       return apiNotFound("Maintenance request not found");
     }
 
+    // Validate status transitions
+    if (validatedData.status && validatedData.status !== existingRequest.status) {
+      const oldStatus = existingRequest.status;
+      const newStatus = validatedData.status;
+
+      const validTransitions: Record<string, string[]> = {
+        OPEN: ['IN_PROGRESS', 'CANCELLED'],
+        IN_PROGRESS: ['COMPLETED', 'CANCELLED'],
+        COMPLETED: [],
+        CANCELLED: [],
+      };
+
+      if (!validTransitions[oldStatus]?.includes(newStatus)) {
+        return apiError(
+          `Invalid status transition from ${oldStatus} to ${newStatus}`,
+          400
+        );
+      }
+
+      // Require actual cost when completing
+      if (newStatus === 'COMPLETED') {
+        if (validatedData.actualCost === undefined && !existingRequest.actualCost) {
+          return apiError(
+            'Actual cost is required to complete a maintenance request',
+            400
+          );
+        }
+      }
+    }
+
     // Determine if status is changing to COMPLETED
     const isBeingCompleted =
       validatedData.status === "COMPLETED" &&
@@ -148,8 +178,11 @@ export async function PATCH(
     });
 
     // Log activity
-    if (isBeingCompleted) {
-      await ActivityLogger.maintenanceRequestCompleted(
+    const statusChanged = validatedData.status && validatedData.status !== existingRequest.status;
+
+    if (statusChanged) {
+      // Log status change
+      await ActivityLogger.maintenanceRequestStatusChanged(
         session,
         {
           id: updatedRequest.id,
@@ -158,9 +191,27 @@ export async function PATCH(
         },
         {
           propertyName: existingRequest.property.name,
+          oldStatus: existingRequest.status,
+          newStatus: updatedRequest.status,
         },
       );
+
+      // Also log completion if status changed to COMPLETED
+      if (isBeingCompleted) {
+        await ActivityLogger.maintenanceRequestCompleted(
+          session,
+          {
+            id: updatedRequest.id,
+            title: updatedRequest.title,
+            propertyId: updatedRequest.propertyId,
+          },
+          {
+            propertyName: existingRequest.property.name,
+          },
+        );
+      }
     } else {
+      // No status change, just a regular update
       await ActivityLogger.maintenanceRequestUpdated(
         session,
         {

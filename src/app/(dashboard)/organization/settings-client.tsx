@@ -49,6 +49,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PasswordInput } from "@/components/ui/password-input";
+import { Pagination } from "@/components/pagination";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   PlusSignIcon,
@@ -145,6 +146,18 @@ function SettingsContent({
   const [accesses, setAccesses] = useState<Access[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Pagination state for roles
+  const [rolesPage, setRolesPage] = useState(1);
+  const [rolesPageSize, setRolesPageSize] = useState(10);
+  const [rolesTotalItems, setRolesTotalItems] = useState(0);
+  const [rolesTotalPages, setRolesTotalPages] = useState(0);
+
+  // Pagination state for users
+  const [usersPage, setUsersPage] = useState(1);
+  const [usersPageSize, setUsersPageSize] = useState(10);
+  const [usersTotalItems, setUsersTotalItems] = useState(0);
+  const [usersTotalPages, setUsersTotalPages] = useState(0);
+
   // Role dialog state
   const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
@@ -176,24 +189,37 @@ function SettingsContent({
 
   useEffect(() => {
     fetchAll();
-  }, []);
+  }, [rolesPage, rolesPageSize, usersPage, usersPageSize]);
 
   const fetchAll = async () => {
     setIsLoading(true);
     try {
+      const rolesParams = new URLSearchParams({
+        page: rolesPage.toString(),
+        limit: rolesPageSize.toString(),
+      });
+      const usersParams = new URLSearchParams({
+        page: usersPage.toString(),
+        limit: usersPageSize.toString(),
+      });
+
       const [rolesRes, usersRes, accessesRes] = await Promise.all([
-        fetch("/api/roles"),
-        fetch("/api/users"),
+        fetch(`/api/roles?${rolesParams}`),
+        fetch(`/api/users?${usersParams}`),
         fetch("/api/accesses"),
       ]);
 
       if (rolesRes.ok) {
         const rolesData = await rolesRes.json();
         setRoles(rolesData.items || rolesData);
+        setRolesTotalItems(rolesData.pagination?.total || 0);
+        setRolesTotalPages(rolesData.pagination?.totalPages || 0);
       }
       if (usersRes.ok) {
         const usersData = await usersRes.json();
         setUsers(usersData.items || usersData);
+        setUsersTotalItems(usersData.pagination?.total || 0);
+        setUsersTotalPages(usersData.pagination?.totalPages || 0);
       }
       if (accessesRes.ok) {
         const accessesData = await accessesRes.json();
@@ -636,6 +662,19 @@ function SettingsContent({
                     </TableBody>
                   </Table>
                 )}
+                {!isLoading && roles.length > 0 && (
+                  <Pagination
+                    currentPage={rolesPage}
+                    totalPages={rolesTotalPages}
+                    totalItems={rolesTotalItems}
+                    pageSize={rolesPageSize}
+                    onPageChange={(page) => setRolesPage(page)}
+                    onPageSizeChange={(size) => {
+                      setRolesPageSize(size);
+                      setRolesPage(1);
+                    }}
+                  />
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -766,6 +805,19 @@ function SettingsContent({
                       ))}
                     </TableBody>
                   </Table>
+                )}
+                {!isLoading && users.length > 0 && (
+                  <Pagination
+                    currentPage={usersPage}
+                    totalPages={usersTotalPages}
+                    totalItems={usersTotalItems}
+                    pageSize={usersPageSize}
+                    onPageChange={(page) => setUsersPage(page)}
+                    onPageSizeChange={(size) => {
+                      setUsersPageSize(size);
+                      setUsersPage(1);
+                    }}
+                  />
                 )}
               </CardContent>
             </Card>

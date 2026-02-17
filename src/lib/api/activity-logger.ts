@@ -28,6 +28,7 @@ export type ActivityType =
   | "API_KEY_DELETED"
   | "MAINTENANCE_REQUEST_CREATED"
   | "MAINTENANCE_REQUEST_UPDATED"
+  | "MAINTENANCE_REQUEST_STATUS_CHANGED"
   | "MAINTENANCE_REQUEST_COMPLETED"
   | "DOCUMENT_UPLOADED"
   | "DOCUMENT_DELETED"
@@ -242,6 +243,18 @@ export const ActivityLogger = {
     logActivity(session, {
       type: "MAINTENANCE_REQUEST_UPDATED",
       description: `Updated maintenance request: ${request.title} - Status: ${request.status}`,
+      maintenanceRequestId: request.id,
+      propertyId: request.propertyId,
+    }),
+
+  maintenanceRequestStatusChanged: (
+    session: Session,
+    request: { id: string; title: string; propertyId: string },
+    details: { propertyName: string; oldStatus: string; newStatus: string },
+  ) =>
+    logActivity(session, {
+      type: "MAINTENANCE_REQUEST_STATUS_CHANGED",
+      description: `Changed status: ${request.title} - ${details.oldStatus} → ${details.newStatus}`,
       maintenanceRequestId: request.id,
       propertyId: request.propertyId,
     }),

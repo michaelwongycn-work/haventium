@@ -6,7 +6,7 @@ export default async function MaintenanceRequestDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { authorized } = await checkPageAccess("maintenance", "read");
+  const { authorized, roles } = await checkPageAccess("maintenance", "read");
 
   if (!authorized) {
     return <AccessDenied resource="maintenance request" />;
@@ -14,5 +14,5 @@ export default async function MaintenanceRequestDetailPage({
 
   const { id } = await params;
 
-  return <MaintenanceRequestDetailClient id={id} />;
+  return <MaintenanceRequestDetailClient id={id} roles={roles} />;
 }

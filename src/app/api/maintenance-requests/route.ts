@@ -99,6 +99,16 @@ export async function GET(request: Request) {
         {
           description: { contains: search, mode: "insensitive" },
         },
+        {
+          property: {
+            name: { contains: search, mode: "insensitive" },
+          },
+        },
+        {
+          unit: {
+            name: { contains: search, mode: "insensitive" },
+          },
+        },
       ];
     }
 
