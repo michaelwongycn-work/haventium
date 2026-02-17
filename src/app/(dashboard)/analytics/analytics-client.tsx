@@ -347,15 +347,16 @@ export default function AnalyticsClient() {
                   <YAxis yAxisId="left" domain={[0, 100]} />
                   <YAxis yAxisId="right" orientation="right" />
                   <Tooltip
-                    formatter={(value, name, props: any) => {
+                    formatter={(value: unknown, name: unknown, props: unknown): string | number => {
+                      const payload = (props as { payload?: { totalUnits?: number; occupiedUnits?: number } })?.payload;
                       if (name === "Revenue") return formatCurrency(Number(value));
                       if (typeof name === "string" && name.includes("Capacity")) {
-                        return `${props.payload.totalUnits} units`;
+                        return `${payload?.totalUnits || 0} units`;
                       }
                       if (typeof name === "string" && name.includes("Occupancy")) {
-                        return `${props.payload.occupiedUnits} units`;
+                        return `${payload?.occupiedUnits || 0} units`;
                       }
-                      return value;
+                      return String(value);
                     }}
                   />
                   <Legend />
@@ -364,7 +365,10 @@ export default function AnalyticsClient() {
                     dataKey="capacityBaseline"
                     fill="#fbbf24"
                     name="Capacity"
-                    label={(props: any) => `${props?.payload?.totalUnits || ''} units`}
+                    label={(props: unknown) => {
+                      const payload = (props as { payload?: { totalUnits?: number } })?.payload;
+                      return `${payload?.totalUnits || ''} units`;
+                    }}
                   />
                   <Bar
                     yAxisId="left"

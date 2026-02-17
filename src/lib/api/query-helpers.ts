@@ -60,7 +60,7 @@ export const LEASE_WITH_RELATIONS = {
  * Organization-scoped query helpers
  */
 
-export function scopeToOrganization<T extends Record<string, any>>(
+export function scopeToOrganization<T extends Record<string, unknown>>(
   where: T,
   organizationId: string,
 ): T & { organizationId: string } {
@@ -70,7 +70,7 @@ export function scopeToOrganization<T extends Record<string, any>>(
   };
 }
 
-export function scopeToOrganizationViaRelation<T extends Record<string, any>>(
+export function scopeToOrganizationViaRelation<T extends Record<string, unknown>>(
   where: T,
   organizationId: string,
   relation: string,

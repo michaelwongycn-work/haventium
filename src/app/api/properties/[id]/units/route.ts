@@ -124,7 +124,7 @@ export async function POST(
         },
       });
 
-      if (currentUnitCount >= subscription.tier.maxUnits) {
+      if (subscription.tier.maxUnits !== null && currentUnitCount >= subscription.tier.maxUnits) {
         return NextResponse.json(
           {
             error: `Unit limit reached. Your ${subscription.tier.name} plan allows ${subscription.tier.maxUnits} units.`,

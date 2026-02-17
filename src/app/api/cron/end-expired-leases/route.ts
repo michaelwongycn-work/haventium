@@ -21,7 +21,7 @@ export async function POST(request: Request) {
 
     const now = new Date();
     let processedCount = 0;
-    let notificationResults: {
+    const notificationResults: {
       organizationId: string;
       processed: number;
       sent: number;

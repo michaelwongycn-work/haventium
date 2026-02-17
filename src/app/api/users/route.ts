@@ -37,7 +37,7 @@ export async function GET(request: Request) {
     if (!authorized) return response;
 
     const { searchParams } = new URL(request.url);
-    const { skip, take, page } = parsePaginationParams(searchParams);
+    const { skip, limit, page } = parsePaginationParams(searchParams);
 
     const where = {
       organizationId: session.user.organizationId,
@@ -51,12 +51,12 @@ export async function GET(request: Request) {
           createdAt: "asc",
         },
         skip,
-        take,
+        take: limit,
       }),
       prisma.user.count({ where }),
     ]);
 
-    return NextResponse.json(createPaginatedResponse(users, page, take, total));
+    return NextResponse.json(createPaginatedResponse(users, page, limit, total));
   } catch (error) {
     return handleApiError(error, "fetch users");
   }

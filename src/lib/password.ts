@@ -175,7 +175,7 @@ export function generatePassword(
   let lowercase = "abcdefghijklmnopqrstuvwxyz";
   let uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   let numbers = "0123456789";
-  let special = cfg.specialChars;
+  const special = cfg.specialChars;
 
   // Exclude similar characters if requested
   if (cfg.excludeSimilar) {

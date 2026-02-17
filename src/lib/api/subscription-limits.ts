@@ -66,8 +66,8 @@ export async function checkSubscriptionLimit(
   const config = LIMIT_CONFIG[limitType];
   const maxAllowed = subscription.tier[config.maxField];
 
-  // -1 means unlimited
-  if (maxAllowed === -1) {
+  // null or -1 means unlimited
+  if (maxAllowed === null || maxAllowed === -1) {
     return { allowed: true };
   }
 

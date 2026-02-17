@@ -28,7 +28,6 @@ export type ActivityType =
   | "API_KEY_DELETED"
   | "MAINTENANCE_REQUEST_CREATED"
   | "MAINTENANCE_REQUEST_UPDATED"
-  | "MAINTENANCE_REQUEST_STATUS_CHANGED"
   | "MAINTENANCE_REQUEST_COMPLETED"
   | "DOCUMENT_UPLOADED"
   | "DOCUMENT_DELETED"
@@ -44,7 +43,7 @@ export interface ActivityLogData {
   leaseId?: string;
   maintenanceRequestId?: string;
   documentId?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export async function logActivity(
@@ -253,7 +252,7 @@ export const ActivityLogger = {
     details: { propertyName: string; oldStatus: string; newStatus: string },
   ) =>
     logActivity(session, {
-      type: "MAINTENANCE_REQUEST_STATUS_CHANGED",
+      type: "MAINTENANCE_REQUEST_UPDATED",
       description: `Changed status: ${request.title} - ${details.oldStatus} → ${details.newStatus}`,
       maintenanceRequestId: request.id,
       propertyId: request.propertyId,

@@ -27,15 +27,19 @@ export const MAX_LIMIT = 100;
 /**
  * Parse and validate pagination parameters from request
  */
-export function parsePaginationParams(params: PaginationParams): {
+export function parsePaginationParams(params: PaginationParams | URLSearchParams): {
   page: number;
   limit: number;
   skip: number;
 } {
-  const page = Math.max(1, parseInt(params.page || String(DEFAULT_PAGE), 10) || DEFAULT_PAGE);
+  // Handle both PaginationParams and URLSearchParams
+  const pageParam = params instanceof URLSearchParams ? params.get('page') : params.page;
+  const limitParam = params instanceof URLSearchParams ? params.get('limit') : params.limit;
+
+  const page = Math.max(1, parseInt(pageParam || String(DEFAULT_PAGE), 10) || DEFAULT_PAGE);
   const limit = Math.min(
     MAX_LIMIT,
-    Math.max(1, parseInt(params.limit || String(DEFAULT_LIMIT), 10) || DEFAULT_LIMIT)
+    Math.max(1, parseInt(limitParam || String(DEFAULT_LIMIT), 10) || DEFAULT_LIMIT)
   );
   const skip = (page - 1) * limit;
 

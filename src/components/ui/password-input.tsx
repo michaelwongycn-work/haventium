@@ -7,10 +7,10 @@ import { EyeIcon, ViewOffSlashIcon } from "@hugeicons/core-free-icons"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 
-export interface PasswordInputProps
-  extends React.ComponentPropsWithoutRef<"input"> {}
-
-export const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputProps>(
+export const PasswordInput = React.forwardRef<
+  HTMLInputElement,
+  React.ComponentPropsWithoutRef<"input">
+>(
   ({ className, ...props }, ref) => {
     const [showPassword, setShowPassword] = React.useState(false)
 

@@ -1,5 +1,5 @@
 import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import "dotenv/config";
 
@@ -7,6 +7,9 @@ const connectionString = `${process.env.DATABASE_URL}`;
 
 const adapter = new PrismaPg({ connectionString });
 const prisma = new PrismaClient({ adapter });
+
+// Use Prisma's generated type for lease creation
+type LeaseData = Prisma.LeaseAgreementCreateManyInput;
 
 async function main() {
   console.log("🌱 Starting seed...");
@@ -876,7 +879,7 @@ async function main() {
   // Create historical leases (2024 - ended) - Simpler approach with fewer leases
   console.log("  Creating historical leases (2024 - ended)...");
 
-  const historicalLeases: any[] = [];
+  const historicalLeases: LeaseData[] = [];
 
   // Each unit gets 3-8 historical ENDED leases (not every single month)
   for (const unit of allUnits) {
@@ -955,7 +958,7 @@ async function main() {
   // Create active leases (current payment period, ending within 2 months from now)
   console.log("  Creating active leases (current payment period)...");
 
-  const activeLeases: any[] = [];
+  const activeLeases: LeaseData[] = [];
 
   // 70% of units should have an active lease
   const unitsForActiveLease = allUnits
@@ -1060,7 +1063,7 @@ async function main() {
     "  Creating booked/draft leases (future - within next 2 months)...",
   );
 
-  const draftLeases: any[] = [];
+  const draftLeases: LeaseData[] = [];
 
   // Get units that don't have active leases (remaining 30%)
   const unitsWithoutActive = allUnits.filter(
@@ -1153,7 +1156,7 @@ async function main() {
     "  Creating additional draft leases (future bookings for currently occupied units)...",
   );
 
-  const additionalDraftLeases: any[] = [];
+  const additionalDraftLeases: LeaseData[] = [];
 
   // 40% of units with active leases get a future draft lease
   const unitsForAdditionalDraft = unitsForActiveLease
@@ -1236,7 +1239,7 @@ async function main() {
     "  Creating draft leases spread across calendar (including overdue)...",
   );
 
-  const spreadDraftLeases: any[] = [];
+  const spreadDraftLeases: LeaseData[] = [];
 
   // Create 30 draft leases spread from -15 days to +60 days
   for (let i = 0; i < 30; i++) {
@@ -1309,7 +1312,7 @@ async function main() {
 
   // Create some cancelled leases
   console.log("  Creating cancelled leases...");
-  const cancelledLeases: any[] = [];
+  const cancelledLeases: LeaseData[] = [];
 
   for (let i = 0; i < 50; i++) {
     const unit = allUnits[Math.floor(Math.random() * allUnits.length)];
