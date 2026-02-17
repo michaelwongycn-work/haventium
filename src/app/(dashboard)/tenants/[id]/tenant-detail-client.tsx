@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { DocumentList } from "@/components/document-list";
 import {
   Card,
   CardContent,
@@ -401,6 +402,13 @@ export default function TenantDetailClient({
                   ))}
                 </div>
               )}
+            </CardContent>
+          </Card>
+
+          {/* Documents */}
+          <Card>
+            <CardContent className="pt-6">
+              <DocumentList entityType="tenant" entityId={id} />
             </CardContent>
           </Card>
 

@@ -129,6 +129,11 @@ export const ACTIVITY_TYPE = {
   UNIT_CREATED: "UNIT_CREATED",
   UNIT_UPDATED: "UNIT_UPDATED",
   USER_LOGIN: "USER_LOGIN",
+  MAINTENANCE_REQUEST_CREATED: "MAINTENANCE_REQUEST_CREATED",
+  MAINTENANCE_REQUEST_UPDATED: "MAINTENANCE_REQUEST_UPDATED",
+  MAINTENANCE_REQUEST_COMPLETED: "MAINTENANCE_REQUEST_COMPLETED",
+  DOCUMENT_UPLOADED: "DOCUMENT_UPLOADED",
+  DOCUMENT_DELETED: "DOCUMENT_DELETED",
   OTHER: "OTHER",
 } as const;
 
@@ -169,6 +174,30 @@ export type NotificationStatus =
   (typeof NOTIFICATION_STATUS)[keyof typeof NOTIFICATION_STATUS];
 
 // ========================================
+// MAINTENANCE REQUESTS
+// ========================================
+
+export const MAINTENANCE_REQUEST_STATUS = {
+  OPEN: "OPEN",
+  IN_PROGRESS: "IN_PROGRESS",
+  COMPLETED: "COMPLETED",
+  CANCELLED: "CANCELLED",
+} as const;
+
+export type MaintenanceRequestStatus =
+  (typeof MAINTENANCE_REQUEST_STATUS)[keyof typeof MAINTENANCE_REQUEST_STATUS];
+
+export const MAINTENANCE_REQUEST_PRIORITY = {
+  LOW: "LOW",
+  MEDIUM: "MEDIUM",
+  HIGH: "HIGH",
+  URGENT: "URGENT",
+} as const;
+
+export type MaintenanceRequestPriority =
+  (typeof MAINTENANCE_REQUEST_PRIORITY)[keyof typeof MAINTENANCE_REQUEST_PRIORITY];
+
+// ========================================
 // ACCESS CONTROL RESOURCES
 // ========================================
 
@@ -182,6 +211,8 @@ export const RESOURCE = {
   SETTINGS: "settings",
   REPORTS: "reports",
   NOTIFICATIONS: "notifications",
+  MAINTENANCE: "maintenance",
+  DOCUMENTS: "documents",
 } as const;
 
 export type Resource = (typeof RESOURCE)[keyof typeof RESOURCE];

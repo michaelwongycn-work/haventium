@@ -34,6 +34,8 @@ model Organization {
   roles                 Role[]
   subscription          Subscription?
   apiKeys               ApiKey[]
+  maintenanceRequests   MaintenanceRequest[]
+  documents             Document[]
 }
 
 model User {
@@ -177,8 +179,10 @@ model Property {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  units      Unit[]
-  activities Activity[]
+  units               Unit[]
+  activities          Activity[]
+  maintenanceRequests MaintenanceRequest[]
+  documents           Document[]
 
   @@index([organizationId])
 }
@@ -198,8 +202,10 @@ model Unit {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  leaseAgreements LeaseAgreement[]
-  activities      Activity[]
+  leaseAgreements     LeaseAgreement[]
+  activities          Activity[]
+  maintenanceRequests MaintenanceRequest[]
+  documents           Document[]
 
   @@index([propertyId])
   @@index([isUnavailable])
@@ -235,8 +241,10 @@ model Tenant {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  leaseAgreements LeaseAgreement[]
-  activities      Activity[]
+  leaseAgreements     LeaseAgreement[]
+  activities          Activity[]
+  maintenanceRequests MaintenanceRequest[]
+  documents           Document[]
 
   @@unique([email, organizationId])
   @@index([organizationId])
@@ -301,7 +309,9 @@ model LeaseAgreement {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  activities Activity[]
+  activities          Activity[]
+  maintenanceRequests MaintenanceRequest[]
+  documents           Document[]
 
   @@unique([renewedFromId])
   @@index([tenantId])
@@ -515,6 +525,11 @@ enum ActivityType {
   API_KEY_CREATED
   API_KEY_UPDATED
   API_KEY_DELETED
+  MAINTENANCE_REQUEST_CREATED
+  MAINTENANCE_REQUEST_UPDATED
+  MAINTENANCE_REQUEST_COMPLETED
+  DOCUMENT_UPLOADED
+  DOCUMENT_DELETED
   OTHER
 }
 
@@ -543,6 +558,12 @@ model Activity {
   unitId String?
   unit   Unit? @relation(fields: [unitId], references: [id], onDelete: SetNull)
 
+  maintenanceRequestId String?
+  maintenanceRequest   MaintenanceRequest? @relation(fields: [maintenanceRequestId], references: [id], onDelete: SetNull)
+
+  documentId String?
+  document   Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now())
 
   @@index([organizationId])
@@ -550,6 +571,8 @@ model Activity {
   @@index([tenantId])
   @@index([leaseId])
   @@index([unitId])
+  @@index([maintenanceRequestId])
+  @@index([documentId])
   @@index([createdAt])
   @@index([organizationId, type]) // Composite for filtered activity logs
   @@index([organizationId, createdAt]) // Composite for recent activities
@@ -672,4 +695,108 @@ model Invoice {
   @@index([subscriptionId])
   @@index([status])
   @@index([dueDate])
+}
+
+// ========================================
+// MAINTENANCE REQUESTS
+// ========================================
+
+enum MaintenanceRequestStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum MaintenanceRequestPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model MaintenanceRequest {
+  id String @id @default(cuid())
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  unitId String?
+  unit   Unit?   @relation(fields: [unitId], references: [id], onDelete: SetNull)
+
+  tenantId String?
+  tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+
+  leaseId String?
+  lease   LeaseAgreement? @relation(fields: [leaseId], references: [id], onDelete: SetNull)
+
+  title       String
+  description String @db.Text
+
+  priority MaintenanceRequestPriority @default(MEDIUM)
+  status   MaintenanceRequestStatus   @default(OPEN)
+
+  estimatedCost Decimal? @db.Decimal(12, 2)
+  actualCost    Decimal? @db.Decimal(12, 2)
+
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  activities Activity[]
+
+  @@index([organizationId])
+  @@index([propertyId])
+  @@index([unitId])
+  @@index([tenantId])
+  @@index([leaseId])
+  @@index([status])
+  @@index([priority])
+  @@index([organizationId, status, createdAt]) // Composite for filtered queries
+}
+
+// ========================================
+// DOCUMENT MANAGEMENT
+// ========================================
+
+model Document {
+  id String @id @default(cuid())
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Optional FK - attach to any entity
+  propertyId String?
+  property   Property? @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  unitId String?
+  unit   Unit?   @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  tenantId String?
+  tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  leaseId String?
+  lease   LeaseAgreement? @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+
+  filename   String
+  fileType   String
+  fileSize   Int
+  fileUrl    String
+  storageKey String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  activities Activity[]
+
+  @@index([organizationId])
+  @@index([propertyId])
+  @@index([unitId])
+  @@index([tenantId])
+  @@index([leaseId])
+  @@index([organizationId, createdAt]) // Composite for recent documents
 }

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { hasAccess, type UserRole } from "@/lib/access-utils";
+import { DocumentList } from "@/components/document-list";
 import {
   Card,
   CardContent,
@@ -574,6 +575,13 @@ export default function PropertyDetailClient({
               </TableBody>
             </Table>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Documents */}
+      <Card>
+        <CardContent className="pt-6">
+          <DocumentList entityType="property" entityId={id} />
         </CardContent>
       </Card>
 

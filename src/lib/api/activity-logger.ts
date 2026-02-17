@@ -26,6 +26,11 @@ export type ActivityType =
   | "API_KEY_CREATED"
   | "API_KEY_UPDATED"
   | "API_KEY_DELETED"
+  | "MAINTENANCE_REQUEST_CREATED"
+  | "MAINTENANCE_REQUEST_UPDATED"
+  | "MAINTENANCE_REQUEST_COMPLETED"
+  | "DOCUMENT_UPLOADED"
+  | "DOCUMENT_DELETED"
   | "USER_LOGIN"
   | "OTHER";
 
@@ -36,6 +41,8 @@ export interface ActivityLogData {
   propertyId?: string;
   unitId?: string;
   leaseId?: string;
+  maintenanceRequestId?: string;
+  documentId?: string;
   metadata?: Record<string, any>;
 }
 
@@ -54,6 +61,8 @@ export async function logActivity(
         propertyId: data.propertyId,
         unitId: data.unitId,
         leaseId: data.leaseId,
+        maintenanceRequestId: data.maintenanceRequestId,
+        documentId: data.documentId,
       },
     });
   } catch (error) {
@@ -211,5 +220,84 @@ export const ActivityLogger = {
     logActivity(session, {
       type: "OTHER",
       description: `Deleted user: ${user.name} (${user.email})`,
+    }),
+
+  maintenanceRequestCreated: (
+    session: Session,
+    request: { id: string; title: string; propertyId: string },
+    details: { propertyName: string; unitName?: string },
+  ) =>
+    logActivity(session, {
+      type: "MAINTENANCE_REQUEST_CREATED",
+      description: `Created maintenance request: ${request.title} at ${details.propertyName}${details.unitName ? ` - ${details.unitName}` : ""}`,
+      maintenanceRequestId: request.id,
+      propertyId: request.propertyId,
+    }),
+
+  maintenanceRequestUpdated: (
+    session: Session,
+    request: { id: string; title: string; status: string; propertyId: string },
+    details: { propertyName: string },
+  ) =>
+    logActivity(session, {
+      type: "MAINTENANCE_REQUEST_UPDATED",
+      description: `Updated maintenance request: ${request.title} - Status: ${request.status}`,
+      maintenanceRequestId: request.id,
+      propertyId: request.propertyId,
+    }),
+
+  maintenanceRequestCompleted: (
+    session: Session,
+    request: { id: string; title: string; propertyId: string },
+    details: { propertyName: string },
+  ) =>
+    logActivity(session, {
+      type: "MAINTENANCE_REQUEST_COMPLETED",
+      description: `Completed maintenance request: ${request.title} at ${details.propertyName}`,
+      maintenanceRequestId: request.id,
+      propertyId: request.propertyId,
+    }),
+
+  documentUploaded: (
+    session: Session,
+    document: { id: string; filename: string },
+    details: {
+      entityType: string;
+      entityId: string;
+      propertyId?: string;
+      unitId?: string;
+      tenantId?: string;
+      leaseId?: string;
+    },
+  ) =>
+    logActivity(session, {
+      type: "DOCUMENT_UPLOADED",
+      description: `Uploaded document: ${document.filename} (${details.entityType})`,
+      documentId: document.id,
+      propertyId: details.propertyId,
+      unitId: details.unitId,
+      tenantId: details.tenantId,
+      leaseId: details.leaseId,
+    }),
+
+  documentDeleted: (
+    session: Session,
+    document: { id: string; filename: string },
+    details: {
+      entityType: string;
+      propertyId?: string;
+      unitId?: string;
+      tenantId?: string;
+      leaseId?: string;
+    },
+  ) =>
+    logActivity(session, {
+      type: "DOCUMENT_DELETED",
+      description: `Deleted document: ${document.filename} (${details.entityType})`,
+      documentId: document.id,
+      propertyId: details.propertyId,
+      unitId: details.unitId,
+      tenantId: details.tenantId,
+      leaseId: details.leaseId,
     }),
 };

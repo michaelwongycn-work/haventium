@@ -1,28 +1,30 @@
-import { PrismaPg } from "@prisma/adapter-pg"
-import { PrismaClient } from "@prisma/client"
-import bcrypt from "bcryptjs"
-import "dotenv/config"
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
+import "dotenv/config";
 
-const connectionString = `${process.env.DATABASE_URL}`
+const connectionString = `${process.env.DATABASE_URL}`;
 
-const adapter = new PrismaPg({ connectionString })
-const prisma = new PrismaClient({ adapter })
+const adapter = new PrismaPg({ connectionString });
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  console.log("🌱 Starting seed...")
+  console.log("🌱 Starting seed...");
 
   // Cleanup existing data to avoid duplicates when using .create()
-  console.log("🧹 Cleaning up existing data...")
-  await prisma.notificationLog.deleteMany({})
-  await prisma.notificationRule.deleteMany({})
-  await prisma.notificationTemplate.deleteMany({})
-  await prisma.apiKey.deleteMany({})
-  await prisma.leaseAgreement.deleteMany({})
-  await prisma.activity.deleteMany({})
-  await prisma.tenant.deleteMany({})
-  await prisma.unit.deleteMany({})
-  await prisma.property.deleteMany({})
-  console.log("✓ Cleanup finished")
+  console.log("🧹 Cleaning up existing data...");
+  // await prisma.notificationLog.deleteMany({})
+  // await prisma.notificationRule.deleteMany({})
+  // await prisma.notificationTemplate.deleteMany({})
+  // await prisma.apiKey.deleteMany({})
+  // await prisma.document.deleteMany({})
+  // await prisma.maintenanceRequest.deleteMany({})
+  // await prisma.leaseAgreement.deleteMany({})
+  // await prisma.activity.deleteMany({})
+  // await prisma.tenant.deleteMany({})
+  // await prisma.unit.deleteMany({})
+  // await prisma.property.deleteMany({})
+  console.log("✓ Cleanup finished");
 
   // Create subscription tiers
   const freeTier = await prisma.subscriptionTier.upsert({
@@ -38,8 +40,8 @@ async function main() {
       maxUnits: 10,
       maxTenants: 10,
     },
-  })
-  console.log("✓ Created Free tier")
+  });
+  console.log("✓ Created Free tier");
 
   const normalTier = await prisma.subscriptionTier.upsert({
     where: { type: "NORMAL" },
@@ -54,8 +56,8 @@ async function main() {
       maxUnits: 100,
       maxTenants: 100,
     },
-  })
-  console.log("✓ Created Normal tier")
+  });
+  console.log("✓ Created Normal tier");
 
   const proTier = await prisma.subscriptionTier.upsert({
     where: { type: "PRO" },
@@ -70,8 +72,8 @@ async function main() {
       maxUnits: -1,
       maxTenants: -1,
     },
-  })
-  console.log("✓ Created Pro tier")
+  });
+  console.log("✓ Created Pro tier");
 
   // Create features
   const emailNotify = await prisma.feature.upsert({
@@ -81,7 +83,7 @@ async function main() {
       code: "EMAIL_NOTIFY",
       name: "Email Notifications",
     },
-  })
+  });
 
   const whatsappNotify = await prisma.feature.upsert({
     where: { code: "WHATSAPP_NOTIFY" },
@@ -90,7 +92,7 @@ async function main() {
       code: "WHATSAPP_NOTIFY",
       name: "WhatsApp Notifications",
     },
-  })
+  });
 
   const advancedReports = await prisma.feature.upsert({
     where: { code: "ADVANCED_REPORTS" },
@@ -99,8 +101,7 @@ async function main() {
       code: "ADVANCED_REPORTS",
       name: "Advanced Reports",
     },
-  })
-
+  });
 
   // Link features to tiers
   // FREE tier: Email notifications only
@@ -116,7 +117,7 @@ async function main() {
       tierId: freeTier.id,
       featureId: emailNotify.id,
     },
-  })
+  });
 
   // NORMAL tier: Email + WhatsApp
   await prisma.tierFeature.upsert({
@@ -131,7 +132,7 @@ async function main() {
       tierId: normalTier.id,
       featureId: emailNotify.id,
     },
-  })
+  });
 
   await prisma.tierFeature.upsert({
     where: {
@@ -145,14 +146,10 @@ async function main() {
       tierId: normalTier.id,
       featureId: whatsappNotify.id,
     },
-  })
+  });
 
   // PRO tier: All features
-  const proFeatures = [
-    emailNotify,
-    whatsappNotify,
-    advancedReports,
-  ]
+  const proFeatures = [emailNotify, whatsappNotify, advancedReports];
 
   for (const feature of proFeatures) {
     await prisma.tierFeature.upsert({
@@ -167,7 +164,7 @@ async function main() {
         tierId: proTier.id,
         featureId: feature.id,
       },
-    })
+    });
   }
 
   // Create default accesses
@@ -192,9 +189,16 @@ async function main() {
     { resource: "notifications", action: "create" },
     { resource: "notifications", action: "update" },
     { resource: "notifications", action: "delete" },
-  ]
+    { resource: "maintenance", action: "read" },
+    { resource: "maintenance", action: "create" },
+    { resource: "maintenance", action: "update" },
+    { resource: "maintenance", action: "delete" },
+    { resource: "documents", action: "read" },
+    { resource: "documents", action: "create" },
+    { resource: "documents", action: "delete" },
+  ];
 
-  const accesses = []
+  const accesses = [];
   for (const accessData of defaultAccesses) {
     const access = await prisma.access.upsert({
       where: {
@@ -205,10 +209,10 @@ async function main() {
       },
       update: {},
       create: accessData,
-    })
-    accesses.push(access)
+    });
+    accesses.push(access);
   }
-  console.log("✓ Created default accesses")
+  console.log("✓ Created default accesses");
 
   // Create Test Organization
   const org = await prisma.organization.upsert({
@@ -218,8 +222,8 @@ async function main() {
       id: "test-org-id",
       name: "Haventium Test Org",
     },
-  })
-  console.log("✓ Created Test Organization")
+  });
+  console.log("✓ Created Test Organization");
 
   // Create Subscription for the Org
   await prisma.subscription.upsert({
@@ -234,8 +238,8 @@ async function main() {
       currentPeriodStart: new Date(),
       currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 1 month
     },
-  })
-  console.log("✓ Created PRO Subscription for Test Org")
+  });
+  console.log("✓ Created PRO Subscription for Test Org");
 
   // Create Owner Role for Org
   const ownerRole = await prisma.role.upsert({
@@ -251,7 +255,7 @@ async function main() {
       isSystem: true,
       organizationId: org.id,
     },
-  })
+  });
 
   // Link all accesses to Owner role
   for (const access of accesses) {
@@ -267,9 +271,9 @@ async function main() {
         roleId: ownerRole.id,
         accessId: access.id,
       },
-    })
+    });
   }
-  console.log("✓ Created Owner Role and linked all accesses")
+  console.log("✓ Created Owner Role and linked all accesses");
 
   // Create Property Manager Role (has access to properties, tenants, leases, notifications)
   const propertyManagerRole = await prisma.role.upsert({
@@ -285,10 +289,16 @@ async function main() {
       isSystem: false,
       organizationId: org.id,
     },
-  })
+  });
 
   // Link property manager accesses (everything except settings/users)
-  const propertyManagerResources = ["properties", "tenants", "leases", "payments", "notifications"]
+  const propertyManagerResources = [
+    "properties",
+    "tenants",
+    "leases",
+    "payments",
+    "notifications",
+  ];
   for (const access of accesses) {
     if (propertyManagerResources.includes(access.resource)) {
       await prisma.roleAccess.upsert({
@@ -303,10 +313,10 @@ async function main() {
           roleId: propertyManagerRole.id,
           accessId: access.id,
         },
-      })
+      });
     }
   }
-  console.log("✓ Created Property Manager Role with operational access")
+  console.log("✓ Created Property Manager Role with operational access");
 
   // Create Notification Manager Role (only notifications access)
   const notificationManagerRole = await prisma.role.upsert({
@@ -322,10 +332,10 @@ async function main() {
       isSystem: false,
       organizationId: org.id,
     },
-  })
+  });
 
   // Link notification-related accesses to Notification Manager role
-  const notificationAccessResources = ["notifications"]
+  const notificationAccessResources = ["notifications"];
   for (const access of accesses) {
     if (notificationAccessResources.includes(access.resource)) {
       await prisma.roleAccess.upsert({
@@ -340,14 +350,14 @@ async function main() {
           roleId: notificationManagerRole.id,
           accessId: access.id,
         },
-      })
+      });
     }
   }
-  console.log("✓ Created Notification Manager Role with notification access")
+  console.log("✓ Created Notification Manager Role with notification access");
 
   // Create Test User
-  const email = "test@test.com"
-  const hashedPassword = await bcrypt.hash("Password1!", 10)
+  const email = "test@test.com";
+  const hashedPassword = await bcrypt.hash("Password1!", 10);
   const testUser = await prisma.user.upsert({
     where: { email },
     update: { hashedPassword },
@@ -357,7 +367,7 @@ async function main() {
       hashedPassword,
       organizationId: org.id,
     },
-  })
+  });
 
   // Assign Owner role to user
   await prisma.userRole.upsert({
@@ -372,16 +382,16 @@ async function main() {
       userId: testUser.id,
       roleId: ownerRole.id,
     },
-  })
-  console.log(`✓ Created user ${email} and assigned Owner role`)
+  });
+  console.log(`✓ Created user ${email} and assigned Owner role`);
 
   // Create API Keys for the organization (for development/testing)
   // Note: In production, users should add their own API keys via the UI
-  const { encrypt, getLastFourChars } = await import("../src/lib/encryption")
+  const { encrypt, getLastFourChars } = await import("../src/lib/encryption");
 
   // Resend Email API key (use test key for development)
-  const testResendKey = process.env.RESEND_API_KEY || "re_test_key_12345678"
-  const resendEncrypted = encrypt(testResendKey)
+  const testResendKey = process.env.RESEND_API_KEY || "re_test_key_12345678";
+  const resendEncrypted = encrypt(testResendKey);
 
   await prisma.apiKey.upsert({
     where: {
@@ -406,15 +416,15 @@ async function main() {
       lastFourChars: getLastFourChars(testResendKey),
       isActive: true,
     },
-  })
+  });
 
   // WhatsApp Meta API credentials (test credentials)
   const testWhatsAppCreds = JSON.stringify({
     accessToken: process.env.WHATSAPP_ACCESS_TOKEN || "test_access_token",
     phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || "123456789",
     businessAccountId: process.env.WHATSAPP_BUSINESS_ACCOUNT_ID || "987654321",
-  })
-  const whatsappEncrypted = encrypt(testWhatsAppCreds)
+  });
+  const whatsappEncrypted = encrypt(testWhatsAppCreds);
 
   await prisma.apiKey.upsert({
     where: {
@@ -439,9 +449,9 @@ async function main() {
       lastFourChars: getLastFourChars(testWhatsAppCreds),
       isActive: true,
     },
-  })
+  });
 
-  console.log("✓ Created API keys for Test Organization")
+  console.log("✓ Created API keys for Test Organization");
 
   // Create Properties
   const grandView = await prisma.property.create({
@@ -454,11 +464,11 @@ async function main() {
           { name: "Unit 102", monthlyRate: 1600, annualRate: 18000 },
           { name: "Unit 201", monthlyRate: 2000, annualRate: 22000 },
           { name: "Penthouse A", monthlyRate: 5000, annualRate: 55000 },
-        ]
-      }
+        ],
+      },
     },
-    include: { units: true }
-  })
+    include: { units: true },
+  });
 
   const sunsetVillas = await prisma.property.create({
     data: {
@@ -469,19 +479,19 @@ async function main() {
           { name: "Villa 1", dailyRate: 150, monthlyRate: 3500 },
           { name: "Villa 2", dailyRate: 150, monthlyRate: 3500 },
           { name: "Villa 3", dailyRate: 200, monthlyRate: 4500 },
-        ]
-      }
+        ],
+      },
     },
-    include: { units: true }
-  })
-  console.log("✓ Created 2 Properties and 7 Units")
+    include: { units: true },
+  });
+  console.log("✓ Created 2 Properties and 7 Units");
 
-  const unit101 = grandView.units.find(u => u.name === "Unit 101")!
-  const unit102 = grandView.units.find(u => u.name === "Unit 102")!
-  const unit201 = grandView.units.find(u => u.name === "Unit 201")!
-  const penthouseA = grandView.units.find(u => u.name === "Penthouse A")!
-  const villa1 = sunsetVillas.units.find(u => u.name === "Villa 1")!
-  const villa2 = sunsetVillas.units.find(u => u.name === "Villa 2")!
+  const unit101 = grandView.units.find((u) => u.name === "Unit 101")!;
+  const unit102 = grandView.units.find((u) => u.name === "Unit 102")!;
+  const unit201 = grandView.units.find((u) => u.name === "Unit 201")!;
+  const penthouseA = grandView.units.find((u) => u.name === "Penthouse A")!;
+  const villa1 = sunsetVillas.units.find((u) => u.name === "Villa 1")!;
+  const villa2 = sunsetVillas.units.find((u) => u.name === "Villa 2")!;
 
   // Create Tenants
   const johnDoe = await prisma.tenant.create({
@@ -491,8 +501,8 @@ async function main() {
       phone: "+1234567890",
       status: "ACTIVE",
       organizationId: org.id,
-    }
-  })
+    },
+  });
 
   const janeSmith = await prisma.tenant.create({
     data: {
@@ -501,8 +511,8 @@ async function main() {
       phone: "+0987654321",
       status: "ACTIVE",
       organizationId: org.id,
-    }
-  })
+    },
+  });
 
   const bobWilson = await prisma.tenant.create({
     data: {
@@ -511,21 +521,21 @@ async function main() {
       phone: "+1122334455",
       status: "LEAD",
       organizationId: org.id,
-    }
-  })
-  console.log("✓ Created 3 Tenants")
+    },
+  });
+  console.log("✓ Created 3 Tenants");
 
   // ===========================================
   // Create Leases — test data for all UI states
   // ===========================================
 
   // Helper: create a date offset from today by N days
-  const now = new Date()
+  const now = new Date();
   const daysFromNow = (days: number) => {
-    const d = new Date(now)
-    d.setDate(d.getDate() + days)
-    return d
-  }
+    const d = new Date(now);
+    d.setDate(d.getDate() + days);
+    return d;
+  };
 
   // Test: DRAFT lease shows edit/delete buttons on list page, no deposit edit on detail
   // --- Case 1: DRAFT lease (unpaid) ---
@@ -534,15 +544,15 @@ async function main() {
       tenantId: bobWilson.id,
       unitId: villa2.id,
       organizationId: org.id,
-      startDate: daysFromNow(20),   // starts in ~3 weeks
-      endDate: daysFromNow(50),     // ends in ~7 weeks
+      startDate: daysFromNow(20), // starts in ~3 weeks
+      endDate: daysFromNow(50), // ends in ~7 weeks
       paymentCycle: "MONTHLY",
       rentAmount: 3500,
       depositAmount: 7000,
       status: "DRAFT",
     },
-  })
-  console.log("✓ Created lease: DRAFT (Bob Wilson / Villa 2)")
+  });
+  console.log("✓ Created lease: DRAFT (Bob Wilson / Villa 2)");
 
   // Test: auto-renewal toggle is enabled — user can turn it OFF
   // Notice deadline = endDate - 10 days = ~50 days from now, well in the future
@@ -552,21 +562,23 @@ async function main() {
       tenantId: bobWilson.id,
       unitId: unit201.id,
       organizationId: org.id,
-      startDate: daysFromNow(-30),  // started 30 days ago
-      endDate: daysFromNow(60),     // ends in 60 days
+      startDate: daysFromNow(-30), // started 30 days ago
+      endDate: daysFromNow(60), // ends in 60 days
       paymentCycle: "MONTHLY",
       rentAmount: 2000,
       depositAmount: 4000,
       isAutoRenew: true,
       gracePeriodDays: 3,
-      autoRenewalNoticeDays: 10,    // deadline = endDate - 10 = 50 days from now
+      autoRenewalNoticeDays: 10, // deadline = endDate - 10 = 50 days from now
       status: "ACTIVE",
       paidAt: daysFromNow(-30),
       paymentMethod: "BANK_TRANSFER",
       paymentStatus: "COMPLETED",
     },
-  })
-  console.log("✓ Created lease: ACTIVE, auto-renewal ON, notice NOT passed (Bob Wilson / Unit 201)")
+  });
+  console.log(
+    "✓ Created lease: ACTIVE, auto-renewal ON, notice NOT passed (Bob Wilson / Unit 201)",
+  );
 
   // Test: auto-renewal toggle is DISABLED — notice deadline already passed
   // This lease already has a renewal (renewedTo), so the cron will skip it.
@@ -577,28 +589,28 @@ async function main() {
       tenantId: johnDoe.id,
       unitId: penthouseA.id,
       organizationId: org.id,
-      startDate: daysFromNow(-40),  // started 40 days ago
-      endDate: daysFromNow(3),      // ends in 3 days
+      startDate: daysFromNow(-40), // started 40 days ago
+      endDate: daysFromNow(3), // ends in 3 days
       paymentCycle: "MONTHLY",
       rentAmount: 5000,
       depositAmount: 10000,
       isAutoRenew: true,
       gracePeriodDays: 3,
-      autoRenewalNoticeDays: 10,    // deadline = endDate - 10 = 7 days ago
+      autoRenewalNoticeDays: 10, // deadline = endDate - 10 = 7 days ago
       status: "ACTIVE",
       paidAt: daysFromNow(-40),
       paymentMethod: "CASH",
       paymentStatus: "COMPLETED",
     },
-  })
+  });
   // Create renewal DRAFT so cron skips this lease (renewedTo != null)
   await prisma.leaseAgreement.create({
     data: {
       tenantId: johnDoe.id,
       unitId: penthouseA.id,
       organizationId: org.id,
-      startDate: daysFromNow(4),    // starts day after case 3 ends
-      endDate: daysFromNow(34),     // ~1 month
+      startDate: daysFromNow(4), // starts day after case 3 ends
+      endDate: daysFromNow(34), // ~1 month
       paymentCycle: "MONTHLY",
       rentAmount: 5000,
       depositAmount: 10000,
@@ -608,8 +620,10 @@ async function main() {
       status: "DRAFT",
       renewedFromId: case3Lease.id,
     },
-  })
-  console.log("✓ Created lease: ACTIVE, auto-renewal ON, notice PASSED + renewal DRAFT (John Doe / Penthouse A)")
+  });
+  console.log(
+    "✓ Created lease: ACTIVE, auto-renewal ON, notice PASSED + renewal DRAFT (John Doe / Penthouse A)",
+  );
 
   // Test: "Edit Deposit Status" button visible — lease is ENDED, has deposit, and no renewal
   // --- Case 4: ENDED lease — deposit HELD, NOT renewed ---
@@ -618,8 +632,8 @@ async function main() {
       tenantId: johnDoe.id,
       unitId: unit101.id,
       organizationId: org.id,
-      startDate: daysFromNow(-90),  // started 90 days ago
-      endDate: daysFromNow(-60),    // ended 60 days ago
+      startDate: daysFromNow(-90), // started 90 days ago
+      endDate: daysFromNow(-60), // ended 60 days ago
       paymentCycle: "MONTHLY",
       rentAmount: 1500,
       depositAmount: 3000,
@@ -629,8 +643,10 @@ async function main() {
       paymentMethod: "CASH",
       paymentStatus: "COMPLETED",
     },
-  })
-  console.log("✓ Created lease: ENDED, deposit HELD, no renewal (John Doe / Unit 101)")
+  });
+  console.log(
+    "✓ Created lease: ENDED, deposit HELD, no renewal (John Doe / Unit 101)",
+  );
 
   // Test: "Edit Deposit Status" button NOT visible — lease is ENDED but has a renewedTo link
   // Lease B (renewed ACTIVE) shows the renewal chain on its detail page
@@ -640,8 +656,8 @@ async function main() {
       tenantId: janeSmith.id,
       unitId: unit102.id,
       organizationId: org.id,
-      startDate: daysFromNow(-60),   // started 60 days ago
-      endDate: daysFromNow(-1),      // ended yesterday
+      startDate: daysFromNow(-60), // started 60 days ago
+      endDate: daysFromNow(-1), // ended yesterday
       paymentCycle: "MONTHLY",
       rentAmount: 1600,
       depositAmount: 3200,
@@ -653,14 +669,14 @@ async function main() {
       paymentMethod: "BANK_TRANSFER",
       paymentStatus: "COMPLETED",
     },
-  })
+  });
   await prisma.leaseAgreement.create({
     data: {
       tenantId: janeSmith.id,
       unitId: unit102.id,
       organizationId: org.id,
-      startDate: daysFromNow(0),     // starts today
-      endDate: daysFromNow(30),      // ends in 30 days
+      startDate: daysFromNow(0), // starts today
+      endDate: daysFromNow(30), // ends in 30 days
       paymentCycle: "MONTHLY",
       rentAmount: 1600,
       depositAmount: 3200,
@@ -673,8 +689,10 @@ async function main() {
       paymentStatus: "COMPLETED",
       renewedFromId: leaseA.id,
     },
-  })
-  console.log("✓ Created lease: ENDED + ACTIVE renewal chain (Jane Smith / Unit 102)")
+  });
+  console.log(
+    "✓ Created lease: ENDED + ACTIVE renewal chain (Jane Smith / Unit 102)",
+  );
 
   // Test: auto-renewal toggle DISABLED — can't enable because Bob Wilson has a DRAFT lease
   // on the same unit (Villa 1) starting after this lease ends
@@ -684,8 +702,8 @@ async function main() {
       tenantId: janeSmith.id,
       unitId: villa1.id,
       organizationId: org.id,
-      startDate: daysFromNow(-10),   // started 10 days ago
-      endDate: daysFromNow(20),      // ends in 20 days
+      startDate: daysFromNow(-10), // started 10 days ago
+      endDate: daysFromNow(20), // ends in 20 days
       paymentCycle: "MONTHLY",
       rentAmount: 3500,
       isAutoRenew: false,
@@ -694,38 +712,48 @@ async function main() {
       paymentMethod: "CASH",
       paymentStatus: "COMPLETED",
     },
-  })
+  });
   await prisma.leaseAgreement.create({
     data: {
       tenantId: bobWilson.id,
       unitId: villa1.id,
       organizationId: org.id,
-      startDate: daysFromNow(35),    // starts 35 days from now (after case 6a ends)
-      endDate: daysFromNow(65),      // ends 65 days from now
+      startDate: daysFromNow(35), // starts 35 days from now (after case 6a ends)
+      endDate: daysFromNow(65), // ends 65 days from now
       paymentCycle: "MONTHLY",
       rentAmount: 3500,
       status: "DRAFT",
     },
-  })
-  console.log("✓ Created lease: ACTIVE + future DRAFT on same unit (Villa 1)")
+  });
+  console.log("✓ Created lease: ACTIVE + future DRAFT on same unit (Villa 1)");
 
   // Update tenant statuses to match lease states
-  await prisma.tenant.update({ where: { id: johnDoe.id }, data: { status: "ACTIVE" } })
-  await prisma.tenant.update({ where: { id: janeSmith.id }, data: { status: "ACTIVE" } })
-  await prisma.tenant.update({ where: { id: bobWilson.id }, data: { status: "ACTIVE" } })
-  console.log("✓ Updated tenant statuses")
+  await prisma.tenant.update({
+    where: { id: johnDoe.id },
+    data: { status: "ACTIVE" },
+  });
+  await prisma.tenant.update({
+    where: { id: janeSmith.id },
+    data: { status: "ACTIVE" },
+  });
+  await prisma.tenant.update({
+    where: { id: bobWilson.id },
+    data: { status: "ACTIVE" },
+  });
+  console.log("✓ Updated tenant statuses");
 
-  console.log("✓ Linked features to tiers")
+  console.log("✓ Linked features to tiers");
 
   // Create notification templates
-  const paymentReminderEmailTemplate = await prisma.notificationTemplate.create({
-    data: {
-      organizationId: org.id,
-      name: "Payment Reminder Email",
-      trigger: "PAYMENT_REMINDER",
-      channel: "EMAIL",
-      subject: "Payment Reminder - {{propertyName}}",
-      body: `Dear {{tenantName}},
+  const paymentReminderEmailTemplate = await prisma.notificationTemplate.create(
+    {
+      data: {
+        organizationId: org.id,
+        name: "Payment Reminder Email",
+        trigger: "PAYMENT_REMINDER",
+        channel: "EMAIL",
+        subject: "Payment Reminder - {{propertyName}}",
+        body: `Dear {{tenantName}},
 
 This is a friendly reminder that your rent payment is due soon.
 
@@ -737,9 +765,10 @@ Please ensure payment is made on time to avoid any late fees.
 
 Thank you,
 Haventium Property Management`,
-      isActive: true,
+        isActive: true,
+      },
     },
-  })
+  );
 
   const leaseExpiringEmailTemplate = await prisma.notificationTemplate.create({
     data: {
@@ -761,16 +790,17 @@ Thank you,
 Haventium Property Management`,
       isActive: true,
     },
-  })
+  });
 
-  const paymentConfirmedEmailTemplate = await prisma.notificationTemplate.create({
-    data: {
-      organizationId: org.id,
-      name: "Payment Confirmed Email",
-      trigger: "PAYMENT_CONFIRMED",
-      channel: "EMAIL",
-      subject: "Payment Received - {{propertyName}}",
-      body: `Dear {{tenantName}},
+  const paymentConfirmedEmailTemplate =
+    await prisma.notificationTemplate.create({
+      data: {
+        organizationId: org.id,
+        name: "Payment Confirmed Email",
+        trigger: "PAYMENT_CONFIRMED",
+        channel: "EMAIL",
+        subject: "Payment Received - {{propertyName}}",
+        body: `Dear {{tenantName}},
 
 Thank you! We have received your payment.
 
@@ -782,11 +812,11 @@ Your lease is now active. If you have any questions, please don't hesitate to co
 
 Thank you,
 Haventium Property Management`,
-      isActive: true,
-    },
-  })
+        isActive: true,
+      },
+    });
 
-  console.log("✓ Created notification templates")
+  console.log("✓ Created notification templates");
 
   // Create notification rules
   const paymentReminderRule = await prisma.notificationRule.create({
@@ -799,7 +829,7 @@ Haventium Property Management`,
       recipientType: "TENANT",
       isActive: true,
     },
-  })
+  });
 
   const leaseExpiringRule = await prisma.notificationRule.create({
     data: {
@@ -811,7 +841,7 @@ Haventium Property Management`,
       recipientType: "TENANT",
       isActive: true,
     },
-  })
+  });
 
   const paymentConfirmedRule = await prisma.notificationRule.create({
     data: {
@@ -823,18 +853,18 @@ Haventium Property Management`,
       recipientType: "TENANT",
       isActive: true,
     },
-  })
+  });
 
-  console.log("✓ Created notification rules")
+  console.log("✓ Created notification rules");
 
-  console.log("🎉 Seed completed successfully!")
+  console.log("🎉 Seed completed successfully!");
 }
 
 main()
   .catch((e) => {
-    console.error("❌ Seed failed:", e)
-    process.exit(1)
+    console.error("❌ Seed failed:", e);
+    process.exit(1);
   })
   .finally(async () => {
-    await prisma.$disconnect()
-  })
+    await prisma.$disconnect();
+  });

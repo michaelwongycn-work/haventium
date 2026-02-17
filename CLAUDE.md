@@ -5,6 +5,7 @@ Rental property management CRM. Multi-tenant SaaS where every piece of data is s
 ## Development Rules
 
 - **Never run Prisma migrations** (`prisma migrate dev`, `prisma db push`, etc.) — the developer handles all migrations manually.
+- **Use pnpm** for package management (not npm or bun).
 
 ## Product
 
@@ -169,6 +170,64 @@ Revenue calculation: "expected" = sum of `rentAmount` for ACTIVE leases overlapp
 
 **UI:** Management interfaces at `/notifications/templates`, `/notifications/rules`, `/notifications/logs`.
 
+### Maintenance Requests
+
+**Fully implemented** maintenance request tracking system for property and unit maintenance issues.
+
+**Schema:**
+- `MaintenanceRequest` — Work orders with status, priority, cost tracking
+- Status flow: OPEN → IN_PROGRESS → COMPLETED (or CANCELLED)
+- Priority levels: LOW, MEDIUM, HIGH, URGENT
+
+**Fields:**
+- Required: propertyId, title, description
+- Optional: unitId, tenantId, leaseId (flexible linking to any entity)
+- Cost tracking: estimatedCost, actualCost
+- Completion tracking: completedAt (auto-set when status → COMPLETED)
+
+**Business Rules:**
+- Only OPEN or CANCELLED requests can be deleted (not IN_PROGRESS or COMPLETED)
+- Prevents accidental deletion of historical records
+- Activity logging for all operations
+
+**API:** CRUD at `/api/maintenance-requests` and `/api/maintenance-requests/[id]`. All protected by `requireAccess('maintenance', action)`.
+
+**UI:** List page at `/maintenance-requests` with filters (status, priority, property, search). Detail page at `/maintenance-requests/[id]` with full info and activity timeline.
+
+### Document Management
+
+**Fully implemented** document storage and management using Vercel Blob.
+
+**Schema:**
+- `Document` — File metadata with optional foreign keys to any entity
+- Stores: filename, fileType, fileSize, fileUrl, storageKey
+- Optional links: propertyId, unitId, tenantId, leaseId
+
+**File Storage:**
+- Vercel Blob for cloud storage (public access URLs)
+- Max file size: 10MB
+- Allowed types: PDF, images (JPEG, PNG, GIF, WebP)
+- Files stored with random suffix to avoid collisions
+
+**Upload Flow:**
+1. Client uploads file via FormData
+2. Server validates file type/size and entity ownership
+3. Upload to Vercel Blob
+4. Save metadata to database
+5. Log activity
+
+**Deletion Flow:**
+1. Verify document ownership
+2. Log activity
+3. Delete from Vercel Blob
+4. Delete from database
+
+**API:** Upload at `/api/documents/upload` (POST with multipart/form-data), list at `/api/documents`, detail/delete at `/api/documents/[id]`. All protected by `requireAccess('documents', action)`.
+
+**UI:** List page at `/documents` with filters (entity type, search) and upload dialog. Direct download/preview via fileUrl.
+
+**Environment:** Requires `BLOB_READ_WRITE_TOKEN` from Vercel dashboard.
+
 ### RBAC
 
 **Fully implemented** throughout API and UI. Roles, accesses, and user-role associations are modeled in the schema. The Owner role is system-protected (`isSystem: true`) and cannot be edited or deleted.
@@ -181,6 +240,8 @@ Revenue calculation: "expected" = sum of `rentAmount` for ACTIVE leases overlapp
 | tenants | read, create, update, delete |
 | leases | read, create, update, delete |
 | notifications | read, create, update, delete |
+| maintenance | read, create, update, delete |
+| documents | read, create, delete |
 | settings | manage (roles/accesses/api-keys) |
 | users | manage |
 
