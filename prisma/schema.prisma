@@ -561,7 +561,7 @@ model Activity {
   lease   LeaseAgreement? @relation(fields: [leaseId], references: [id], onDelete: SetNull)
 
   unitId String?
-  unit   Unit? @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  unit   Unit?   @relation(fields: [unitId], references: [id], onDelete: SetNull)
 
   maintenanceRequestId String?
   maintenanceRequest   MaintenanceRequest? @relation(fields: [maintenanceRequestId], references: [id], onDelete: SetNull)
