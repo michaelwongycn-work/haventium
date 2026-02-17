@@ -434,7 +434,7 @@ export default function PropertyDetailPage({
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="unit-name">Unit Name</Label>
+              <Label htmlFor="unit-name">Unit Name *</Label>
               <Input
                 id="unit-name"
                 value={formData.name}
@@ -445,40 +445,38 @@ export default function PropertyDetailPage({
                 disabled={isSaving}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="daily-rate">Daily Rate (Optional)</Label>
-                <Input
-                  id="daily-rate"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.dailyRate}
-                  onChange={(e) =>
-                    setFormData({ ...formData, dailyRate: e.target.value })
-                  }
-                  placeholder="0.00"
-                  disabled={isSaving}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="monthly-rate">Monthly Rate (Optional)</Label>
-                <Input
-                  id="monthly-rate"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.monthlyRate}
-                  onChange={(e) =>
-                    setFormData({ ...formData, monthlyRate: e.target.value })
-                  }
-                  placeholder="0.00"
-                  disabled={isSaving}
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="daily-rate">Daily Rate</Label>
+              <Input
+                id="daily-rate"
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.dailyRate}
+                onChange={(e) =>
+                  setFormData({ ...formData, dailyRate: e.target.value })
+                }
+                placeholder="0.00"
+                disabled={isSaving}
+              />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="annual-rate">Annual Rate (Optional)</Label>
+              <Label htmlFor="monthly-rate">Monthly Rate</Label>
+              <Input
+                id="monthly-rate"
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.monthlyRate}
+                onChange={(e) =>
+                  setFormData({ ...formData, monthlyRate: e.target.value })
+                }
+                placeholder="0.00"
+                disabled={isSaving}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="annual-rate">Annual Rate</Label>
               <Input
                 id="annual-rate"
                 type="number"

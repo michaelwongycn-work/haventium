@@ -45,6 +45,12 @@ export default async function DashboardLayout({
             >
               Tenants
             </Link>
+            <Link
+              href="/leases"
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+            >
+              Leases
+            </Link>
           </nav>
 
           <div className="flex items-center gap-4">

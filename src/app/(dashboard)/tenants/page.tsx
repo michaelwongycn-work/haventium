@@ -456,7 +456,7 @@ export default function TenantsPage() {
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="full-name">Full Name</Label>
+              <Label htmlFor="full-name">Full Name *</Label>
               <Input
                 id="full-name"
                 value={formData.fullName}
@@ -468,7 +468,7 @@ export default function TenantsPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="email">Email (Optional)</Label>
+              <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -481,7 +481,7 @@ export default function TenantsPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="phone">Phone (Optional)</Label>
+              <Label htmlFor="phone">Phone</Label>
               <Input
                 id="phone"
                 type="tel"
@@ -492,9 +492,6 @@ export default function TenantsPage() {
                 placeholder="+1 234 567 8900"
                 disabled={isSaving}
               />
-              <p className="text-xs text-muted-foreground">
-                At least one contact method (email or phone) is required
-              </p>
             </div>
             <div className="space-y-3 pt-2">
               <Label className="text-sm font-medium">Preferred Communication Channel</Label>

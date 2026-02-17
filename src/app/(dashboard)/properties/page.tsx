@@ -296,7 +296,7 @@ export default function PropertiesPage() {
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="property-name">Property Name</Label>
+              <Label htmlFor="property-name">Property Name *</Label>
               <Input
                 id="property-name"
                 value={propertyName}

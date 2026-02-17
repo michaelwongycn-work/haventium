@@ -267,12 +267,14 @@ model LeaseAgreement {
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  startDate       DateTime
-  endDate         DateTime
-  paymentCycle    PaymentCycle @default(MONTHLY)
-  rentAmount      Decimal      @db.Decimal(12, 2)
-  gracePeriodDays Int          @default(3)
-  isAutoRenew     Boolean      @default(false)
+  startDate             DateTime
+  endDate               DateTime
+  paymentCycle          PaymentCycle @default(MONTHLY)
+  rentAmount            Decimal      @db.Decimal(12, 2)
+  isAutoRenew           Boolean      @default(false)
+  gracePeriodDays       Int?
+  autoRenewalNoticeDays Int?
+  paidAt                DateTime?
 
   status LeaseStatus @default(DRAFT)
 
