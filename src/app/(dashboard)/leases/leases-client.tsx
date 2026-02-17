@@ -53,7 +53,12 @@ import {
   PencilEdit02Icon,
   File02Icon,
   Search01Icon,
+  Download04Icon,
+  Upload04Icon,
+  FileDownloadIcon,
 } from "@hugeicons/core-free-icons";
+import { BulkImportDialog } from "@/components/bulk-import-dialog";
+import { downloadExcelFile, downloadExcelTemplate, formatDateForExcel } from "@/lib/excel-utils";
 
 type LeaseStatus = "DRAFT" | "ACTIVE" | "ENDED";
 type PaymentCycle = "DAILY" | "MONTHLY" | "ANNUAL";
@@ -126,6 +131,7 @@ export default function LeasesClient() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   const [createdLease, setCreatedLease] = useState<Lease | null>(null);
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     tenantId: "",
@@ -517,6 +523,64 @@ export default function LeasesClient() {
     }
   };
 
+  const handleExportToExcel = () => {
+    const exportData = leases.map((lease) => ({
+      "Tenant Email": lease.tenant.email,
+      "Property Name": lease.unit.property.name,
+      "Unit Name": lease.unit.name,
+      "Start Date": formatDateForExcel(lease.startDate),
+      "End Date": formatDateForExcel(lease.endDate),
+      "Payment Cycle": lease.paymentCycle,
+      "Rent Amount": parseFloat(lease.rentAmount),
+      "Deposit Amount": lease.depositAmount ? parseFloat(lease.depositAmount) : null,
+      "Grace Period Days": lease.gracePeriodDays,
+      "Auto Renew": lease.isAutoRenew,
+      "Auto Renewal Notice Days": lease.autoRenewalNoticeDays,
+      "Status": lease.status,
+      "Paid At": lease.paidAt ? formatDateForExcel(lease.paidAt) : null,
+    }));
+
+    const today = new Date().toISOString().split("T")[0];
+    downloadExcelFile(exportData, `haventium-leases-${today}.xlsx`, "Leases");
+  };
+
+  const handleDownloadTemplate = () => {
+    const headers = {
+      "Tenant Email": "Tenant Email",
+      "Property Name": "Property Name",
+      "Unit Name": "Unit Name",
+      "Start Date": "Start Date",
+      "End Date": "End Date",
+      "Payment Cycle": "Payment Cycle",
+      "Rent Amount": "Rent Amount",
+      "Deposit Amount": "Deposit Amount",
+      "Grace Period Days": "Grace Period Days",
+      "Auto Renew": "Auto Renew",
+      "Auto Renewal Notice Days": "Auto Renewal Notice Days",
+    };
+
+    const sampleRow = {
+      "Tenant Email": "john.doe@example.com",
+      "Property Name": "Building A",
+      "Unit Name": "Unit 101",
+      "Start Date": "2026-03-01",
+      "End Date": "2026-03-31",
+      "Payment Cycle": "MONTHLY",
+      "Rent Amount": "1200",
+      "Deposit Amount": "2400",
+      "Grace Period Days": "3",
+      "Auto Renew": "TRUE",
+      "Auto Renewal Notice Days": "30",
+    };
+
+    downloadExcelTemplate(
+      headers,
+      sampleRow,
+      "haventium-leases-template.xlsx",
+      "Leases"
+    );
+  };
+
   const formatCurrency = (value: string | number) => {
     const num = typeof value === "string" ? parseFloat(value) : value;
     if (isNaN(num)) return "—";
@@ -544,14 +608,40 @@ export default function LeasesClient() {
             Manage your rental lease agreements
           </p>
         </div>
-        <Button onClick={() => handleOpenDialog()}>
-          <HugeiconsIcon
-            icon={PlusSignIcon}
-            strokeWidth={2}
-            data-icon="inline-start"
-          />
-          Add Lease
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleDownloadTemplate}>
+            <HugeiconsIcon
+              icon={FileDownloadIcon}
+              strokeWidth={2}
+              data-icon="inline-start"
+            />
+            Download Template
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExportToExcel}>
+            <HugeiconsIcon
+              icon={Download04Icon}
+              strokeWidth={2}
+              data-icon="inline-start"
+            />
+            Export to Excel
+          </Button>
+          <Button variant="outline" onClick={() => setIsBulkImportOpen(true)}>
+            <HugeiconsIcon
+              icon={Upload04Icon}
+              strokeWidth={2}
+              data-icon="inline-start"
+            />
+            Import from Excel
+          </Button>
+          <Button onClick={() => handleOpenDialog()}>
+            <HugeiconsIcon
+              icon={PlusSignIcon}
+              strokeWidth={2}
+              data-icon="inline-start"
+            />
+            Add Lease
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -1226,6 +1316,29 @@ export default function LeasesClient() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Bulk Import Dialog */}
+      <BulkImportDialog<Record<string, unknown>>
+        isOpen={isBulkImportOpen}
+        onClose={() => setIsBulkImportOpen(false)}
+        title="Import Leases from Excel"
+        description="Upload an Excel file (.xlsx or .xls) with lease data. Download the template for the correct format. All imported leases will be created as DRAFT status."
+        apiEndpoint="/api/leases/bulk-import"
+        onImportComplete={fetchLeases}
+        renderPreview={(data, index) => {
+          const tenantEmail = (data["Tenant Email"] || data.tenantEmail) as string;
+          const propertyName = (data["Property Name"] || data.propertyName) as string;
+          const unitName = (data["Unit Name"] || data.unitName) as string;
+          return (
+            <div className="text-sm">
+              <span className="font-medium">{tenantEmail}</span>
+              <span className="text-muted-foreground ml-2">
+                {propertyName} / {unitName}
+              </span>
+            </div>
+          );
+        }}
+      />
     </div>
   );
 }

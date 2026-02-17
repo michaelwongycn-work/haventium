@@ -45,7 +45,12 @@ import {
   Delete02Icon,
   PencilEdit02Icon,
   Building03Icon,
+  Download04Icon,
+  Upload04Icon,
+  FileDownloadIcon,
 } from "@hugeicons/core-free-icons";
+import { BulkImportDialog } from "@/components/bulk-import-dialog";
+import { downloadExcelFile, downloadExcelTemplate } from "@/lib/excel-utils";
 
 type Property = {
   id: string;
@@ -69,6 +74,7 @@ export default function PropertiesClient({ roles }: { roles: UserRole[] }) {
   const [propertyName, setPropertyName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
 
   useEffect(() => {
     fetchProperties();
@@ -188,6 +194,96 @@ export default function PropertiesClient({ roles }: { roles: UserRole[] }) {
     }
   };
 
+  const handleExportToExcel = () => {
+    const exportData: Array<{
+      "Property Name": string;
+      "Unit Name": string;
+      "Daily Rate": number | null;
+      "Monthly Rate": number | null;
+      "Annual Rate": number | null;
+      "Is Unavailable": boolean;
+    }> = [];
+
+    // Fetch properties with units for export
+    fetch("/api/properties")
+      .then((res) => res.json())
+      .then((data) => {
+        const propertiesWithUnits = data.items || data;
+
+        // For each property, fetch units
+        const promises = propertiesWithUnits.map((property: Property) =>
+          fetch(`/api/properties/${property.id}/units`).then((res) =>
+            res.json()
+          )
+        );
+
+        return Promise.all(promises).then((unitsArrays) => {
+          propertiesWithUnits.forEach(
+            (property: Property, index: number) => {
+              const units = unitsArrays[index].items || unitsArrays[index];
+              units.forEach(
+                (unit: {
+                  name: string;
+                  dailyRate: number | null;
+                  monthlyRate: number | null;
+                  annualRate: number | null;
+                  isUnavailable: boolean;
+                }) => {
+                  exportData.push({
+                    "Property Name": property.name,
+                    "Unit Name": unit.name,
+                    "Daily Rate": unit.dailyRate,
+                    "Monthly Rate": unit.monthlyRate,
+                    "Annual Rate": unit.annualRate,
+                    "Is Unavailable": unit.isUnavailable,
+                  });
+                }
+              );
+            }
+          );
+
+          const today = new Date().toISOString().split("T")[0];
+          downloadExcelFile(
+            exportData,
+            `haventium-properties-${today}.xlsx`,
+            "Properties"
+          );
+        });
+      })
+      .catch((err) => {
+        setError(
+          err instanceof Error ? err.message : "Failed to export properties"
+        );
+      });
+  };
+
+  const handleDownloadTemplate = () => {
+    const headers = {
+      "Property Name": "Property Name",
+      "Unit Name": "Unit Name",
+      "Daily Rate": "Daily Rate",
+      "Monthly Rate": "Monthly Rate",
+      "Annual Rate": "Annual Rate",
+      "Is Unavailable": "Is Unavailable",
+    };
+
+    const sampleRow = {
+      "Property Name": "Building A",
+      "Unit Name": "Unit 101",
+      "Daily Rate": "50",
+      "Monthly Rate": "1200",
+      "Annual Rate": "12000",
+      "Is Unavailable": "FALSE",
+    };
+
+    downloadExcelTemplate(
+      headers,
+      sampleRow,
+      "haventium-properties-template.xlsx",
+      "Properties"
+    );
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -197,16 +293,44 @@ export default function PropertiesClient({ roles }: { roles: UserRole[] }) {
             Manage your rental properties
           </p>
         </div>
-        {hasAccess(roles, "properties", "create") && (
-          <Button onClick={() => handleOpenDialog()}>
-            <HugeiconsIcon
-              icon={PlusSignIcon}
-              strokeWidth={2}
-              data-icon="inline-start"
-            />
-            Add Property
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {hasAccess(roles, "properties", "create") && (
+            <>
+              <Button variant="outline" size="sm" onClick={handleDownloadTemplate}>
+                <HugeiconsIcon
+                  icon={FileDownloadIcon}
+                  strokeWidth={2}
+                  data-icon="inline-start"
+                />
+                Download Template
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleExportToExcel}>
+                <HugeiconsIcon
+                  icon={Download04Icon}
+                  strokeWidth={2}
+                  data-icon="inline-start"
+                />
+                Export to Excel
+              </Button>
+              <Button variant="outline" onClick={() => setIsBulkImportOpen(true)}>
+                <HugeiconsIcon
+                  icon={Upload04Icon}
+                  strokeWidth={2}
+                  data-icon="inline-start"
+                />
+                Import from Excel
+              </Button>
+              <Button onClick={() => handleOpenDialog()}>
+                <HugeiconsIcon
+                  icon={PlusSignIcon}
+                  strokeWidth={2}
+                  data-icon="inline-start"
+                />
+                Add Property
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       <Card>
@@ -420,6 +544,26 @@ export default function PropertiesClient({ roles }: { roles: UserRole[] }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Bulk Import Dialog */}
+      <BulkImportDialog<Record<string, unknown>>
+        isOpen={isBulkImportOpen}
+        onClose={() => setIsBulkImportOpen(false)}
+        title="Import Properties from Excel"
+        description="Upload an Excel file (.xlsx or .xls) with property and unit data. Download the template for the correct format."
+        apiEndpoint="/api/properties/bulk-import"
+        onImportComplete={fetchProperties}
+        renderPreview={(data, index) => {
+          const propertyName = (data["Property Name"] || data.propertyName) as string;
+          const unitName = (data["Unit Name"] || data.unitName) as string;
+          return (
+            <div className="text-sm">
+              <span className="font-medium">{propertyName}</span>
+              <span className="text-muted-foreground ml-2">/ {unitName}</span>
+            </div>
+          );
+        }}
+      />
     </div>
   );
 }

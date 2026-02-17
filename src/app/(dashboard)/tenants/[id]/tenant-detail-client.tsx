@@ -408,7 +408,7 @@ export default function TenantDetailClient({
           {/* Documents */}
           <Card>
             <CardContent className="pt-6">
-              <DocumentList entityType="tenant" entityId={id} />
+              <DocumentList entityType="tenant" entityId={params.id} />
             </CardContent>
           </Card>
 

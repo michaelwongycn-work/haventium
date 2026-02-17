@@ -581,7 +581,7 @@ export default function PropertyDetailClient({
       {/* Documents */}
       <Card>
         <CardContent className="pt-6">
-          <DocumentList entityType="property" entityId={id} />
+          <DocumentList entityType="property" entityId={params.id} />
         </CardContent>
       </Card>
 

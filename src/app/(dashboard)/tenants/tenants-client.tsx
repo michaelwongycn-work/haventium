@@ -53,7 +53,12 @@ import {
   PencilEdit02Icon,
   UserIcon,
   Search01Icon,
+  Download04Icon,
+  Upload04Icon,
+  FileDownloadIcon,
 } from "@hugeicons/core-free-icons";
+import { BulkImportDialog } from "@/components/bulk-import-dialog";
+import { downloadExcelFile, downloadExcelTemplate } from "@/lib/excel-utils";
 
 type TenantStatus = "LEAD" | "BOOKED" | "ACTIVE" | "EXPIRED";
 
@@ -85,6 +90,7 @@ export default function TenantsClient() {
   const [isSaving, setIsSaving] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -303,6 +309,51 @@ export default function TenantsClient() {
     }
   };
 
+  const handleExportToExcel = () => {
+    const exportData = tenants.map((tenant) => ({
+      "Full Name": tenant.fullName,
+      Email: tenant.email,
+      Phone: tenant.phone,
+      Status: tenant.status,
+      "Prefer Email": tenant.preferEmail,
+      "Prefer WhatsApp": tenant.preferWhatsapp,
+      "Prefer Telegram": tenant.preferTelegram,
+      "Created At": new Date(tenant.createdAt).toLocaleDateString(),
+    }));
+
+    const today = new Date().toISOString().split("T")[0];
+    downloadExcelFile(exportData, `haventium-tenants-${today}.xlsx`, "Tenants");
+  };
+
+  const handleDownloadTemplate = () => {
+    const headers = {
+      "Full Name": "Full Name",
+      Email: "Email",
+      Phone: "Phone",
+      Status: "Status",
+      "Prefer Email": "Prefer Email",
+      "Prefer WhatsApp": "Prefer WhatsApp",
+      "Prefer Telegram": "Prefer Telegram",
+    };
+
+    const sampleRow = {
+      "Full Name": "John Doe",
+      Email: "john.doe@example.com",
+      Phone: "+1234567890",
+      Status: "LEAD",
+      "Prefer Email": "TRUE",
+      "Prefer WhatsApp": "FALSE",
+      "Prefer Telegram": "FALSE",
+    };
+
+    downloadExcelTemplate(
+      headers,
+      sampleRow,
+      "haventium-tenants-template.xlsx",
+      "Tenants"
+    );
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -312,14 +363,40 @@ export default function TenantsClient() {
             Manage your tenants and leads
           </p>
         </div>
-        <Button onClick={() => handleOpenDialog()}>
-          <HugeiconsIcon
-            icon={PlusSignIcon}
-            strokeWidth={2}
-            data-icon="inline-start"
-          />
-          Add Tenant
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleDownloadTemplate}>
+            <HugeiconsIcon
+              icon={FileDownloadIcon}
+              strokeWidth={2}
+              data-icon="inline-start"
+            />
+            Download Template
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExportToExcel}>
+            <HugeiconsIcon
+              icon={Download04Icon}
+              strokeWidth={2}
+              data-icon="inline-start"
+            />
+            Export to Excel
+          </Button>
+          <Button variant="outline" onClick={() => setIsBulkImportOpen(true)}>
+            <HugeiconsIcon
+              icon={Upload04Icon}
+              strokeWidth={2}
+              data-icon="inline-start"
+            />
+            Import from Excel
+          </Button>
+          <Button onClick={() => handleOpenDialog()}>
+            <HugeiconsIcon
+              icon={PlusSignIcon}
+              strokeWidth={2}
+              data-icon="inline-start"
+            />
+            Add Tenant
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -660,6 +737,26 @@ export default function TenantsClient() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Bulk Import Dialog */}
+      <BulkImportDialog<Record<string, unknown>>
+        isOpen={isBulkImportOpen}
+        onClose={() => setIsBulkImportOpen(false)}
+        title="Import Tenants from Excel"
+        description="Upload an Excel file (.xlsx or .xls) with tenant data. Download the template for the correct format."
+        apiEndpoint="/api/tenants/bulk-import"
+        onImportComplete={fetchTenants}
+        renderPreview={(data, index) => {
+          const fullName = (data["Full Name"] || data.fullName) as string;
+          const email = (data.Email || data.email) as string;
+          return (
+            <div className="text-sm">
+              <span className="font-medium">{fullName}</span>
+              <span className="text-muted-foreground ml-2">{email}</span>
+            </div>
+          );
+        }}
+      />
     </div>
   );
 }

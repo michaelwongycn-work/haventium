@@ -361,6 +361,7 @@ export default function DocumentsClient() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-16">Preview</TableHead>
                 <TableHead>Filename</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Size</TableHead>
@@ -372,15 +373,39 @@ export default function DocumentsClient() {
             <TableBody>
               {filteredDocuments.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground">
                     No documents found
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredDocuments.map((doc) => {
                   const entityInfo = getEntityInfo(doc);
+                  const isImage = doc.fileType.startsWith("image/");
                   return (
                     <TableRow key={doc.id}>
+                      <TableCell>
+                        <button
+                          onClick={() => window.open(doc.fileUrl, "_blank")}
+                          className="block"
+                        >
+                          {isImage ? (
+                            <img
+                              src={doc.fileUrl}
+                              alt={doc.filename}
+                              className="w-12 h-12 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="w-12 h-12 flex items-center justify-center bg-muted rounded">
+                              <HugeiconsIcon
+                                icon={File01Icon}
+                                size={24}
+                                className="text-muted-foreground"
+                              />
+                            </div>
+                          )}
+                        </button>
+                      </TableCell>
                       <TableCell className="font-medium">{doc.filename}</TableCell>
                       <TableCell>
                         <Badge variant="outline">{doc.fileType.split("/")[1].toUpperCase()}</Badge>

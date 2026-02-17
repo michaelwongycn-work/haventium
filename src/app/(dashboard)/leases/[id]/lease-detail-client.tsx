@@ -1016,7 +1016,7 @@ export default function LeaseDetailClient({
           {/* Documents */}
           <Card>
             <CardContent className="pt-6">
-              <DocumentList entityType="lease" entityId={id} />
+              <DocumentList entityType="lease" entityId={params.id} />
             </CardContent>
           </Card>
 
