@@ -238,6 +238,7 @@ model Tenant {
   leaseAgreements LeaseAgreement[]
   activities      Activity[]
 
+  @@unique([email, organizationId])
   @@index([organizationId])
   @@index([status])
   @@index([email])

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { checkAccess } from "@/lib/guards"
+import { requireAccess } from "@/lib/api"
 import { prisma } from "@/lib/prisma"
 
 // GET /api/notifications/logs/[id] - Get single notification log
@@ -8,7 +8,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { authorized, response, session } = await checkAccess("notifications", "read")
+    const { authorized, response, session } = await requireAccess("notifications", "read")
     if (!authorized) return response
 
     const { id } = await params

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
-import { checkAccess } from "@/lib/guards"
+import { requireAccess } from "@/lib/api"
 import { prisma } from "@/lib/prisma"
 import { NOTIFICATION_CHANNEL, NOTIFICATION_TRIGGER } from "@/lib/constants"
 
@@ -25,7 +25,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { authorized, response, session } = await checkAccess("notifications", "read")
+    const { authorized, response, session } = await requireAccess("notifications", "read")
     if (!authorized) return response
 
     const { id } = await params
@@ -75,7 +75,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { authorized, response, session } = await checkAccess("notifications", "update")
+    const { authorized, response, session } = await requireAccess("notifications", "update")
     if (!authorized) return response
 
     const { id } = await params
@@ -207,7 +207,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { authorized, response, session } = await checkAccess("notifications", "delete")
+    const { authorized, response, session } = await requireAccess("notifications", "delete")
     if (!authorized) return response
 
     const { id } = await params

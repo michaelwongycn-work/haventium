@@ -82,7 +82,11 @@ export async function POST(request: Request) {
 
 /**
  * Process PAYMENT_REMINDER notifications
- * Send reminders X days before payment is due (based on lease start date)
+ * Send reminders X days before payment is due (based on payment cycle)
+ *
+ * For MONTHLY leases: Reminds on the same day each month (e.g., 1st of month)
+ * For DAILY leases: Reminds daily
+ * For ANNUAL leases: Reminds on the same day each year
  */
 async function processPaymentReminders(organizationId: string, now: Date) {
   const results = {
@@ -103,41 +107,43 @@ async function processPaymentReminders(organizationId: string, now: Date) {
 
   if (rules.length === 0) return results
 
-  // For each rule, find leases that match the daysOffset
+  // For each rule, find leases where payment is due soon
   for (const rule of rules) {
-    // Calculate target date: now + daysOffset
-    const targetDate = new Date(now)
-    targetDate.setDate(targetDate.getDate() + rule.daysOffset)
-    targetDate.setHours(0, 0, 0, 0)
+    // Calculate when payment will be due (now + daysOffset days from now)
+    const dueDateTarget = new Date(now)
+    dueDateTarget.setDate(dueDateTarget.getDate() + rule.daysOffset)
+    dueDateTarget.setHours(0, 0, 0, 0)
 
-    const nextDay = new Date(targetDate)
-    nextDay.setDate(nextDay.getDate() + 1)
-
-    // Find ACTIVE leases where payment is due on the target date
+    // Find ACTIVE leases - we need to check if a payment cycle falls on the due date
     const leases = await prisma.leaseAgreement.findMany({
       where: {
         organizationId,
         status: "ACTIVE",
-        paidAt: null, // Not yet paid
         startDate: {
-          gte: targetDate,
-          lt: nextDay,
+          lte: dueDateTarget, // Lease must have started
+        },
+        endDate: {
+          gte: dueDateTarget, // Lease must still be active
         },
       },
     })
 
-    // Process notifications for each lease
+    // Check each lease to see if a payment is due on the target date
     for (const lease of leases) {
-      const result = await processNotifications({
-        organizationId,
-        trigger: NOTIFICATION_TRIGGER.PAYMENT_REMINDER,
-        relatedEntityId: lease.id,
-      })
+      const paymentDue = isPaymentDueOn(lease, dueDateTarget)
 
-      results.processed += result.processed
-      results.sent += result.sent
-      results.failed += result.failed
-      results.errors.push(...result.errors)
+      if (paymentDue) {
+        const result = await processNotifications({
+          organizationId,
+          trigger: NOTIFICATION_TRIGGER.PAYMENT_REMINDER,
+          relatedEntityId: lease.id,
+        })
+
+        results.processed += result.processed
+        results.sent += result.sent
+        results.failed += result.failed
+        results.errors.push(...result.errors)
+      }
     }
   }
 
@@ -145,8 +151,48 @@ async function processPaymentReminders(organizationId: string, now: Date) {
 }
 
 /**
+ * Check if a payment is due on a specific date based on payment cycle
+ */
+function isPaymentDueOn(lease: { startDate: Date; paymentCycle: string }, targetDate: Date): boolean {
+  const startDate = new Date(lease.startDate)
+  startDate.setHours(0, 0, 0, 0)
+
+  const target = new Date(targetDate)
+  target.setHours(0, 0, 0, 0)
+
+  const dayOfMonth = startDate.getDate()
+
+  switch (lease.paymentCycle) {
+    case "DAILY":
+      // Payment due every day
+      return target >= startDate
+
+    case "MONTHLY":
+      // Payment due on the same day each month (e.g., if start is Jan 15, due on 15th of each month)
+      // Handle edge case: if start date is 29-31 and target month doesn't have that day, use last day of month
+      const targetDayOfMonth = target.getDate()
+      const lastDayOfTargetMonth = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate()
+      const dueDayOfMonth = Math.min(dayOfMonth, lastDayOfTargetMonth)
+
+      return targetDayOfMonth === dueDayOfMonth && target >= startDate
+
+    case "ANNUAL":
+      // Payment due on the same date each year
+      return (
+        target.getMonth() === startDate.getMonth() &&
+        target.getDate() === startDate.getDate() &&
+        target >= startDate
+      )
+
+    default:
+      return false
+  }
+}
+
+/**
  * Process PAYMENT_LATE notifications
- * Send notifications for leases where payment is overdue
+ * Send notifications for DRAFT leases where grace period has passed
+ * or ACTIVE leases where rent payment is overdue
  */
 async function processPaymentLate(organizationId: string, now: Date) {
   const results = {
@@ -167,20 +213,33 @@ async function processPaymentLate(organizationId: string, now: Date) {
 
   if (rules.length === 0) return results
 
-  // Find DRAFT leases where start date has passed (overdue)
-  const overdueLeases = await prisma.leaseAgreement.findMany({
+  // Use the daysOffset from rules to determine how late is "late"
+  const maxDaysOffset = Math.max(...rules.map((r) => r.daysOffset))
+
+  // Find DRAFT leases where grace period has passed (unpaid bookings)
+  const unpaidDraftLeases = await prisma.leaseAgreement.findMany({
     where: {
       organizationId,
       status: "DRAFT",
       paidAt: null,
-      startDate: {
-        lt: now,
-      },
+      gracePeriodDays: { not: null },
+      // Calculate if grace period has passed: now > startDate + gracePeriodDays
+      // This is handled below as we can't directly query calculated dates
     },
   })
 
-  // Process notifications for each overdue lease
-  for (const lease of overdueLeases) {
+  // Filter by grace period expiration
+  const overdueGraceLeases = unpaidDraftLeases.filter((lease) => {
+    if (!lease.gracePeriodDays) return false
+
+    const graceDeadline = new Date(lease.startDate)
+    graceDeadline.setDate(graceDeadline.getDate() + lease.gracePeriodDays)
+
+    return now > graceDeadline
+  })
+
+  // Process notifications for overdue grace period leases
+  for (const lease of overdueGraceLeases) {
     const result = await processNotifications({
       organizationId,
       trigger: NOTIFICATION_TRIGGER.PAYMENT_LATE,
@@ -192,6 +251,13 @@ async function processPaymentLate(organizationId: string, now: Date) {
     results.failed += result.failed
     results.errors.push(...result.errors)
   }
+
+  // Note: For ACTIVE leases, payment tracking would require a separate payment records table
+  // to know when each payment cycle's rent is due. Currently, the schema only tracks initial
+  // payment via paidAt field. This is a limitation of the current data model.
+  //
+  // Future enhancement: Add a PaymentRecord table to track recurring payments
+  // For now, we only handle DRAFT lease payment late notifications
 
   return results
 }

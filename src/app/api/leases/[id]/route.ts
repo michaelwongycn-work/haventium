@@ -292,26 +292,7 @@ export async function PATCH(
         // Auto-activate lease if it's in DRAFT status
         if (existingLease.status === "DRAFT") {
           updateData.status = "ACTIVE"
-
-          // Update tenant status to ACTIVE
-          await prisma.tenant.update({
-            where: { id: existingLease.tenantId },
-            data: { status: "ACTIVE" },
-          })
-
-          // Log activation activity
-          await prisma.activity.create({
-            data: {
-              type: "LEASE_UPDATED",
-              description: `Activated lease agreement for ${existingLease.tenant.fullName} at ${existingLease.unit.property.name} - ${existingLease.unit.name}`,
-              userId: session.user.id,
-              organizationId: session.user.organizationId,
-              tenantId: existingLease.tenantId,
-              propertyId: existingLease.unit.propertyId,
-              leaseId: id,
-              unitId: existingLease.unitId,
-            },
-          })
+          // Tenant status update will be done atomically with lease update below
         }
 
         // Log payment activity
@@ -346,29 +327,10 @@ export async function PATCH(
 
       // Validate status transitions
       if (oldStatus === "DRAFT" && newStatus === "ACTIVE") {
-        // Activate lease - update tenant to ACTIVE
-        await prisma.tenant.update({
-          where: { id: existingLease.tenantId },
-          data: { status: "ACTIVE" },
-        })
+        // Activate lease - tenant status update will be done atomically below
         updateData.status = "ACTIVE"
       } else if (oldStatus === "ACTIVE" && newStatus === "ENDED") {
-        // End lease - check if tenant has other active leases
-        const otherActiveLeases = await prisma.leaseAgreement.count({
-          where: {
-            tenantId: existingLease.tenantId,
-            id: { not: id },
-            status: "ACTIVE",
-          },
-        })
-
-        // If no other active leases, mark tenant as EXPIRED
-        if (otherActiveLeases === 0) {
-          await prisma.tenant.update({
-            where: { id: existingLease.tenantId },
-            data: { status: "EXPIRED" },
-          })
-        }
+        // End lease - tenant status update will be done atomically below
         updateData.status = "ENDED"
       } else if (oldStatus === "ENDED") {
         return NextResponse.json(
@@ -383,17 +345,67 @@ export async function PATCH(
       }
     }
 
-    const lease = await prisma.leaseAgreement.update({
-      where: { id },
-      data: updateData,
-      include: {
-        tenant: true,
-        unit: {
-          include: {
-            property: true,
+    // Update lease and tenant status atomically in a transaction
+    const lease = await prisma.$transaction(async (tx) => {
+      // Check if we need to update tenant status based on lease status change
+      const wasActivating = existingLease.status === "DRAFT" && updateData.status === "ACTIVE"
+      const wasEnding = existingLease.status === "ACTIVE" && updateData.status === "ENDED"
+
+      // Update the lease
+      const updatedLease = await tx.leaseAgreement.update({
+        where: { id },
+        data: updateData,
+        include: {
+          tenant: true,
+          unit: {
+            include: {
+              property: true,
+            },
           },
         },
-      },
+      })
+
+      // Handle tenant status updates atomically
+      if (wasActivating) {
+        // Activating lease - set tenant to ACTIVE
+        await tx.tenant.update({
+          where: { id: existingLease.tenantId },
+          data: { status: "ACTIVE" },
+        })
+
+        // Log activation activity
+        await tx.activity.create({
+          data: {
+            type: "LEASE_UPDATED",
+            description: `Activated lease agreement for ${existingLease.tenant.fullName} at ${existingLease.unit.property.name} - ${existingLease.unit.name}`,
+            userId: session.user.id,
+            organizationId: session.user.organizationId,
+            tenantId: existingLease.tenantId,
+            propertyId: existingLease.unit.propertyId,
+            leaseId: id,
+            unitId: existingLease.unitId,
+          },
+        })
+      } else if (wasEnding) {
+        // Ending lease - check if tenant has other active leases
+        const otherActiveLeases = await tx.leaseAgreement.count({
+          where: {
+            tenantId: existingLease.tenantId,
+            id: { not: id },
+            status: "ACTIVE",
+          },
+        })
+
+        // If no other active leases, mark tenant as EXPIRED
+        if (otherActiveLeases === 0) {
+          await tx.tenant.update({
+            where: { id: existingLease.tenantId },
+            data: { status: "EXPIRED" },
+          })
+        }
+      }
+
+      return updatedLease
     })
 
     // Log activity
@@ -475,6 +487,14 @@ export async function DELETE(
     if (existingLease.status !== "DRAFT") {
       return NextResponse.json(
         { error: "Only draft leases can be deleted. Active or ended leases cannot be removed." },
+        { status: 400 }
+      )
+    }
+
+    // Prevent deletion of leases in a renewal chain
+    if (existingLease.renewedFromId || existingLease.renewedTo) {
+      return NextResponse.json(
+        { error: "Cannot delete leases that are part of a renewal chain. This lease has been renewed from or to another lease." },
         { status: 400 }
       )
     }

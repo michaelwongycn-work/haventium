@@ -132,8 +132,13 @@ export async function processNotifications({
 
     // Get related entity data for variable replacement
     let entityData: Record<string, unknown> | null = null
+    let relatedTenantId: string | null = null
     if (relatedEntityId) {
-      entityData = await getEntityData(trigger, relatedEntityId)
+      const fullEntityData = await getEntityData(trigger, relatedEntityId)
+      if (fullEntityData) {
+        entityData = fullEntityData.variables
+        relatedTenantId = fullEntityData.tenantId
+      }
     }
 
     // Process each rule
@@ -141,7 +146,7 @@ export async function processNotifications({
       result.processed++
 
       // Determine recipients based on rule type
-      const recipients = await getRecipients(rule, organizationId)
+      const recipients = await getRecipients(rule, organizationId, relatedTenantId)
 
       if (recipients.length === 0) {
         result.errors.push(`No recipients found for rule: ${rule.name}`)
@@ -323,7 +328,7 @@ export async function processNotifications({
 async function getEntityData(
   trigger: NotificationTrigger,
   entityId: string
-): Promise<Record<string, unknown> | null> {
+): Promise<{ variables: Record<string, unknown>; tenantId: string } | null> {
   if (
     trigger === "PAYMENT_REMINDER" ||
     trigger === "PAYMENT_LATE" ||
@@ -347,12 +352,15 @@ async function getEntityData(
     if (!lease) return null
 
     return {
-      tenantName: lease.tenant.fullName,
-      leaseStartDate: lease.startDate.toLocaleDateString(),
-      leaseEndDate: lease.endDate.toLocaleDateString(),
-      rentAmount: lease.rentAmount.toString(),
-      propertyName: lease.unit.property.name,
-      unitName: lease.unit.name,
+      tenantId: lease.tenantId,
+      variables: {
+        tenantName: lease.tenant.fullName,
+        leaseStartDate: lease.startDate.toLocaleDateString(),
+        leaseEndDate: lease.endDate.toLocaleDateString(),
+        rentAmount: lease.rentAmount.toString(),
+        propertyName: lease.unit.property.name,
+        unitName: lease.unit.name,
+      },
     }
   }
 
@@ -382,7 +390,8 @@ async function getRecipients(
       userRoles: { user: { id: string; name: string; email: string } }[]
     } | null
   },
-  organizationId: string
+  organizationId: string,
+  relatedTenantId: string | null = null
 ): Promise<Recipient[]> {
   const recipients: Recipient[] = []
 
@@ -401,12 +410,16 @@ async function getRecipients(
       })
     }
   } else if (rule.recipientType === "TENANT") {
-    // For tenant recipients, we'll return all active tenants
-    // In practice, this should be filtered based on the trigger context
-    const tenants = await prisma.tenant.findMany({
+    // For tenant recipients, fetch the specific tenant related to the trigger
+    if (!relatedTenantId) {
+      // No related tenant ID, cannot send notification
+      return recipients
+    }
+
+    const tenant = await prisma.tenant.findUnique({
       where: {
-        organizationId,
-        status: "ACTIVE",
+        id: relatedTenantId,
+        organizationId, // Ensure tenant belongs to the organization
       },
       select: {
         fullName: true,
@@ -418,7 +431,7 @@ async function getRecipients(
       },
     })
 
-    for (const tenant of tenants) {
+    if (tenant) {
       recipients.push({
         type: "tenant",
         name: tenant.fullName,

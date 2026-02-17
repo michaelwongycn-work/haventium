@@ -41,7 +41,7 @@ type NotificationTrigger =
   | "LEASE_EXPIRED"
   | "MANUAL"
 
-type NotificationChannel = "EMAIL" | "WHATSAPP"
+type NotificationChannel = "EMAIL" | "WHATSAPP" | "TELEGRAM"
 
 type NotificationStatus = "PENDING" | "SENT" | "FAILED"
 
@@ -82,6 +82,7 @@ const TRIGGER_LABELS: Record<NotificationTrigger, string> = {
 const CHANNEL_LABELS: Record<NotificationChannel, string> = {
   EMAIL: "Email",
   WHATSAPP: "WhatsApp",
+  TELEGRAM: "Telegram",
 }
 
 const STATUS_LABELS: Record<NotificationStatus, string> = {

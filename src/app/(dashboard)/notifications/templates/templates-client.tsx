@@ -65,7 +65,7 @@ type NotificationTrigger =
   | "LEASE_EXPIRED"
   | "MANUAL"
 
-type NotificationChannel = "EMAIL" | "WHATSAPP"
+type NotificationChannel = "EMAIL" | "WHATSAPP" | "TELEGRAM"
 
 type NotificationTemplate = {
   id: string
@@ -91,6 +91,7 @@ const TRIGGER_LABELS: Record<NotificationTrigger, string> = {
 const CHANNEL_LABELS: Record<NotificationChannel, string> = {
   EMAIL: "Email",
   WHATSAPP: "WhatsApp",
+  TELEGRAM: "Telegram",
 }
 
 const TEMPLATE_VARIABLES = [

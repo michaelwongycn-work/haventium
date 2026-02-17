@@ -78,7 +78,16 @@ export function verifyCronAuth(request: Request): {
   const authHeader = request.headers.get("authorization")
   const cronSecret = process.env.CRON_SECRET
 
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+  // CRON_SECRET is required - fail if not configured
+  if (!cronSecret) {
+    return {
+      authorized: false,
+      response: apiUnauthorized("CRON_SECRET environment variable not configured"),
+    }
+  }
+
+  // Verify authorization header matches the secret
+  if (authHeader !== `Bearer ${cronSecret}`) {
     return {
       authorized: false,
       response: apiUnauthorized("Invalid cron secret"),

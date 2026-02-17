@@ -137,6 +137,7 @@ export type ActivityType = typeof ACTIVITY_TYPE[keyof typeof ACTIVITY_TYPE]
 export const NOTIFICATION_CHANNEL = {
   EMAIL: "EMAIL",
   WHATSAPP: "WHATSAPP",
+  TELEGRAM: "TELEGRAM",
 } as const
 
 export type NotificationChannel = typeof NOTIFICATION_CHANNEL[keyof typeof NOTIFICATION_CHANNEL]

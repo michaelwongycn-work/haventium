@@ -40,6 +40,13 @@ Leases are the core entity. Everything flows from them.
 
 **What can't change after leaving DRAFT:** `startDate`, `endDate`, `paymentCycle`, `rentAmount`, `depositAmount`. These are locked once a lease is ACTIVE.
 
+**Payment model:** Each lease represents ONE payment period. The `paidAt` field tracks when that single payment was made. For recurring rentals:
+- **DAILY lease**: 1 day = 1 payment = 1 lease. Tomorrow's rent = new lease.
+- **MONTHLY lease**: 1 month = 1 payment = 1 lease. Next month's rent = new lease.
+- **ANNUAL lease**: 1 year = 1 payment = 1 lease. Next year's rent = new lease.
+- Auto-renewal automatically creates the next lease when the current one expires.
+- There is NO recurring payment tracking within a single lease — next payment = next lease.
+
 **Overlapping lease validation:** before creating a lease, the API checks for existing ACTIVE/DRAFT leases on the same unit with overlapping date ranges. Auto-renew leases that start before or on the new lease's `endDate` are also blocked.
 
 ### Auto-Renewal
@@ -103,6 +110,7 @@ Revenue calculation: "expected" = sum of `rentAmount` for ACTIVE leases overlapp
 **Services:**
 - `RESEND_EMAIL` — Resend API key for email delivery
 - `WHATSAPP_META` — WhatsApp Meta Cloud API credentials (JSON with accessToken, phoneNumberId, businessAccountId)
+- `TELEGRAM_BOT` — Telegram bot token from @BotFather
 
 **API:** CRUD at `/api/settings/api-keys` and `/api/settings/api-keys/[id]`. Test endpoint at `/api/settings/api-keys/[id]/test` validates credentials. All protected by `checkAccess('settings', 'manage')`.
 
@@ -112,16 +120,17 @@ Revenue calculation: "expected" = sum of `rentAmount` for ACTIVE leases overlapp
 
 ### Notifications
 
-**Fully implemented** notification system with email (Resend) and WhatsApp (Meta Cloud API) delivery.
+**Fully implemented** notification system with email (Resend), WhatsApp (Meta Cloud API), and Telegram (Bot API) delivery.
 
 **Schema:**
-- `NotificationTemplate` — Email/WhatsApp message templates with dynamic variables
+- `NotificationTemplate` — Email/WhatsApp/Telegram message templates with dynamic variables
 - `NotificationRule` — Automated trigger rules (PAYMENT_REMINDER, LEASE_EXPIRING, etc.) with daysOffset, recipient config (TENANT/USER/ROLE)
 - `NotificationLog` — Delivery tracking (PENDING → SENT/FAILED)
 
 **Channels:**
 - `EMAIL` — Via Resend API (requires org RESEND_EMAIL API key)
 - `WHATSAPP` — Via Meta Cloud API (requires org WHATSAPP_META credentials)
+- `TELEGRAM` — Via Telegram Bot API (requires org TELEGRAM_BOT token). Uses phone numbers as identifiers.
 
 **Template Variables:**
 - `{{tenantName}}` — Tenant full name
@@ -139,15 +148,24 @@ Revenue calculation: "expected" = sum of `rentAmount` for ACTIVE leases overlapp
 - `LEASE_EXPIRED` — Sent when lease ends
 - `MANUAL` — Manually triggered
 
-**Tenant Preferences:** Respects `preferEmail` and `preferWhatsapp` flags on Tenant model.
+**Tenant Preferences:** Respects `preferEmail`, `preferWhatsapp`, and `preferTelegram` flags on Tenant model. All phone-based channels (WhatsApp, Telegram) use the tenant's `phone` field.
 
 **WhatsApp Integration:** Meta Cloud API direct (no BSP fees). Supports template messages (marketing/utility) and plain text (service messages). Credentials stored as encrypted JSON in ApiKey table.
+
+**Telegram Integration:** Direct Telegram Bot API (no third-party library). Instant setup via @BotFather (< 1 minute). 100% free (up to 30 msg/sec). Uses phone numbers for sending. Supports HTML formatting in messages.
 
 **API Key Requirement:** All notifications require organization-specific API keys. If not configured, notifications fail with status FAILED and clear error message in NotificationLog.
 
 **API:** Full CRUD for templates and rules at `/api/notifications/templates` and `/api/notifications/rules`. Read-only logs at `/api/notifications/logs`. All endpoints protected by `checkAccess('notifications', action)`.
 
-**Cron Job:** `/api/cron/process-notifications` runs daily to send notifications based on rules and daysOffset.
+**Cron Jobs:**
+- `/api/cron/process-notifications` (2am UTC) — Processes PAYMENT_REMINDER, PAYMENT_LATE, and LEASE_EXPIRING notifications based on rules
+- `/api/cron/end-expired-leases` (3am UTC) — Ends ACTIVE leases where endDate has passed, triggers LEASE_EXPIRED notifications
+
+**Payment notification logic:**
+- `PAYMENT_REMINDER`: Calculates due dates based on paymentCycle. For MONTHLY leases, reminds on the same day each month (e.g., if lease starts on 15th, reminds on 15th of each month). For DAILY leases, reminds daily. For ANNUAL leases, reminds on anniversary date.
+- `PAYMENT_LATE`: Checks DRAFT leases with grace periods. If `now > startDate + gracePeriodDays`, triggers late notification.
+- Note: Each lease = one payment. Recurring payments = recurring leases (via auto-renewal).
 
 **UI:** Management interfaces at `/notifications/templates`, `/notifications/rules`, `/notifications/logs`.
 

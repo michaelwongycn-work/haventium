@@ -1,53 +1,70 @@
-import { NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
-import type { LeaseAgreement, PaymentCycle } from "@prisma/client"
-import { processNotifications } from "@/lib/services/notification-processor"
-import { NOTIFICATION_TRIGGER } from "@/lib/constants"
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import type { LeaseAgreement, PaymentCycle } from "@prisma/client";
+import { processNotifications } from "@/lib/services/notification-processor";
+import { NOTIFICATION_TRIGGER } from "@/lib/constants";
+import { validateLeaseAvailability } from "@/lib/api/lease-validation";
 
 /**
  * Calculate renewal lease start and end dates based on payment cycle
  */
 function calculateRenewalDates(
   originalEndDate: Date,
-  paymentCycle: PaymentCycle
+  paymentCycle: PaymentCycle,
 ): { startDate: Date; endDate: Date } {
-  const startDate = new Date(originalEndDate)
-  startDate.setDate(startDate.getDate() + 1)
+  const startDate = new Date(originalEndDate);
+  startDate.setDate(startDate.getDate() + 1);
 
-  const endDate = new Date(startDate)
+  const endDate = new Date(startDate);
 
   switch (paymentCycle) {
     case "DAILY":
-      endDate.setDate(endDate.getDate() + 1)
-      break
+      endDate.setDate(endDate.getDate() + 1);
+      break;
     case "MONTHLY":
-      endDate.setMonth(endDate.getMonth() + 1)
-      endDate.setDate(endDate.getDate() - 1)
-      break
+      endDate.setMonth(endDate.getMonth() + 1);
+      endDate.setDate(endDate.getDate() - 1);
+      break;
     case "ANNUAL":
-      endDate.setFullYear(endDate.getFullYear() + 1)
-      endDate.setDate(endDate.getDate() - 1)
-      break
+      endDate.setFullYear(endDate.getFullYear() + 1);
+      endDate.setDate(endDate.getDate() - 1);
+      break;
   }
 
-  return { startDate, endDate }
+  return { startDate, endDate };
 }
 
 type LeaseWithRelations = LeaseAgreement & {
-  tenant: { id: string; fullName: string }
-  unit: { id: string; name: string; property: { id: string; name: string } }
-}
+  tenant: { id: string; fullName: string };
+  unit: { id: string; name: string; property: { id: string; name: string } };
+};
 
 /**
  * Create a renewal lease from an original lease
  */
 async function createRenewalLease(
-  originalLease: LeaseWithRelations
-): Promise<LeaseAgreement> {
+  originalLease: LeaseWithRelations,
+): Promise<LeaseAgreement | null> {
   const { startDate, endDate } = calculateRenewalDates(
     originalLease.endDate,
-    originalLease.paymentCycle
-  )
+    originalLease.paymentCycle,
+  );
+
+  // Validate unit availability before creating renewal lease
+  const availabilityCheck = await validateLeaseAvailability({
+    unitId: originalLease.unitId,
+    startDate: startDate,
+    endDate: endDate,
+    excludeLeaseId: originalLease.id,
+  });
+
+  if (!availabilityCheck.valid) {
+    console.error(
+      `[process-auto-renewals] Cannot create renewal for lease ${originalLease.id}: ${availabilityCheck.error}`,
+    );
+    // Return null instead of throwing to allow other renewals to continue
+    return null;
+  }
 
   const result = await prisma.$transaction(async (tx) => {
     const newLease = await tx.leaseAgreement.create({
@@ -66,15 +83,15 @@ async function createRenewalLease(
         status: "DRAFT",
         renewedFromId: originalLease.id,
       },
-    })
+    });
 
     await tx.leaseAgreement.update({
       where: { id: originalLease.id },
       data: { status: "ENDED" },
-    })
+    });
 
-    return newLease
-  })
+    return newLease;
+  });
 
   await prisma.activity.create({
     data: {
@@ -86,7 +103,7 @@ async function createRenewalLease(
       leaseId: result.id,
       unitId: originalLease.unitId,
     },
-  })
+  });
 
   // Trigger LEASE_EXPIRED notification for the original lease
   processNotifications({
@@ -94,22 +111,27 @@ async function createRenewalLease(
     trigger: NOTIFICATION_TRIGGER.LEASE_EXPIRED,
     relatedEntityId: originalLease.id,
   }).catch((err) => {
-    console.error("Failed to send lease expired notification:", err)
-  })
+    console.error("Failed to send lease expired notification:", err);
+  });
 
-  return result
+  return result;
 }
 
 export async function POST(request: Request) {
   try {
-    const authHeader = request.headers.get("authorization")
-    const cronSecret = process.env.CRON_SECRET
+    const authHeader = request.headers.get("authorization");
+    const cronSecret = process.env.CRON_SECRET;
 
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    // CRON_SECRET is required - fail if not configured
+    if (!cronSecret) {
       return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
+        { error: "CRON_SECRET environment variable not configured" },
+        { status: 401 },
+      );
+    }
+
+    if (authHeader !== `Bearer ${cronSecret}`) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const summary = {
@@ -117,13 +139,13 @@ export async function POST(request: Request) {
       succeeded: 0,
       failed: 0,
       details: [] as Array<{
-        leaseId: string
-        tenantName: string
-        unitName: string
-        success: boolean
-        error?: string
+        leaseId: string;
+        tenantName: string;
+        unitName: string;
+        success: boolean;
+        error?: string;
       }>,
-    }
+    };
 
     const allAutoRenewLeases = await prisma.leaseAgreement.findMany({
       where: {
@@ -150,41 +172,53 @@ export async function POST(request: Request) {
           },
         },
       },
-    })
+    });
 
     // Filter leases where deadline has passed (endDate - noticeDays <= now)
-    const now = new Date()
+    const now = new Date();
     const eligibleLeases = allAutoRenewLeases.filter((lease) => {
-      if (!lease.autoRenewalNoticeDays) return false
+      if (!lease.autoRenewalNoticeDays) return false;
 
-      const deadline = new Date(lease.endDate)
-      deadline.setDate(deadline.getDate() - lease.autoRenewalNoticeDays)
+      const deadline = new Date(lease.endDate);
+      deadline.setDate(deadline.getDate() - lease.autoRenewalNoticeDays);
 
-      return now >= deadline
-    })
+      return now >= deadline;
+    });
 
     for (const lease of eligibleLeases) {
-      summary.processed++
+      summary.processed++;
 
       try {
-        await createRenewalLease(lease)
+        const result = await createRenewalLease(lease);
 
-        summary.succeeded++
-        summary.details.push({
-          leaseId: lease.id,
-          tenantName: lease.tenant.fullName,
-          unitName: `${lease.unit.property.name} - ${lease.unit.name}`,
-          success: true,
-        })
+        if (result) {
+          summary.succeeded++;
+          summary.details.push({
+            leaseId: lease.id,
+            tenantName: lease.tenant.fullName,
+            unitName: `${lease.unit.property.name} - ${lease.unit.name}`,
+            success: true,
+          });
+        } else {
+          // Validation failed (unit not available)
+          summary.failed++;
+          summary.details.push({
+            leaseId: lease.id,
+            tenantName: lease.tenant.fullName,
+            unitName: `${lease.unit.property.name} - ${lease.unit.name}`,
+            success: false,
+            error: "Unit not available for renewal (overlapping lease exists)",
+          });
+        }
       } catch (error) {
-        summary.failed++
+        summary.failed++;
         summary.details.push({
           leaseId: lease.id,
           tenantName: lease.tenant.fullName,
           unitName: `${lease.unit.property.name} - ${lease.unit.name}`,
           success: false,
           error: error instanceof Error ? error.message : "Unknown error",
-        })
+        });
       }
     }
 
@@ -193,12 +227,12 @@ export async function POST(request: Request) {
       message: `Processed ${summary.processed} leases, ${summary.succeeded} succeeded, ${summary.failed} failed`,
       ...summary,
       processedAt: new Date().toISOString(),
-    })
+    });
   } catch (error) {
-    console.error("Error in process-auto-renewals cron:", error)
+    console.error("Error in process-auto-renewals cron:", error);
     return NextResponse.json(
       { error: "Failed to process auto-renewals" },
-      { status: 500 }
-    )
+      { status: 500 },
+    );
   }
 }
