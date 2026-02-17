@@ -227,7 +227,6 @@ model Tenant {
 
   preferEmail    Boolean @default(true)
   preferWhatsapp Boolean @default(false)
-  preferTelegram Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -337,7 +336,6 @@ enum PaymentStatus {
 enum NotificationChannel {
   EMAIL
   WHATSAPP
-  TELEGRAM
 }
 
 enum NotificationTrigger {

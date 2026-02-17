@@ -1,8 +1,46 @@
 import { auth } from "@/lib/auth"
+import { prisma } from "@/lib/prisma"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 export default async function DashboardPage() {
   const session = await auth()
+
+  if (!session?.user?.organizationId) {
+    return null
+  }
+
+  // Fetch real statistics
+  const [propertyCount, unitCount, activeTenantCount, totalUnits] = await Promise.all([
+    prisma.property.count({
+      where: { organizationId: session.user.organizationId },
+    }),
+    prisma.unit.count({
+      where: {
+        property: {
+          organizationId: session.user.organizationId,
+        },
+      },
+    }),
+    prisma.tenant.count({
+      where: {
+        organizationId: session.user.organizationId,
+        status: "ACTIVE",
+      },
+    }),
+    prisma.unit.findMany({
+      where: {
+        property: {
+          organizationId: session.user.organizationId,
+        },
+        isUnavailable: false,
+      },
+      select: {
+        id: true,
+      },
+    }),
+  ])
+
+  const availableUnitCount = totalUnits.length
 
   return (
     <div className="space-y-8">
@@ -21,9 +59,9 @@ export default async function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
+            <div className="text-2xl font-bold">{propertyCount}</div>
             <p className="text-xs text-muted-foreground">
-              No properties yet
+              {propertyCount === 0 ? "No properties yet" : `${propertyCount} ${propertyCount === 1 ? "property" : "properties"}`}
             </p>
           </CardContent>
         </Card>
@@ -33,8 +71,10 @@ export default async function DashboardPage() {
             <CardTitle className="text-sm font-medium">Total Units</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
-            <p className="text-xs text-muted-foreground">No units yet</p>
+            <div className="text-2xl font-bold">{unitCount}</div>
+            <p className="text-xs text-muted-foreground">
+              {unitCount === 0 ? "No units yet" : `${availableUnitCount} available`}
+            </p>
           </CardContent>
         </Card>
 
@@ -43,8 +83,10 @@ export default async function DashboardPage() {
             <CardTitle className="text-sm font-medium">Active Tenants</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
-            <p className="text-xs text-muted-foreground">No tenants yet</p>
+            <div className="text-2xl font-bold">{activeTenantCount}</div>
+            <p className="text-xs text-muted-foreground">
+              {activeTenantCount === 0 ? "No active tenants yet" : `${activeTenantCount} active ${activeTenantCount === 1 ? "tenant" : "tenants"}`}
+            </p>
           </CardContent>
         </Card>
 
@@ -54,7 +96,7 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">$0</div>
-            <p className="text-xs text-muted-foreground">No revenue yet</p>
+            <p className="text-xs text-muted-foreground">Coming soon</p>
           </CardContent>
         </Card>
       </div>

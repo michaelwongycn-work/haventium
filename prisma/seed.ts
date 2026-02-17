@@ -78,15 +78,6 @@ async function main() {
     },
   })
 
-  const telegramNotify = await prisma.feature.upsert({
-    where: { code: "TELEGRAM_NOTIFY" },
-    update: {},
-    create: {
-      code: "TELEGRAM_NOTIFY",
-      name: "Telegram Notifications",
-    },
-  })
-
   const advancedReports = await prisma.feature.upsert({
     where: { code: "ADVANCED_REPORTS" },
     update: {},
@@ -146,7 +137,6 @@ async function main() {
   const proFeatures = [
     emailNotify,
     whatsappNotify,
-    telegramNotify,
     advancedReports,
   ]
 
