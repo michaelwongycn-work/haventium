@@ -293,7 +293,7 @@ async function main() {
   console.log(`✓ Created user ${email} and assigned Owner role`)
 
   // Create Properties
-  await prisma.property.create({
+  const grandView = await prisma.property.create({
     data: {
       name: "Grand View Apartments",
       organizationId: org.id,
@@ -309,7 +309,7 @@ async function main() {
     include: { units: true }
   })
 
-  await prisma.property.create({
+  const sunsetVillas = await prisma.property.create({
     data: {
       name: "Sunset Villas",
       organizationId: org.id,
@@ -325,8 +325,15 @@ async function main() {
   })
   console.log("✓ Created 2 Properties and 7 Units")
 
+  const unit101 = grandView.units.find(u => u.name === "Unit 101")!
+  const unit102 = grandView.units.find(u => u.name === "Unit 102")!
+  const unit201 = grandView.units.find(u => u.name === "Unit 201")!
+  const penthouseA = grandView.units.find(u => u.name === "Penthouse A")!
+  const villa1 = sunsetVillas.units.find(u => u.name === "Villa 1")!
+  const villa2 = sunsetVillas.units.find(u => u.name === "Villa 2")!
+
   // Create Tenants
-  await prisma.tenant.create({
+  const johnDoe = await prisma.tenant.create({
     data: {
       fullName: "John Doe",
       email: "john@example.com",
@@ -336,7 +343,7 @@ async function main() {
     }
   })
 
-  await prisma.tenant.create({
+  const janeSmith = await prisma.tenant.create({
     data: {
       fullName: "Jane Smith",
       email: "jane@example.com",
@@ -346,7 +353,7 @@ async function main() {
     }
   })
 
-  await prisma.tenant.create({
+  const bobWilson = await prisma.tenant.create({
     data: {
       fullName: "Bob Wilson",
       email: "bob@example.com",
@@ -356,6 +363,206 @@ async function main() {
     }
   })
   console.log("✓ Created 3 Tenants")
+
+  // ===========================================
+  // Create Leases — test data for all UI states
+  // ===========================================
+
+  // Helper: create a date offset from today by N days
+  const now = new Date()
+  const daysFromNow = (days: number) => {
+    const d = new Date(now)
+    d.setDate(d.getDate() + days)
+    return d
+  }
+
+  // Test: DRAFT lease shows edit/delete buttons on list page, no deposit edit on detail
+  // --- Case 1: DRAFT lease (unpaid) ---
+  await prisma.leaseAgreement.create({
+    data: {
+      tenantId: bobWilson.id,
+      unitId: villa2.id,
+      organizationId: org.id,
+      startDate: daysFromNow(20),   // starts in ~3 weeks
+      endDate: daysFromNow(50),     // ends in ~7 weeks
+      paymentCycle: "MONTHLY",
+      rentAmount: 3500,
+      depositAmount: 7000,
+      status: "DRAFT",
+    },
+  })
+  console.log("✓ Created lease: DRAFT (Bob Wilson / Villa 2)")
+
+  // Test: auto-renewal toggle is enabled — user can turn it OFF
+  // Notice deadline = endDate - 10 days = ~50 days from now, well in the future
+  // --- Case 2: ACTIVE lease — auto-renewal ON, notice period NOT passed ---
+  await prisma.leaseAgreement.create({
+    data: {
+      tenantId: bobWilson.id,
+      unitId: unit201.id,
+      organizationId: org.id,
+      startDate: daysFromNow(-30),  // started 30 days ago
+      endDate: daysFromNow(60),     // ends in 60 days
+      paymentCycle: "MONTHLY",
+      rentAmount: 2000,
+      depositAmount: 4000,
+      isAutoRenew: true,
+      gracePeriodDays: 3,
+      autoRenewalNoticeDays: 10,    // deadline = endDate - 10 = 50 days from now
+      status: "ACTIVE",
+      paidAt: daysFromNow(-30),
+      paymentMethod: "BANK_TRANSFER",
+      paymentStatus: "COMPLETED",
+    },
+  })
+  console.log("✓ Created lease: ACTIVE, auto-renewal ON, notice NOT passed (Bob Wilson / Unit 201)")
+
+  // Test: auto-renewal toggle is DISABLED — notice deadline already passed
+  // This lease already has a renewal (renewedTo), so the cron will skip it.
+  // endDate = 3 days from now, notice = 10 days → deadline was 7 days ago
+  // --- Case 3: ACTIVE lease — auto-renewal ON, notice period PASSED ---
+  const case3Lease = await prisma.leaseAgreement.create({
+    data: {
+      tenantId: johnDoe.id,
+      unitId: penthouseA.id,
+      organizationId: org.id,
+      startDate: daysFromNow(-40),  // started 40 days ago
+      endDate: daysFromNow(3),      // ends in 3 days
+      paymentCycle: "MONTHLY",
+      rentAmount: 5000,
+      depositAmount: 10000,
+      isAutoRenew: true,
+      gracePeriodDays: 3,
+      autoRenewalNoticeDays: 10,    // deadline = endDate - 10 = 7 days ago
+      status: "ACTIVE",
+      paidAt: daysFromNow(-40),
+      paymentMethod: "CASH",
+      paymentStatus: "COMPLETED",
+    },
+  })
+  // Create renewal DRAFT so cron skips this lease (renewedTo != null)
+  await prisma.leaseAgreement.create({
+    data: {
+      tenantId: johnDoe.id,
+      unitId: penthouseA.id,
+      organizationId: org.id,
+      startDate: daysFromNow(4),    // starts day after case 3 ends
+      endDate: daysFromNow(34),     // ~1 month
+      paymentCycle: "MONTHLY",
+      rentAmount: 5000,
+      depositAmount: 10000,
+      isAutoRenew: true,
+      gracePeriodDays: 3,
+      autoRenewalNoticeDays: 10,
+      status: "DRAFT",
+      renewedFromId: case3Lease.id,
+    },
+  })
+  console.log("✓ Created lease: ACTIVE, auto-renewal ON, notice PASSED + renewal DRAFT (John Doe / Penthouse A)")
+
+  // Test: "Edit Deposit Status" button visible — lease is ENDED, has deposit, and no renewal
+  // --- Case 4: ENDED lease — deposit HELD, NOT renewed ---
+  await prisma.leaseAgreement.create({
+    data: {
+      tenantId: johnDoe.id,
+      unitId: unit101.id,
+      organizationId: org.id,
+      startDate: daysFromNow(-90),  // started 90 days ago
+      endDate: daysFromNow(-60),    // ended 60 days ago
+      paymentCycle: "MONTHLY",
+      rentAmount: 1500,
+      depositAmount: 3000,
+      depositStatus: "HELD",
+      status: "ENDED",
+      paidAt: daysFromNow(-90),
+      paymentMethod: "CASH",
+      paymentStatus: "COMPLETED",
+    },
+  })
+  console.log("✓ Created lease: ENDED, deposit HELD, no renewal (John Doe / Unit 101)")
+
+  // Test: "Edit Deposit Status" button NOT visible — lease is ENDED but has a renewedTo link
+  // Lease B (renewed ACTIVE) shows the renewal chain on its detail page
+  // --- Case 5: ENDED lease + renewal chain ---
+  const leaseA = await prisma.leaseAgreement.create({
+    data: {
+      tenantId: janeSmith.id,
+      unitId: unit102.id,
+      organizationId: org.id,
+      startDate: daysFromNow(-60),   // started 60 days ago
+      endDate: daysFromNow(-1),      // ended yesterday
+      paymentCycle: "MONTHLY",
+      rentAmount: 1600,
+      depositAmount: 3200,
+      isAutoRenew: true,
+      gracePeriodDays: 3,
+      autoRenewalNoticeDays: 5,
+      status: "ENDED",
+      paidAt: daysFromNow(-60),
+      paymentMethod: "BANK_TRANSFER",
+      paymentStatus: "COMPLETED",
+    },
+  })
+  await prisma.leaseAgreement.create({
+    data: {
+      tenantId: janeSmith.id,
+      unitId: unit102.id,
+      organizationId: org.id,
+      startDate: daysFromNow(0),     // starts today
+      endDate: daysFromNow(30),      // ends in 30 days
+      paymentCycle: "MONTHLY",
+      rentAmount: 1600,
+      depositAmount: 3200,
+      isAutoRenew: true,
+      gracePeriodDays: 3,
+      autoRenewalNoticeDays: 5,
+      status: "ACTIVE",
+      paidAt: daysFromNow(0),
+      paymentMethod: "BANK_TRANSFER",
+      paymentStatus: "COMPLETED",
+      renewedFromId: leaseA.id,
+    },
+  })
+  console.log("✓ Created lease: ENDED + ACTIVE renewal chain (Jane Smith / Unit 102)")
+
+  // Test: auto-renewal toggle DISABLED — can't enable because Bob Wilson has a DRAFT lease
+  // on the same unit (Villa 1) starting after this lease ends
+  // --- Case 6: ACTIVE lease with future lease blocking auto-renewal ---
+  await prisma.leaseAgreement.create({
+    data: {
+      tenantId: janeSmith.id,
+      unitId: villa1.id,
+      organizationId: org.id,
+      startDate: daysFromNow(-10),   // started 10 days ago
+      endDate: daysFromNow(20),      // ends in 20 days
+      paymentCycle: "MONTHLY",
+      rentAmount: 3500,
+      isAutoRenew: false,
+      status: "ACTIVE",
+      paidAt: daysFromNow(-10),
+      paymentMethod: "CASH",
+      paymentStatus: "COMPLETED",
+    },
+  })
+  await prisma.leaseAgreement.create({
+    data: {
+      tenantId: bobWilson.id,
+      unitId: villa1.id,
+      organizationId: org.id,
+      startDate: daysFromNow(35),    // starts 35 days from now (after case 6a ends)
+      endDate: daysFromNow(65),      // ends 65 days from now
+      paymentCycle: "MONTHLY",
+      rentAmount: 3500,
+      status: "DRAFT",
+    },
+  })
+  console.log("✓ Created lease: ACTIVE + future DRAFT on same unit (Villa 1)")
+
+  // Update tenant statuses to match lease states
+  await prisma.tenant.update({ where: { id: johnDoe.id }, data: { status: "ACTIVE" } })
+  await prisma.tenant.update({ where: { id: janeSmith.id }, data: { status: "ACTIVE" } })
+  await prisma.tenant.update({ where: { id: bobWilson.id }, data: { status: "ACTIVE" } })
+  console.log("✓ Updated tenant statuses")
 
   console.log("✓ Linked features to tiers")
 

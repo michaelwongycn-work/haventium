@@ -47,6 +47,8 @@ export async function GET(
             property: true,
           },
         },
+        renewedFrom: { select: { id: true, startDate: true, endDate: true, status: true } },
+        renewedTo: { select: { id: true, startDate: true, endDate: true, status: true } },
       },
     })
 
@@ -131,6 +133,79 @@ export async function PATCH(
         { error: "Lease not found" },
         { status: 404 }
       )
+    }
+
+    // Block general field edits for non-DRAFT leases (only allow auto-renewal, payment, status, and deposit status changes)
+    if (existingLease.status !== "DRAFT") {
+      const draftOnlyFields = ["startDate", "endDate", "paymentCycle", "rentAmount", "depositAmount"] as const
+      const attemptedDraftFields = draftOnlyFields.filter((f) => validatedData[f] !== undefined)
+      if (attemptedDraftFields.length > 0) {
+        return NextResponse.json(
+          { error: "Cannot edit lease details after it has been activated. Only auto-renewal settings can be changed." },
+          { status: 400 }
+        )
+      }
+    }
+
+    // Deposit status can only be changed for ENDED leases that haven't been renewed and are still HELD
+    if (validatedData.depositStatus !== undefined) {
+      if (existingLease.status !== "ENDED") {
+        return NextResponse.json(
+          { error: "Deposit status can only be changed for ended leases" },
+          { status: 400 }
+        )
+      }
+
+      const renewedTo = await prisma.leaseAgreement.findFirst({
+        where: { renewedFromId: id },
+      })
+      if (renewedTo) {
+        return NextResponse.json(
+          { error: "Deposit status cannot be changed for renewed leases" },
+          { status: 400 }
+        )
+      }
+
+      if (existingLease.depositStatus && existingLease.depositStatus !== "HELD") {
+        return NextResponse.json(
+          { error: "Deposit status can only be changed while it is still held" },
+          { status: 400 }
+        )
+      }
+    }
+
+    // Block any auto-renewal changes after notice period deadline
+    if (existingLease.isAutoRenew && existingLease.status === "ACTIVE" && existingLease.autoRenewalNoticeDays) {
+      const deadline = new Date(existingLease.endDate)
+      deadline.setDate(deadline.getDate() - existingLease.autoRenewalNoticeDays)
+      if (new Date() >= deadline) {
+        const autoRenewFields = ["isAutoRenew", "gracePeriodDays", "autoRenewalNoticeDays"] as const
+        const attemptedFields = autoRenewFields.filter((f) => validatedData[f] !== undefined)
+        if (attemptedFields.length > 0) {
+          return NextResponse.json(
+            { error: "Cannot modify auto-renewal settings after the notice period deadline has passed" },
+            { status: 400 }
+          )
+        }
+      }
+    }
+
+    // Block enabling auto-renewal if another renter exists in the next cycle
+    if (validatedData.isAutoRenew === true && !existingLease.isAutoRenew && existingLease.status === "ACTIVE") {
+      const futureLeaseOnUnit = await prisma.leaseAgreement.findFirst({
+        where: {
+          unitId: existingLease.unitId,
+          id: { not: id },
+          status: { in: ["DRAFT", "ACTIVE"] },
+          startDate: { gt: existingLease.endDate },
+        },
+      })
+      if (futureLeaseOnUnit) {
+        return NextResponse.json(
+          { error: "Cannot enable auto-renewal because another lease is scheduled for this unit after the current period" },
+          { status: 400 }
+        )
+      }
     }
 
     // Validate date changes
@@ -323,7 +398,7 @@ export async function PATCH(
     })
 
     // Log activity
-    let activityType: string = "LEASE_UPDATED"
+    let activityType: "LEASE_UPDATED" | "LEASE_TERMINATED" = "LEASE_UPDATED"
     let activityDescription = `Updated lease agreement for ${lease.tenant.fullName} at ${lease.unit.property.name} - ${lease.unit.name}`
 
     if (validatedData.status && validatedData.status !== existingLease.status) {

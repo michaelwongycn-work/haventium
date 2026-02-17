@@ -28,6 +28,16 @@ import {
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Switch } from "@/components/ui/switch"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   ArrowLeft01Icon,
@@ -137,6 +147,18 @@ type Lease = {
       name: string
     }
   }
+  renewedFrom: {
+    id: string
+    startDate: string
+    endDate: string
+    status: string
+  } | null
+  renewedTo: {
+    id: string
+    startDate: string
+    endDate: string
+    status: string
+  } | null
   activities: Array<{
     id: string
     type: string
@@ -162,6 +184,16 @@ export default function LeaseDetailPage({
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false)
   const [paymentDate, setPaymentDate] = useState("")
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH")
+  const [isAutoRenewEditing, setIsAutoRenewEditing] = useState(false)
+  const [autoRenewForm, setAutoRenewForm] = useState({
+    isAutoRenew: false,
+    gracePeriodDays: 3,
+    autoRenewalNoticeDays: 5,
+  })
+  const [isDepositEditing, setIsDepositEditing] = useState(false)
+  const [isNoticePeriodAlertOpen, setIsNoticePeriodAlertOpen] = useState(false)
+  const [isFutureLeaseAlertOpen, setIsFutureLeaseAlertOpen] = useState(false)
+  const [depositStatusForm, setDepositStatusForm] = useState<DepositStatus>("HELD")
 
   useEffect(() => {
     Promise.resolve(params).then((resolvedParams) => {
@@ -227,6 +259,34 @@ export default function LeaseDetailPage({
     return endDate
   }
 
+  const isNoticePeriodPassed = () => {
+    if (!lease || !lease.isAutoRenew || !lease.autoRenewalNoticeDays || lease.status !== "ACTIVE") return false
+    const deadline = new Date(lease.endDate)
+    deadline.setDate(deadline.getDate() - lease.autoRenewalNoticeDays)
+    return new Date() >= deadline
+  }
+
+  const [hasFutureLeaseOnUnit, setHasFutureLeaseOnUnit] = useState(false)
+
+  useEffect(() => {
+    if (!lease || lease.status !== "ACTIVE") {
+      setHasFutureLeaseOnUnit(false)
+      return
+    }
+    const checkFutureLeases = async () => {
+      try {
+        const response = await fetch(`/api/leases/${leaseId}/check-future-lease`)
+        if (response.ok) {
+          const data = await response.json()
+          setHasFutureLeaseOnUnit(data.hasFutureLease)
+        }
+      } catch {
+        // ignore
+      }
+    }
+    checkFutureLeases()
+  }, [lease, leaseId])
+
   const handleOpenPaymentDialog = () => {
     setPaymentDate(new Date().toISOString().split("T")[0])
     setPaymentMethod("CASH")
@@ -271,6 +331,88 @@ export default function LeaseDetailPage({
       setIsPaymentDialogOpen(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to record payment")
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  const handleEditAutoRenewal = () => {
+    if (!lease) return
+    if (lease.isAutoRenew && isNoticePeriodPassed()) {
+      setIsNoticePeriodAlertOpen(true)
+      return
+    }
+    if (!lease.isAutoRenew && hasFutureLeaseOnUnit) {
+      setIsFutureLeaseAlertOpen(true)
+      return
+    }
+    setAutoRenewForm({
+      isAutoRenew: lease.isAutoRenew,
+      gracePeriodDays: lease.gracePeriodDays || 3,
+      autoRenewalNoticeDays: lease.autoRenewalNoticeDays || 5,
+    })
+    setIsAutoRenewEditing(true)
+  }
+
+  const handleSaveAutoRenewal = async () => {
+    if (!lease) return
+    setIsUpdating(true)
+    setError(null)
+
+    try {
+      const response = await fetch(`/api/leases/${leaseId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          isAutoRenew: autoRenewForm.isAutoRenew,
+          gracePeriodDays: autoRenewForm.isAutoRenew ? autoRenewForm.gracePeriodDays : null,
+          autoRenewalNoticeDays: autoRenewForm.isAutoRenew ? autoRenewForm.autoRenewalNoticeDays : null,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to update auto-renewal")
+      }
+
+      await fetchLease()
+      setIsAutoRenewEditing(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update auto-renewal")
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  const handleEditDepositStatus = () => {
+    if (!lease) return
+    setDepositStatusForm(lease.depositStatus || "HELD")
+    setIsDepositEditing(true)
+  }
+
+  const handleSaveDepositStatus = async () => {
+    if (!lease) return
+    setIsUpdating(true)
+    setError(null)
+
+    try {
+      const response = await fetch(`/api/leases/${leaseId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ depositStatus: depositStatusForm }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to update deposit status")
+      }
+
+      await fetchLease()
+      setIsDepositEditing(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update deposit status")
     } finally {
       setIsUpdating(false)
     }
@@ -481,11 +623,44 @@ export default function LeaseDetailPage({
 
           {/* Lease Period & Renewal Information */}
           <Card>
-            <CardHeader>
-              <CardTitle>Lease Period & Renewal</CardTitle>
-              <CardDescription>
-                Lease duration and auto-renewal settings
-              </CardDescription>
+            <CardHeader className="flex flex-row items-start justify-between">
+              <div>
+                <CardTitle>Lease Period & Renewal</CardTitle>
+                <CardDescription>
+                  Lease duration and auto-renewal settings
+                </CardDescription>
+              </div>
+              {lease?.status !== "ENDED" && (
+                <div>
+                  {isAutoRenewEditing ? (
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={handleSaveAutoRenewal}
+                        disabled={isUpdating}
+                      >
+                        {isUpdating ? "Saving..." : "Save"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setIsAutoRenewEditing(false)}
+                        disabled={isUpdating}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleEditAutoRenewal}
+                    >
+                      Edit Auto-Renewal
+                    </Button>
+                  )}
+                </div>
+              )}
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -504,43 +679,173 @@ export default function LeaseDetailPage({
                 {/* Is Renewable */}
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Auto-Renewal</p>
-                  <p className="font-medium">{lease?.isAutoRenew ? "Yes" : "No"}</p>
+                  {isAutoRenewEditing ? (
+                    <div>
+                      <Switch
+                        checked={autoRenewForm.isAutoRenew}
+                        onCheckedChange={(checked) =>
+                          setAutoRenewForm({ ...autoRenewForm, isAutoRenew: checked })
+                        }
+                        disabled={
+                          isUpdating ||
+                          (lease?.isAutoRenew && isNoticePeriodPassed()) ||
+                          (!lease?.isAutoRenew && hasFutureLeaseOnUnit)
+                        }
+                      />
+                      {lease?.isAutoRenew && isNoticePeriodPassed() && (
+                        <p className="text-xs text-destructive mt-1">Notice period has passed</p>
+                      )}
+                      {!lease?.isAutoRenew && hasFutureLeaseOnUnit && (
+                        <p className="text-xs text-destructive mt-1">Unit has a future lease</p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="font-medium">{lease?.isAutoRenew ? "Yes" : "No"}</p>
+                  )}
                 </div>
 
                 {/* Grace Period */}
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Grace Period</p>
-                  <p className="font-medium">
-                    {lease?.isAutoRenew && getLastPaymentDate()
-                      ? `${formatDateForDisplay(getLastPaymentDate()?.toISOString() || null)} | ${lease.gracePeriodDays} days`
-                      : `${lease?.gracePeriodDays || 0} days`
-                    }
-                  </p>
+                  {isAutoRenewEditing ? (
+                    autoRenewForm.isAutoRenew ? (
+                      <Input
+                        type="number"
+                        min="0"
+                        value={autoRenewForm.gracePeriodDays}
+                        onChange={(e) =>
+                          setAutoRenewForm({
+                            ...autoRenewForm,
+                            gracePeriodDays: parseInt(e.target.value) || 0,
+                          })
+                        }
+                        disabled={isUpdating}
+                        className="h-8"
+                      />
+                    ) : (
+                      <p className="font-medium text-muted-foreground">—</p>
+                    )
+                  ) : (
+                    <p className="font-medium">
+                      {lease?.isAutoRenew && getLastPaymentDate()
+                        ? `${formatDateForDisplay(getLastPaymentDate()?.toISOString() || null)} | ${lease.gracePeriodDays} days`
+                        : lease?.gracePeriodDays
+                          ? `${lease.gracePeriodDays} days`
+                          : "—"
+                      }
+                    </p>
+                  )}
                 </div>
 
                 {/* Notice Period */}
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Notice Period</p>
-                  <p className="font-medium">
-                    {lease?.isAutoRenew && getLastCancellationDate()
-                      ? `${formatDateForDisplay(getLastCancellationDate()?.toISOString() || null)} | ${lease.autoRenewalNoticeDays} days`
-                      : lease?.autoRenewalNoticeDays
-                        ? `${lease.autoRenewalNoticeDays} days`
-                        : "—"
-                    }
-                  </p>
+                  {isAutoRenewEditing ? (
+                    autoRenewForm.isAutoRenew ? (
+                      <Input
+                        type="number"
+                        min="1"
+                        value={autoRenewForm.autoRenewalNoticeDays}
+                        onChange={(e) =>
+                          setAutoRenewForm({
+                            ...autoRenewForm,
+                            autoRenewalNoticeDays: parseInt(e.target.value) || 1,
+                          })
+                        }
+                        disabled={isUpdating}
+                        className="h-8"
+                      />
+                    ) : (
+                      <p className="font-medium text-muted-foreground">—</p>
+                    )
+                  ) : (
+                    <p className="font-medium">
+                      {lease?.isAutoRenew && getLastCancellationDate()
+                        ? `${formatDateForDisplay(getLastCancellationDate()?.toISOString() || null)} | ${lease.autoRenewalNoticeDays} days`
+                        : lease?.autoRenewalNoticeDays
+                          ? `${lease.autoRenewalNoticeDays} days`
+                          : "—"
+                      }
+                    </p>
+                  )}
                 </div>
               </div>
+
+              {/* Renewal Chain */}
+              {(lease?.renewedFrom || lease?.renewedTo) && (
+                <div className="border-t pt-4 mt-4">
+                  <p className="text-xs text-muted-foreground mb-2">Renewal Chain</p>
+                  <div className="flex flex-col gap-2">
+                    {lease.renewedFrom && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="text-muted-foreground">Previous lease:</span>
+                        <Link
+                          href={`/leases/${lease.renewedFrom.id}`}
+                          className="font-medium hover:underline"
+                        >
+                          {formatDateForDisplay(lease.renewedFrom.startDate)} – {formatDateForDisplay(lease.renewedFrom.endDate)}
+                        </Link>
+                        <span className="text-xs text-muted-foreground capitalize">({lease.renewedFrom.status.toLowerCase()})</span>
+                      </div>
+                    )}
+                    {lease.renewedTo && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="text-muted-foreground">Next lease:</span>
+                        <Link
+                          href={`/leases/${lease.renewedTo.id}`}
+                          className="font-medium hover:underline"
+                        >
+                          {formatDateForDisplay(lease.renewedTo.startDate)} – {formatDateForDisplay(lease.renewedTo.endDate)}
+                        </Link>
+                        <span className="text-xs text-muted-foreground capitalize">({lease.renewedTo.status.toLowerCase()})</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
           {/* Deposit & Payment Information */}
           <Card>
-            <CardHeader>
-              <CardTitle>Deposit & Payment Information</CardTitle>
-              <CardDescription>
-                Security deposit and payment status
-              </CardDescription>
+            <CardHeader className="flex flex-row items-start justify-between">
+              <div>
+                <CardTitle>Deposit & Payment Information</CardTitle>
+                <CardDescription>
+                  Security deposit and payment status
+                </CardDescription>
+              </div>
+              {lease?.status === "ENDED" && !lease?.renewedTo && lease?.depositAmount && (!lease.depositStatus || lease.depositStatus === "HELD") && (
+                <div>
+                  {isDepositEditing ? (
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={handleSaveDepositStatus}
+                        disabled={isUpdating}
+                      >
+                        {isUpdating ? "Saving..." : "Save"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setIsDepositEditing(false)}
+                        disabled={isUpdating}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleEditDepositStatus}
+                    >
+                      Edit Deposit Status
+                    </Button>
+                  )}
+                </div>
+              )}
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -553,9 +858,26 @@ export default function LeaseDetailPage({
                 {/* Deposit Status */}
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Deposit Status</p>
-                  <p className="font-medium capitalize">
-                    {lease?.depositAmount ? (lease.depositStatus?.toLowerCase() || "held") : "—"}
-                  </p>
+                  {isDepositEditing ? (
+                    <Select
+                      value={depositStatusForm}
+                      onValueChange={(value) => setDepositStatusForm(value as DepositStatus)}
+                      disabled={isUpdating}
+                    >
+                      <SelectTrigger className="h-8">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="HELD">Held</SelectItem>
+                        <SelectItem value="RETURNED">Returned</SelectItem>
+                        <SelectItem value="FORFEITED">Forfeited</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="font-medium capitalize">
+                      {lease?.depositAmount ? (lease.depositStatus?.toLowerCase() || "held") : "—"}
+                    </p>
+                  )}
                 </div>
 
                 {/* Payment Status */}
@@ -710,6 +1032,40 @@ export default function LeaseDetailPage({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Notice Period Passed Alert */}
+      <AlertDialog open={isNoticePeriodAlertOpen} onOpenChange={setIsNoticePeriodAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cannot Modify Auto-Renewal</AlertDialogTitle>
+            <AlertDialogDescription>
+              The notice period has already passed. Auto-renewal can no longer be disabled for this lease.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setIsNoticePeriodAlertOpen(false)}>
+              Understood
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Future Lease Alert */}
+      <AlertDialog open={isFutureLeaseAlertOpen} onOpenChange={setIsFutureLeaseAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cannot Enable Auto-Renewal</AlertDialogTitle>
+            <AlertDialogDescription>
+              This unit already has a future lease scheduled. Auto-renewal cannot be enabled while another lease exists for this unit.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setIsFutureLeaseAlertOpen(false)}>
+              Understood
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

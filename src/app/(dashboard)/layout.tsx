@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import { UserNav } from "@/components/user-nav"
+import { NavLinks } from "./nav-links"
 
 export default async function DashboardLayout({
   children,
@@ -27,30 +28,7 @@ export default async function DashboardLayout({
           </Link>
 
           <nav className="flex flex-1 items-center gap-4 ml-8">
-            <Link
-              href="/dashboard"
-              className="text-sm font-medium transition-colors hover:text-primary"
-            >
-              Dashboard
-            </Link>
-            <Link
-              href="/properties"
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
-            >
-              Properties
-            </Link>
-            <Link
-              href="/tenants"
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
-            >
-              Tenants
-            </Link>
-            <Link
-              href="/leases"
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
-            >
-              Leases
-            </Link>
+            <NavLinks />
           </nav>
 
           <div className="flex items-center gap-4">

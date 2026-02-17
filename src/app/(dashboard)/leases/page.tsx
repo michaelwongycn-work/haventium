@@ -703,27 +703,27 @@ export default function LeasesPage() {
                     <TableCell className="capitalize">
                       {lease.status.toLowerCase()}
                     </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleOpenDialog(lease)}
-                          disabled={lease.status === "ENDED"}
-                        >
-                          <HugeiconsIcon icon={PencilEdit02Icon} strokeWidth={2} className="h-4 w-4" />
-                          <span className="sr-only">Edit</span>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleOpenDeleteDialog(lease)}
-                          disabled={lease.status !== "DRAFT"}
-                        >
-                          <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} className="h-4 w-4" />
-                          <span className="sr-only">Delete</span>
-                        </Button>
-                      </div>
+                    <TableCell className="text-right py-0">
+                      {lease.status === "DRAFT" && (
+                        <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleOpenDialog(lease)}
+                          >
+                            <HugeiconsIcon icon={PencilEdit02Icon} strokeWidth={2} className="h-4 w-4" />
+                            <span className="sr-only">Edit</span>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleOpenDeleteDialog(lease)}
+                          >
+                            <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} className="h-4 w-4" />
+                            <span className="sr-only">Delete</span>
+                          </Button>
+                        </div>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
