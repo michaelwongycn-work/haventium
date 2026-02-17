@@ -51,6 +51,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { BulkImportDialog } from "@/components/bulk-import-dialog";
 import { downloadExcelFile, downloadExcelTemplate } from "@/lib/excel-utils";
+import { formatDate } from "@/lib/format";
 
 type Property = {
   id: string;
@@ -423,7 +424,7 @@ export default function PropertiesClient({ roles }: { roles: UserRole[] }) {
                     </TableCell>
                     <TableCell>{property._count.units} units</TableCell>
                     <TableCell>
-                      {new Date(property.createdAt).toLocaleDateString()}
+                      {formatDate(property.createdAt)}
                     </TableCell>
                     <TableCell className="text-right">
                       <div

@@ -28,6 +28,7 @@ import {
   PlusSignIcon,
 } from "@hugeicons/core-free-icons";
 import { DocumentUpload } from "./document-upload";
+import { formatDate } from "@/lib/format";
 
 type Document = {
   id: string;
@@ -157,7 +158,7 @@ export function DocumentList({ entityType, entityId }: DocumentListProps) {
                     {formatFileSize(doc.fileSize)}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {new Date(doc.createdAt).toLocaleDateString()}
+                    {formatDate(doc.createdAt)}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">

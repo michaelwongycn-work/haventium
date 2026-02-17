@@ -20,6 +20,7 @@ import {
   Home01Icon,
   Layers01Icon,
 } from "@hugeicons/core-free-icons";
+import { formatDate } from "@/lib/format";
 
 type MaintenanceRequest = {
   id: string;
@@ -151,7 +152,7 @@ export default function MaintenanceRequestDetailClient({ id }: { id: string }) {
             <div>
               <CardTitle className="text-2xl">{request.title}</CardTitle>
               <CardDescription className="mt-2">
-                Created {new Date(request.createdAt).toLocaleDateString()}
+                Created {formatDate(request.createdAt)}
               </CardDescription>
             </div>
             <div className="flex gap-2">
@@ -244,7 +245,7 @@ export default function MaintenanceRequestDetailClient({ id }: { id: string }) {
             </CardHeader>
             <CardContent>
               <p className="font-medium">
-                {new Date(request.completedAt).toLocaleDateString()}
+                {formatDate(request.completedAt)}
               </p>
             </CardContent>
           </Card>

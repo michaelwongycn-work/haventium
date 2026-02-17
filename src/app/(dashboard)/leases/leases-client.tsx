@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { formatDate, formatCurrency as formatCurrencyUtil } from "@/lib/format";
 import {
   Card,
   CardContent,
@@ -587,14 +588,6 @@ export default function LeasesClient() {
     );
   };
 
-  const formatCurrency = (value: string | number) => {
-    const num = typeof value === "string" ? parseFloat(value) : value;
-    if (isNaN(num)) return "—";
-    return new Intl.NumberFormat("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(num);
-  };
 
   const formatDateForDisplay = (dateString: string) => {
     if (!dateString) return "";
@@ -818,12 +811,12 @@ export default function LeasesClient() {
                       {lease.unit.property.name} - {lease.unit.name}
                     </TableCell>
                     <TableCell>
-                      {new Date(lease.startDate).toLocaleDateString()}
+                      {formatDate(lease.startDate)}
                     </TableCell>
                     <TableCell>
-                      {new Date(lease.endDate).toLocaleDateString()}
+                      {formatDate(lease.endDate)}
                     </TableCell>
-                    <TableCell>{formatCurrency(lease.rentAmount)}</TableCell>
+                    <TableCell>{formatCurrencyUtil(lease.rentAmount)}</TableCell>
                     <TableCell className="capitalize">
                       {lease.paymentCycle.toLowerCase()}
                     </TableCell>
@@ -1228,7 +1221,7 @@ export default function LeasesClient() {
                     Rent Amount
                   </p>
                   <p className="text-base font-semibold">
-                    {formatCurrency(createdLease.rentAmount)}
+                    {formatCurrencyUtil(createdLease.rentAmount)}
                   </p>
                 </div>
               </div>

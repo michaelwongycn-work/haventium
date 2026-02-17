@@ -56,6 +56,7 @@ import {
   Search01Icon,
   ToolsIcon,
 } from "@hugeicons/core-free-icons";
+import { formatDate } from "@/lib/format";
 
 type MaintenanceRequestStatus = "OPEN" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
 type MaintenanceRequestPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
@@ -545,7 +546,7 @@ export default function MaintenanceRequestsClient() {
                     <TableCell>{getPriorityBadge(request.priority)}</TableCell>
                     <TableCell>{getStatusBadge(request.status)}</TableCell>
                     <TableCell>
-                      {new Date(request.createdAt).toLocaleDateString()}
+                      {formatDate(request.createdAt)}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">

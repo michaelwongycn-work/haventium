@@ -58,6 +58,7 @@ import {
   Notification01Icon,
   MoreHorizontalIcon,
 } from "@hugeicons/core-free-icons";
+import { formatCurrency } from "@/lib/format";
 
 const ACTIVITY_ICON_MAP: Record<string, typeof File01Icon> = {
   LEASE_CREATED: File01Icon,
@@ -391,15 +392,6 @@ export default function PropertyDetailClient({
     return `${day}/${month}/${year}`;
   };
 
-  const formatCurrency = (value: string | number | null) => {
-    if (value === null || value === "") return "—";
-    const num = typeof value === "string" ? parseFloat(value) : value;
-    if (isNaN(num)) return "—";
-    return new Intl.NumberFormat("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(num);
-  };
 
   if (!property && !isLoading) {
     return (

@@ -28,6 +28,7 @@ import {
   Notification01Icon,
   MoreHorizontalIcon,
 } from "@hugeicons/core-free-icons";
+import { formatDate, formatCurrency } from "@/lib/format";
 
 const ACTIVITY_ICON_MAP: Record<string, typeof File01Icon> = {
   LEASE_CREATED: File01Icon,
@@ -178,18 +179,7 @@ export default function TenantDetailClient({
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
-  };
-
-  const formatCurrency = (value: string | number) => {
-    const num = typeof value === "string" ? parseFloat(value) : value;
-    return new Intl.NumberFormat("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(num);
+    return formatDate(dateString);
   };
 
   if (!tenant && !isLoading) {
@@ -386,8 +376,8 @@ export default function TenantDetailClient({
                           {lease.unit.property.name} - {lease.unit.name}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          {new Date(lease.startDate).toLocaleDateString()} -{" "}
-                          {new Date(lease.endDate).toLocaleDateString()}
+                          {formatDate(lease.startDate)} -{" "}
+                          {formatDate(lease.endDate)}
                         </p>
                       </div>
                       <div className="text-right">

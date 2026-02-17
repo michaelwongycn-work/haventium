@@ -52,6 +52,7 @@ import {
   Notification01Icon,
   MoreHorizontalIcon,
 } from "@hugeicons/core-free-icons";
+import { formatDate, formatCurrency } from "@/lib/format";
 
 const ACTIVITY_ICON_MAP: Record<string, typeof File01Icon> = {
   LEASE_CREATED: File01Icon,
@@ -232,15 +233,6 @@ export default function LeaseDetailClient({
     }
   };
 
-  const formatCurrency = (value: string | number | null | undefined) => {
-    if (value === null || value === undefined || value === "") return "—";
-    const num = typeof value === "string" ? parseFloat(value) : value;
-    if (isNaN(num)) return "—";
-    return new Intl.NumberFormat("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(num);
-  };
 
   const getDaysRemaining = () => {
     if (!lease) return 0;
@@ -441,14 +433,6 @@ export default function LeaseDetailClient({
     }
   };
 
-  const formatDateForDisplay = (dateString: string | null) => {
-    if (!dateString) return "";
-    const date = new Date(dateString);
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
-  };
 
   const formatPaymentMethod = (method: PaymentMethod | null) => {
     if (!method) return "—";
@@ -474,7 +458,7 @@ export default function LeaseDetailClient({
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
-    return formatDateForDisplay(dateString);
+    return formatDate(dateString);
   };
 
   if (!lease && !isLoading) {
@@ -712,7 +696,7 @@ export default function LeaseDetailClient({
                     Start Date
                   </p>
                   <p className="font-medium">
-                    {formatDateForDisplay(lease?.startDate || null)}
+                    {lease?.startDate ? formatDate(lease.startDate) : "—"}
                   </p>
                 </div>
 
@@ -720,7 +704,7 @@ export default function LeaseDetailClient({
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">End Date</p>
                   <p className="font-medium">
-                    {formatDateForDisplay(lease?.endDate || null)}
+                    {lease?.endDate ? formatDate(lease.endDate) : "—"}
                   </p>
                 </div>
 
@@ -788,11 +772,14 @@ export default function LeaseDetailClient({
                     )
                   ) : (
                     <p className="font-medium">
-                      {lease?.isAutoRenew && getLastPaymentDate()
-                        ? `${formatDateForDisplay(getLastPaymentDate()?.toISOString() || null)} | ${lease.gracePeriodDays} days`
-                        : lease?.gracePeriodDays
-                          ? `${lease.gracePeriodDays} days`
-                          : "—"}
+                      {(() => {
+                        const lastPaymentDate = getLastPaymentDate();
+                        return lease?.isAutoRenew && lastPaymentDate
+                          ? `${formatDate(lastPaymentDate.toISOString())} | ${lease.gracePeriodDays} days`
+                          : lease?.gracePeriodDays
+                            ? `${lease.gracePeriodDays} days`
+                            : "—";
+                      })()}
                     </p>
                   )}
                 </div>
@@ -823,11 +810,14 @@ export default function LeaseDetailClient({
                     )
                   ) : (
                     <p className="font-medium">
-                      {lease?.isAutoRenew && getLastCancellationDate()
-                        ? `${formatDateForDisplay(getLastCancellationDate()?.toISOString() || null)} | ${lease.autoRenewalNoticeDays} days`
-                        : lease?.autoRenewalNoticeDays
-                          ? `${lease.autoRenewalNoticeDays} days`
-                          : "—"}
+                      {(() => {
+                        const lastCancellationDate = getLastCancellationDate();
+                        return lease?.isAutoRenew && lastCancellationDate
+                          ? `${formatDate(lastCancellationDate.toISOString())} | ${lease.autoRenewalNoticeDays} days`
+                          : lease?.autoRenewalNoticeDays
+                            ? `${lease.autoRenewalNoticeDays} days`
+                            : "—";
+                      })()}
                     </p>
                   )}
                 </div>
@@ -849,8 +839,8 @@ export default function LeaseDetailClient({
                           href={`/leases/${lease.renewedFrom.id}`}
                           className="font-medium hover:underline"
                         >
-                          {formatDateForDisplay(lease.renewedFrom.startDate)} –{" "}
-                          {formatDateForDisplay(lease.renewedFrom.endDate)}
+                          {formatDate(lease.renewedFrom.startDate)} –{" "}
+                          {formatDate(lease.renewedFrom.endDate)}
                         </Link>
                         <span className="text-xs text-muted-foreground capitalize">
                           ({lease.renewedFrom.status.toLowerCase()})
@@ -866,8 +856,8 @@ export default function LeaseDetailClient({
                           href={`/leases/${lease.renewedTo.id}`}
                           className="font-medium hover:underline"
                         >
-                          {formatDateForDisplay(lease.renewedTo.startDate)} –{" "}
-                          {formatDateForDisplay(lease.renewedTo.endDate)}
+                          {formatDate(lease.renewedTo.startDate)} –{" "}
+                          {formatDate(lease.renewedTo.endDate)}
                         </Link>
                         <span className="text-xs text-muted-foreground capitalize">
                           ({lease.renewedTo.status.toLowerCase()})
@@ -985,7 +975,7 @@ export default function LeaseDetailClient({
                     Payment Date
                   </p>
                   <p className="font-medium">
-                    {lease?.paidAt ? formatDateForDisplay(lease.paidAt) : "—"}
+                    {lease?.paidAt ? formatDate(lease.paidAt) : "—"}
                   </p>
                 </div>
 

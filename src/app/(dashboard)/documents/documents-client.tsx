@@ -55,6 +55,7 @@ import {
   ViewIcon,
   File01Icon,
 } from "@hugeicons/core-free-icons";
+import { formatDate } from "@/lib/format";
 
 type Document = {
   id: string;
@@ -420,7 +421,7 @@ export default function DocumentsClient() {
                         </div>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {new Date(doc.createdAt).toLocaleDateString()}
+                        {formatDate(doc.createdAt)}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">

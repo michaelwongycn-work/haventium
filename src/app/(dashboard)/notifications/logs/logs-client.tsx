@@ -125,8 +125,8 @@ export default function NotificationLogsClient() {
       if (!response.ok) throw new Error("Failed to fetch logs");
 
       const data: PaginatedResponse = await response.json();
-      setLogs(data.logs);
-      setPagination(data.pagination);
+      setLogs(data.logs || []);
+      setPagination(data.pagination || { page: 1, limit: 50, total: 0, totalPages: 0 });
     } catch (err) {
       setError("Failed to load notification logs");
     } finally {

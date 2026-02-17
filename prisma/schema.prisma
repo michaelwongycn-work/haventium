@@ -23,6 +23,11 @@ model Organization {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Format preferences
+  dateFormat     String @default("dd/MM/yyyy") // Options: "dd/MM/yyyy", "MM/dd/yyyy", "yyyy-MM-dd"
+  currency       String @default("USD") // ISO currency code
+  currencySymbol String @default("$")
+
   users                 User[]
   properties            Property[]
   tenants               Tenant[]

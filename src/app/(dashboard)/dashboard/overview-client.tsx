@@ -12,7 +12,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import Link from "next/link";
-import { formatDateShort } from "@/lib/format";
+import { formatDateShort, formatCurrency } from "@/lib/format";
 
 type Lease = {
   id: string;
@@ -55,14 +55,6 @@ type OverviewData = {
   earliestToExpire: Lease[];
 };
 
-function formatCurrency(value: number | null) {
-  if (value === null || value === undefined) return "$0.00";
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-  }).format(value);
-}
 
 const MONTH_NAMES = [
   "January",

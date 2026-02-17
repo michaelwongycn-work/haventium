@@ -59,6 +59,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { BulkImportDialog } from "@/components/bulk-import-dialog";
 import { downloadExcelFile, downloadExcelTemplate } from "@/lib/excel-utils";
+import { formatDate } from "@/lib/format";
 
 type TenantStatus = "LEAD" | "BOOKED" | "ACTIVE" | "EXPIRED";
 
@@ -318,7 +319,7 @@ export default function TenantsClient() {
       "Prefer Email": tenant.preferEmail,
       "Prefer WhatsApp": tenant.preferWhatsapp,
       "Prefer Telegram": tenant.preferTelegram,
-      "Created At": new Date(tenant.createdAt).toLocaleDateString(),
+      "Created At": formatDate(tenant.createdAt),
     }));
 
     const today = new Date().toISOString().split("T")[0];
@@ -536,7 +537,7 @@ export default function TenantsClient() {
                       {tenant.status.toLowerCase()}
                     </TableCell>
                     <TableCell>
-                      {new Date(tenant.createdAt).toLocaleDateString()}
+                      {formatDate(tenant.createdAt)}
                     </TableCell>
                     <TableCell className="text-right">
                       <div
