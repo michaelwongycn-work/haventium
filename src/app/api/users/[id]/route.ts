@@ -171,8 +171,8 @@ export async function DELETE(
     }
 
     // Verify current user's password
-    const body = await request.json().catch(() => ({}));
-    const currentPassword = (body as any)?.currentPassword;
+    const body = await request.json().catch(() => ({})) as { currentPassword?: string; [key: string]: unknown };
+    const currentPassword = body.currentPassword || "";
 
     const passwordCheck = await verifyCurrentUserPassword(
       session,

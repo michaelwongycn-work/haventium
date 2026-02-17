@@ -208,7 +208,7 @@ export function getInitials(
  * Check if a value is empty (null, undefined, empty string, empty array, empty object)
  * @param value - The value to check
  */
-export function isEmpty(value: any): boolean {
+export function isEmpty(value: unknown): boolean {
   if (value === null || value === undefined) return true;
   if (typeof value === "string") return value.trim().length === 0;
   if (Array.isArray(value)) return value.length === 0;

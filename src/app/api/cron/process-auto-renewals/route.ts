@@ -50,71 +50,82 @@ async function createRenewalLease(
     originalLease.paymentCycle,
   );
 
-  // Validate unit availability before creating renewal lease
-  const availabilityCheck = await validateLeaseAvailability({
-    unitId: originalLease.unitId,
-    startDate: startDate,
-    endDate: endDate,
-    excludeLeaseId: originalLease.id,
-  });
+  // Perform all operations atomically in a transaction to prevent race conditions
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      // Validate unit availability INSIDE transaction with transaction client
+      const availabilityCheck = await validateLeaseAvailability(
+        {
+          unitId: originalLease.unitId,
+          startDate: startDate,
+          endDate: endDate,
+          excludeLeaseId: originalLease.id,
+        },
+        tx
+      );
 
-  if (!availabilityCheck.valid) {
+      if (!availabilityCheck.valid) {
+        // Throw error to rollback transaction
+        throw new Error("Unit not available for renewal");
+      }
+
+      const newLease = await tx.leaseAgreement.create({
+        data: {
+          tenantId: originalLease.tenantId,
+          unitId: originalLease.unitId,
+          organizationId: originalLease.organizationId,
+          startDate,
+          endDate,
+          paymentCycle: originalLease.paymentCycle,
+          rentAmount: originalLease.rentAmount,
+          gracePeriodDays: originalLease.gracePeriodDays,
+          isAutoRenew: originalLease.isAutoRenew,
+          autoRenewalNoticeDays: originalLease.autoRenewalNoticeDays,
+          depositAmount: originalLease.depositAmount,
+          status: "DRAFT",
+          renewedFromId: originalLease.id,
+        },
+      });
+
+      await tx.leaseAgreement.update({
+        where: { id: originalLease.id },
+        data: { status: "ENDED" },
+      });
+
+      // Log activity inside transaction
+      await tx.activity.create({
+        data: {
+          type: "LEASE_CREATED",
+          description: `Auto-renewed lease for ${originalLease.tenant.fullName} at ${originalLease.unit.property.name} - ${originalLease.unit.name}`,
+          organizationId: originalLease.organizationId,
+          tenantId: originalLease.tenantId,
+          propertyId: originalLease.unit.property.id,
+          leaseId: newLease.id,
+          unitId: originalLease.unitId,
+        },
+      });
+
+      return newLease;
+    });
+
+    // Trigger LEASE_EXPIRED notification AFTER successful transaction
+    processNotifications({
+      organizationId: originalLease.organizationId,
+      trigger: NOTIFICATION_TRIGGER.LEASE_EXPIRED,
+      relatedEntityId: originalLease.id,
+    }).catch((err) => {
+      console.error("Failed to send lease expired notification:", err);
+    });
+
+    return result;
+  } catch (error) {
+    // Handle transaction rollback
     console.error(
-      `[process-auto-renewals] Cannot create renewal for lease ${originalLease.id}: ${availabilityCheck.error}`,
+      `[process-auto-renewals] Cannot create renewal for lease ${originalLease.id}:`,
+      error instanceof Error ? error.message : "Unknown error"
     );
-    // Return null instead of throwing to allow other renewals to continue
     return null;
   }
-
-  const result = await prisma.$transaction(async (tx) => {
-    const newLease = await tx.leaseAgreement.create({
-      data: {
-        tenantId: originalLease.tenantId,
-        unitId: originalLease.unitId,
-        organizationId: originalLease.organizationId,
-        startDate,
-        endDate,
-        paymentCycle: originalLease.paymentCycle,
-        rentAmount: originalLease.rentAmount,
-        gracePeriodDays: originalLease.gracePeriodDays,
-        isAutoRenew: originalLease.isAutoRenew,
-        autoRenewalNoticeDays: originalLease.autoRenewalNoticeDays,
-        depositAmount: originalLease.depositAmount,
-        status: "DRAFT",
-        renewedFromId: originalLease.id,
-      },
-    });
-
-    await tx.leaseAgreement.update({
-      where: { id: originalLease.id },
-      data: { status: "ENDED" },
-    });
-
-    return newLease;
-  });
-
-  await prisma.activity.create({
-    data: {
-      type: "LEASE_CREATED",
-      description: `Auto-renewed lease for ${originalLease.tenant.fullName} at ${originalLease.unit.property.name} - ${originalLease.unit.name}`,
-      organizationId: originalLease.organizationId,
-      tenantId: originalLease.tenantId,
-      propertyId: originalLease.unit.property.id,
-      leaseId: result.id,
-      unitId: originalLease.unitId,
-    },
-  });
-
-  // Trigger LEASE_EXPIRED notification for the original lease
-  processNotifications({
-    organizationId: originalLease.organizationId,
-    trigger: NOTIFICATION_TRIGGER.LEASE_EXPIRED,
-    relatedEntityId: originalLease.id,
-  }).catch((err) => {
-    console.error("Failed to send lease expired notification:", err);
-  });
-
-  return result;
 }
 
 export async function POST(request: Request) {

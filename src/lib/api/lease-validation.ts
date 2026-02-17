@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { apiError } from "./response";
+import type { PrismaClient } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 
 /**
  * Lease Validation Service
@@ -13,18 +15,23 @@ export interface LeaseValidationResult {
 
 /**
  * Validate that lease dates don't overlap with existing leases
+ * @param tx - Optional Prisma transaction client for atomic operations
  */
-export async function validateLeaseAvailability({
-  unitId,
-  startDate,
-  endDate,
-  excludeLeaseId,
-}: {
-  unitId: string;
-  startDate: Date;
-  endDate: Date;
-  excludeLeaseId?: string;
-}): Promise<LeaseValidationResult> {
+export async function validateLeaseAvailability(
+  {
+    unitId,
+    startDate,
+    endDate,
+    excludeLeaseId,
+  }: {
+    unitId: string;
+    startDate: Date;
+    endDate: Date;
+    excludeLeaseId?: string;
+  },
+  tx?: Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">
+): Promise<LeaseValidationResult> {
+  const db = tx || prisma;
   // Validate date logic
   if (startDate >= endDate) {
     return {
@@ -34,7 +41,7 @@ export async function validateLeaseAvailability({
   }
 
   // Check for auto-renewal leases that would block this booking
-  const autoRenewalLease = await prisma.leaseAgreement.findFirst({
+  const autoRenewalLease = await db.leaseAgreement.findFirst({
     where: {
       unitId,
       id: excludeLeaseId ? { not: excludeLeaseId } : undefined,
@@ -57,7 +64,7 @@ export async function validateLeaseAvailability({
   }
 
   // Check for regular overlapping leases (non-auto-renewal)
-  const overlappingLease = await prisma.leaseAgreement.findFirst({
+  const overlappingLease = await db.leaseAgreement.findFirst({
     where: {
       unitId,
       id: excludeLeaseId ? { not: excludeLeaseId } : undefined,

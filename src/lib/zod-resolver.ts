@@ -4,6 +4,7 @@ import type { FieldValues, Resolver } from "react-hook-form";
 /**
  * Custom Zod resolver for react-hook-form that's compatible with Zod v4
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function zodResolver<T extends z.ZodType<any, any, any>>(
   schema: T,
 ): Resolver<z.infer<T>> {
@@ -18,14 +19,15 @@ export function zodResolver<T extends z.ZodType<any, any, any>>(
         };
       }
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const errors: Record<string, any> = {};
 
-      result.error.issues.forEach((error: any) => {
-        const path = error.path.join(".");
+      result.error.issues.forEach((issue: z.ZodIssue) => {
+        const path = issue.path.join(".");
         if (!errors[path]) {
           errors[path] = {
-            type: error.code,
-            message: error.message,
+            type: issue.code,
+            message: issue.message,
           };
         }
       });

@@ -11,6 +11,8 @@ import {
   validateRequest,
   sanitizeSearchInput,
   parseEnumParam,
+  parsePaginationParams,
+  createPaginatedResponse,
 } from "@/lib/api";
 
 const createTenantSchema = z
@@ -56,6 +58,11 @@ export async function GET(request: Request) {
     const status = parseEnumParam(searchParams.get("status"), TENANT_STATUSES);
     const search = sanitizeSearchInput(searchParams.get("search"));
 
+    const { page, limit, skip } = parsePaginationParams({
+      page: searchParams.get("page"),
+      limit: searchParams.get("limit"),
+    });
+
     const where: Record<string, unknown> = {
       organizationId: session.user.organizationId,
     };
@@ -72,21 +79,26 @@ export async function GET(request: Request) {
       ];
     }
 
-    const tenants = await prisma.tenant.findMany({
-      where,
-      orderBy: {
-        createdAt: "desc",
-      },
-      include: {
-        _count: {
-          select: {
-            leaseAgreements: true,
+    const [tenants, total] = await Promise.all([
+      prisma.tenant.findMany({
+        where,
+        orderBy: {
+          createdAt: "desc",
+        },
+        include: {
+          _count: {
+            select: {
+              leaseAgreements: true,
+            },
           },
         },
-      },
-    });
+        take: limit,
+        skip,
+      }),
+      prisma.tenant.count({ where }),
+    ]);
 
-    return apiSuccess(tenants);
+    return apiSuccess(createPaginatedResponse(tenants, page, limit, total));
   } catch (error) {
     return handleApiError(error, "fetch tenants");
   }

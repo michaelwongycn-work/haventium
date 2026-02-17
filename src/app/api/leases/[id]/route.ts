@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { checkAccess } from "@/lib/guards";
+import { requireAccess } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { processNotifications } from "@/lib/services/notification-processor";
 import { NOTIFICATION_TRIGGER } from "@/lib/constants";
@@ -40,7 +40,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { authorized, response, session } = await checkAccess(
+    const { authorized, response, session } = await requireAccess(
       "leases",
       "read",
     );
@@ -113,7 +113,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { authorized, response, session } = await checkAccess(
+    const { authorized, response, session } = await requireAccess(
       "leases",
       "update",
     );
@@ -365,31 +365,8 @@ export async function PATCH(
           // Tenant status update will be done atomically with lease update below
         }
 
-        // Log payment activity
-        await prisma.activity.create({
-          data: {
-            type: "PAYMENT_RECORDED",
-            description: `Payment recorded for ${existingLease.tenant.fullName} at ${existingLease.unit.property.name} - ${existingLease.unit.name}`,
-            userId: session.user.id,
-            organizationId: session.user.organizationId,
-            tenantId: existingLease.tenantId,
-            propertyId: existingLease.unit.propertyId,
-            leaseId: id,
-            unitId: existingLease.unitId,
-          },
-        });
-
-        // Trigger PAYMENT_CONFIRMED notification
-        processNotifications({
-          organizationId: session.user.organizationId,
-          trigger: NOTIFICATION_TRIGGER.PAYMENT_CONFIRMED,
-          relatedEntityId: id,
-        }).catch((err) => {
-          console.error(
-            "Failed to send payment confirmation notification:",
-            err,
-          );
-        });
+        // Payment activity will be logged inside the transaction below
+        // Notification will be sent after successful transaction
       }
     }
 
@@ -430,6 +407,7 @@ export async function PATCH(
         existingLease.status === "DRAFT" && updateData.status === "ACTIVE";
       const wasEnding =
         existingLease.status === "ACTIVE" && updateData.status === "ENDED";
+      const wasPaymentRecorded = validatedData.paidAt !== undefined && validatedData.paidAt !== null;
 
       // Update the lease
       const updatedLease = await tx.leaseAgreement.update({
@@ -485,34 +463,36 @@ export async function PATCH(
         }
       }
 
+      // Log payment activity if payment was recorded
+      if (wasPaymentRecorded) {
+        await tx.activity.create({
+          data: {
+            type: "PAYMENT_RECORDED",
+            description: `Payment recorded for ${existingLease.tenant.fullName} at ${existingLease.unit.property.name} - ${existingLease.unit.name}`,
+            userId: session.user.id,
+            organizationId: session.user.organizationId,
+            tenantId: existingLease.tenantId,
+            propertyId: existingLease.unit.propertyId,
+            leaseId: id,
+            unitId: existingLease.unitId,
+          },
+        });
+      }
+
       return updatedLease;
     });
 
-    // Log activity
-    let activityType: "LEASE_UPDATED" | "LEASE_TERMINATED" = "LEASE_UPDATED";
-    let activityDescription = `Updated lease agreement for ${lease.tenant.fullName} at ${lease.unit.property.name} - ${lease.unit.name}`;
-
-    if (validatedData.status && validatedData.status !== existingLease.status) {
-      activityType =
-        validatedData.status === "ENDED" ? "LEASE_TERMINATED" : "LEASE_UPDATED";
-      activityDescription =
-        validatedData.status === "ENDED"
-          ? `Ended lease agreement for ${lease.tenant.fullName} at ${lease.unit.property.name} - ${lease.unit.name}`
-          : `Activated lease agreement for ${lease.tenant.fullName} at ${lease.unit.property.name} - ${lease.unit.name}`;
-    }
-
-    await prisma.activity.create({
-      data: {
-        type: activityType,
-        description: activityDescription,
-        userId: session.user.id,
+    // Send notification after successful transaction
+    if (validatedData.paidAt !== undefined && validatedData.paidAt !== null) {
+      // Trigger PAYMENT_CONFIRMED notification (async, don't block response)
+      processNotifications({
         organizationId: session.user.organizationId,
-        tenantId: lease.tenantId,
-        propertyId: lease.unit.propertyId,
-        leaseId: lease.id,
-        unitId: lease.unitId,
-      },
-    });
+        trigger: NOTIFICATION_TRIGGER.PAYMENT_CONFIRMED,
+        relatedEntityId: id,
+      }).catch((err) => {
+        console.error("Failed to send payment confirmation notification:", err);
+      });
+    }
 
     return NextResponse.json(lease);
   } catch (error) {
@@ -537,7 +517,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { authorized, response, session } = await checkAccess(
+    const { authorized, response, session } = await requireAccess(
       "leases",
       "delete",
     );
@@ -557,6 +537,9 @@ export async function DELETE(
           include: {
             property: true,
           },
+        },
+        renewedTo: {
+          select: { id: true },
         },
       },
     });

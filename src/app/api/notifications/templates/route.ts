@@ -9,6 +9,8 @@ import {
   handleApiError,
   validateRequest,
   parseEnumParam,
+  parsePaginationParams,
+  createPaginatedResponse,
 } from "@/lib/api";
 import { NOTIFICATION_CHANNEL, NOTIFICATION_TRIGGER } from "@/lib/constants";
 
@@ -58,6 +60,11 @@ export async function GET(request: Request) {
     );
     const isActive = searchParams.get("isActive");
 
+    const { page, limit, skip } = parsePaginationParams({
+      page: searchParams.get("page"),
+      limit: searchParams.get("limit"),
+    });
+
     const where: Record<string, unknown> = {
       organizationId: session.user.organizationId,
     };
@@ -74,14 +81,19 @@ export async function GET(request: Request) {
       where.isActive = isActive === "true";
     }
 
-    const templates = await prisma.notificationTemplate.findMany({
-      where,
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    const [templates, total] = await Promise.all([
+      prisma.notificationTemplate.findMany({
+        where,
+        orderBy: {
+          createdAt: "desc",
+        },
+        take: limit,
+        skip,
+      }),
+      prisma.notificationTemplate.count({ where }),
+    ]);
 
-    return apiSuccess(templates);
+    return apiSuccess(createPaginatedResponse(templates, page, limit, total));
   } catch (error) {
     return handleApiError(error, "fetch notification templates");
   }

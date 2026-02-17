@@ -4,6 +4,8 @@ import {
   apiSuccess,
   handleApiError,
   parseEnumParam,
+  parsePaginationParams,
+  createPaginatedResponse,
 } from "@/lib/api";
 import {
   NOTIFICATION_CHANNEL,
@@ -37,8 +39,11 @@ export async function GET(request: Request) {
       searchParams.get("status"),
       NOTIFICATION_STATUSES,
     );
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = Math.min(parseInt(searchParams.get("limit") || "50"), 100); // Max 100 per page
+
+    const { page, limit, skip } = parsePaginationParams({
+      page: searchParams.get("page"),
+      limit: searchParams.get("limit"),
+    });
 
     const where: Record<string, unknown> = {
       organizationId: session.user.organizationId,
@@ -56,27 +61,19 @@ export async function GET(request: Request) {
       where.status = status;
     }
 
-    // Get total count for pagination
-    const total = await prisma.notificationLog.count({ where });
+    const [logs, total] = await Promise.all([
+      prisma.notificationLog.findMany({
+        where,
+        orderBy: {
+          createdAt: "desc",
+        },
+        skip,
+        take: limit,
+      }),
+      prisma.notificationLog.count({ where }),
+    ]);
 
-    const logs = await prisma.notificationLog.findMany({
-      where,
-      orderBy: {
-        createdAt: "desc",
-      },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
-
-    return apiSuccess({
-      logs,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
-    });
+    return apiSuccess(createPaginatedResponse(logs, page, limit, total));
   } catch (error) {
     return handleApiError(error, "fetch notification logs");
   }

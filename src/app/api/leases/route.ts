@@ -13,6 +13,8 @@ import {
   validateRequest,
   sanitizeSearchInput,
   parseEnumParam,
+  parsePaginationParams,
+  createPaginatedResponse,
 } from "@/lib/api";
 
 const createLeaseSchema = z.object({
@@ -58,6 +60,12 @@ export async function GET(request: Request) {
     const propertyId = searchParams.get("propertyId");
     const search = sanitizeSearchInput(searchParams.get("search"));
 
+    // Parse pagination params
+    const { page, limit, skip } = parsePaginationParams({
+      page: searchParams.get("page"),
+      limit: searchParams.get("limit"),
+    });
+
     const where: Record<string, unknown> = {
       organizationId: session.user.organizationId,
     };
@@ -95,15 +103,21 @@ export async function GET(request: Request) {
       ];
     }
 
-    const leases = await prisma.leaseAgreement.findMany({
-      where,
-      ...LEASE_WITH_RELATIONS,
-      orderBy: {
-        startDate: "desc",
-      },
-    });
+    // Fetch items and total count in parallel
+    const [leases, total] = await Promise.all([
+      prisma.leaseAgreement.findMany({
+        where,
+        ...LEASE_WITH_RELATIONS,
+        orderBy: {
+          startDate: "desc",
+        },
+        take: limit,
+        skip,
+      }),
+      prisma.leaseAgreement.count({ where }),
+    ]);
 
-    return apiSuccess(leases);
+    return apiSuccess(createPaginatedResponse(leases, page, limit, total));
   } catch (error) {
     return handleApiError(error, "fetch leases");
   }
@@ -158,40 +172,59 @@ export async function POST(request: Request) {
     const startDate = new Date(validatedData.startDate);
     const endDate = new Date(validatedData.endDate);
 
-    const availabilityCheck = await validateLeaseAvailability({
-      unitId: validatedData.unitId,
-      startDate,
-      endDate,
+    // Create lease and update tenant atomically in transaction
+    const lease = await prisma.$transaction(async (tx) => {
+      // Validate availability inside transaction
+      const availabilityCheck = await validateLeaseAvailability(
+        {
+          unitId: validatedData.unitId,
+          startDate,
+          endDate,
+        },
+        tx
+      );
+
+      if (!availabilityCheck.valid) {
+        throw new Error("Unit not available for the selected dates");
+      }
+
+      // Create lease agreement
+      const newLease = await tx.leaseAgreement.create({
+        data: {
+          tenantId: validatedData.tenantId,
+          unitId: validatedData.unitId,
+          organizationId: session.user.organizationId,
+          startDate,
+          endDate,
+          paymentCycle: validatedData.paymentCycle,
+          rentAmount: validatedData.rentAmount,
+          gracePeriodDays: validatedData.gracePeriodDays,
+          isAutoRenew: validatedData.isAutoRenew,
+          autoRenewalNoticeDays: validatedData.autoRenewalNoticeDays,
+          depositAmount: validatedData.depositAmount,
+          status: "DRAFT",
+        },
+        ...LEASE_WITH_RELATIONS,
+      });
+
+      // Update tenant status to BOOKED
+      await tx.tenant.update({
+        where: { id: validatedData.tenantId },
+        data: { status: "BOOKED" },
+      });
+
+      return newLease;
+    }).catch((error) => {
+      // Return error response if validation fails
+      if (error instanceof Error && error.message.includes("Unit not available")) {
+        return null;
+      }
+      throw error;
     });
 
-    if (!availabilityCheck.valid) {
-      return availabilityCheck.error!;
+    if (!lease) {
+      return apiError("Unit not available for the selected dates", 400);
     }
-
-    // Create lease agreement
-    const lease = await prisma.leaseAgreement.create({
-      data: {
-        tenantId: validatedData.tenantId,
-        unitId: validatedData.unitId,
-        organizationId: session.user.organizationId,
-        startDate,
-        endDate,
-        paymentCycle: validatedData.paymentCycle,
-        rentAmount: validatedData.rentAmount,
-        gracePeriodDays: validatedData.gracePeriodDays,
-        isAutoRenew: validatedData.isAutoRenew,
-        autoRenewalNoticeDays: validatedData.autoRenewalNoticeDays,
-        depositAmount: validatedData.depositAmount,
-        status: "DRAFT",
-      },
-      ...LEASE_WITH_RELATIONS,
-    });
-
-    // Update tenant status to BOOKED
-    await prisma.tenant.update({
-      where: { id: validatedData.tenantId },
-      data: { status: "BOOKED" },
-    });
 
     // Log activity
     await ActivityLogger.leaseCreated(

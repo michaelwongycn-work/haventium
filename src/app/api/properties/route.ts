@@ -8,6 +8,8 @@ import {
   apiCreated,
   handleApiError,
   validateRequest,
+  parsePaginationParams,
+  createPaginatedResponse,
 } from "@/lib/api";
 
 const createPropertySchema = z.object({
@@ -15,7 +17,7 @@ const createPropertySchema = z.object({
 });
 
 // GET /api/properties - List all properties for the organization
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const { authorized, response, session } = await requireAccess(
       "properties",
@@ -23,23 +25,36 @@ export async function GET() {
     );
     if (!authorized) return response;
 
-    const properties = await prisma.property.findMany({
-      where: {
-        organizationId: session.user.organizationId,
-      },
-      include: {
-        _count: {
-          select: {
-            units: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
+    const { searchParams } = new URL(request.url);
+    const { page, limit, skip } = parsePaginationParams({
+      page: searchParams.get("page"),
+      limit: searchParams.get("limit"),
     });
 
-    return apiSuccess(properties);
+    const where = {
+      organizationId: session.user.organizationId,
+    };
+
+    const [properties, total] = await Promise.all([
+      prisma.property.findMany({
+        where,
+        include: {
+          _count: {
+            select: {
+              units: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+        take: limit,
+        skip,
+      }),
+      prisma.property.count({ where }),
+    ]);
+
+    return apiSuccess(createPaginatedResponse(properties, page, limit, total));
   } catch (error) {
     return handleApiError(error, "fetch properties");
   }
