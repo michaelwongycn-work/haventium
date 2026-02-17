@@ -247,6 +247,7 @@ enum LeaseStatus {
   DRAFT
   ACTIVE
   ENDED
+  CANCELLED
 }
 
 enum PaymentCycle {

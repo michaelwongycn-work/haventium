@@ -12,7 +12,8 @@ export default auth((req) => {
     pathname.startsWith("/login") ||
     pathname.startsWith("/signup") ||
     pathname.startsWith("/api/signup") ||
-    pathname.startsWith("/api/auth")
+    pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/api/cron")
 
   // If accessing a public route, allow
   if (isPublicRoute) {

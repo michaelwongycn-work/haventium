@@ -742,24 +742,10 @@ export default function LeasesPage() {
                     <TableCell>
                       {lease.autoRenewalNoticeDays ? `${lease.autoRenewalNoticeDays} days` : "—"}
                     </TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      {lease.status === "ACTIVE" ? (
-                        <Button
-                          variant={lease.paidAt ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => handleTogglePaidStatus(lease)}
-                          className="h-7"
-                        >
-                          {lease.paidAt && (
-                            <HugeiconsIcon icon={Tick02Icon} strokeWidth={2} className="h-3 w-3 mr-1" />
-                          )}
-                          {lease.paidAt ? "Paid" : "Mark as Paid"}
-                        </Button>
-                      ) : (
-                        <span className="text-sm">
-                          {lease.paidAt ? "Paid" : "Unpaid"}
-                        </span>
-                      )}
+                    <TableCell>
+                      <span className="text-sm">
+                        {lease.paidAt ? "Paid" : "Unpaid"}
+                      </span>
                     </TableCell>
                     <TableCell className="capitalize">
                       {lease.status.toLowerCase()}

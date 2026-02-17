@@ -496,7 +496,7 @@ export default function LeaseDetailPage({
               </div>
 
               {/* Mark as Paid Button */}
-              {!lease?.paidAt && lease?.status === "ACTIVE" && (
+              {!lease?.paidAt && (lease?.status === "DRAFT") && (
                 <Button onClick={handleOpenPaymentDialog} disabled={isUpdating} className="w-full">
                   Mark as Paid
                 </Button>
@@ -568,7 +568,7 @@ export default function LeaseDetailPage({
                 onValueChange={(value) => setPaymentMethod(value as PaymentMethod)}
                 disabled={isUpdating}
               >
-                <SelectTrigger id="payment-method">
+                <SelectTrigger id="payment-method" className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
