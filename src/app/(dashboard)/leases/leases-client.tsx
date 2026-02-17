@@ -242,7 +242,6 @@ export default function LeasesClient() {
     }
   };
 
-
   const selectedProperty = properties.find((p) => p.id === formData.propertyId);
   const availableUnits = selectedProperty?.units || [];
 
@@ -550,20 +549,6 @@ export default function LeasesClient() {
   };
 
   const handleDownloadTemplate = () => {
-    const headers = {
-      "Tenant Email": "Tenant Email",
-      "Property Name": "Property Name",
-      "Unit Name": "Unit Name",
-      "Start Date": "Start Date",
-      "End Date": "End Date",
-      "Payment Cycle": "Payment Cycle",
-      "Rent Amount": "Rent Amount",
-      "Deposit Amount": "Deposit Amount",
-      "Grace Period Days": "Grace Period Days",
-      "Auto Renew": "Auto Renew",
-      "Auto Renewal Notice Days": "Auto Renewal Notice Days",
-    };
-
     const sampleRow = {
       "Tenant Email": "john.doe@example.com",
       "Property Name": "Building A",
@@ -578,14 +563,8 @@ export default function LeasesClient() {
       "Auto Renewal Notice Days": "30",
     };
 
-    downloadExcelTemplate(
-      headers,
-      sampleRow,
-      "haventium-leases-template.xlsx",
-      "Leases",
-    );
+    downloadExcelTemplate(sampleRow, "haventium-leases-template.xlsx");
   };
-
 
   const formatDateForDisplay = (dateString: string) => {
     if (!dateString) return "";
@@ -817,13 +796,11 @@ export default function LeasesClient() {
                     <TableCell>
                       {lease.unit.property.name} - {lease.unit.name}
                     </TableCell>
+                    <TableCell>{formatDate(lease.startDate)}</TableCell>
+                    <TableCell>{formatDate(lease.endDate)}</TableCell>
                     <TableCell>
-                      {formatDate(lease.startDate)}
+                      {formatCurrencyUtil(lease.rentAmount)}
                     </TableCell>
-                    <TableCell>
-                      {formatDate(lease.endDate)}
-                    </TableCell>
-                    <TableCell>{formatCurrencyUtil(lease.rentAmount)}</TableCell>
                     <TableCell className="capitalize">
                       {lease.paymentCycle.toLowerCase()}
                     </TableCell>

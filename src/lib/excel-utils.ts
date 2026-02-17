@@ -53,15 +53,16 @@ export function downloadExcelFile<T extends Record<string, unknown>>(
 }
 
 /**
- * Generate Excel template with headers and sample row
+ * Generate Excel template with sample row
+ * Headers are automatically generated from the object keys
  */
 export function downloadExcelTemplate<T extends Record<string, unknown>>(
-  headers: T,
   sampleRow: T,
   filename: string,
   sheetName = "Template"
 ): void {
-  const data = [headers, sampleRow];
+  // json_to_sheet automatically creates headers from object keys
+  const data = [sampleRow];
   downloadExcelFile(data, filename, sheetName);
 }
 

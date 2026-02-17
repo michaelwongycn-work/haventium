@@ -515,7 +515,10 @@ export default function PropertyDetailClient({
                 {units.map((unit) => (
                   <TableRow
                     key={unit.id}
-                    className={unit.isUnavailable ? "opacity-50" : ""}
+                    className={`cursor-pointer ${unit.isUnavailable ? "opacity-50" : ""}`}
+                    onClick={() =>
+                      (window.location.href = `/properties/${params.id}/units/${unit.id}`)
+                    }
                   >
                     <TableCell className="font-medium">
                       {unit.name}
@@ -531,7 +534,10 @@ export default function PropertyDetailClient({
                       {unit.annualRate ? formatCurrency(unit.annualRate) : "—"}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
+                      <div
+                        className="flex justify-end gap-2"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         {hasAccess(roles, "properties", "update") && (
                           <Button
                             variant="ghost"

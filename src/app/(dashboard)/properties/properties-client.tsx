@@ -270,15 +270,6 @@ export default function PropertiesClient({ roles }: { roles: UserRole[] }) {
   };
 
   const handleDownloadTemplate = () => {
-    const headers = {
-      "Property Name": "Property Name",
-      "Unit Name": "Unit Name",
-      "Daily Rate": "Daily Rate",
-      "Monthly Rate": "Monthly Rate",
-      "Annual Rate": "Annual Rate",
-      "Is Unavailable": "Is Unavailable",
-    };
-
     const sampleRow = {
       "Property Name": "Building A",
       "Unit Name": "Unit 101",
@@ -289,7 +280,6 @@ export default function PropertiesClient({ roles }: { roles: UserRole[] }) {
     };
 
     downloadExcelTemplate(
-      headers,
       sampleRow,
       "haventium-properties-template.xlsx",
       "Properties"

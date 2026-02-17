@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -34,6 +34,7 @@ interface UserNavProps {
 }
 
 export function UserNav({ user, roles }: UserNavProps) {
+  const [mounted, setMounted] = useState(false)
   const [changePasswordOpen, setChangePasswordOpen] = useState(false)
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
@@ -42,9 +43,24 @@ export function UserNav({ user, roles }: UserNavProps) {
   const [success, setSuccess] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   const showSettings =
     hasAccess(roles, "settings", "manage") ||
     hasAccess(roles, "users", "manage")
+
+  // Prevent hydration mismatch by not rendering DropdownMenu until client-side
+  if (!mounted) {
+    return (
+      <Button variant="ghost" size="icon" className="rounded-full">
+        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
+          {user.name?.[0]?.toUpperCase() || "U"}
+        </div>
+      </Button>
+    )
+  }
 
   const handleClosePasswordDialog = () => {
     setCurrentPassword("")

@@ -612,7 +612,7 @@ export default function LeaseDetailClient({
                     Property / Unit
                   </p>
                   <Link
-                    href={`/properties/${lease?.unit.property.id}`}
+                    href={`/properties/${lease?.unit.property.id}/units/${lease?.unit.id}`}
                     className="font-medium hover:underline"
                   >
                     {lease?.unit.property.name} / {lease?.unit.name}

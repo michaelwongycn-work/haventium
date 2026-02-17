@@ -23,7 +23,7 @@ const updateUnitSchema = z.object({
   isUnavailable: z.boolean().optional(),
 });
 
-// GET /api/units/[id] - Get single unit
+// GET /api/units/[id] - Get single unit with leases and activities
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -53,7 +53,52 @@ export async function GET(
       return NextResponse.json({ error: "Unit not found" }, { status: 404 });
     }
 
-    return NextResponse.json(unit);
+    // Fetch all leases for this unit (sorted by start date, newest first)
+    const leases = await prisma.leaseAgreement.findMany({
+      where: {
+        unitId: id,
+        organizationId: session.user.organizationId,
+      },
+      include: {
+        tenant: true,
+        unit: {
+          include: {
+            property: true,
+          },
+        },
+        renewedFrom: true,
+        renewedTo: true,
+      },
+      orderBy: {
+        startDate: "desc",
+      },
+    });
+
+    // Fetch unit-specific activities
+    const activities = await prisma.activity.findMany({
+      where: {
+        unitId: id,
+        organizationId: session.user.organizationId,
+      },
+      include: {
+        user: {
+          select: {
+            name: true,
+            email: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: 50, // Limit to most recent 50 activities
+    });
+
+    return NextResponse.json({
+      unit,
+      leases,
+      activities,
+    });
   } catch (error) {
     return handleApiError(error, "fetch unit");
   }

@@ -110,11 +110,7 @@ export default function TenantsClient() {
 
   useEffect(() => {
     fetchTenants();
-  }, [currentPage, pageSize]);
-
-  useEffect(() => {
-    filterTenants();
-  }, [tenants, statusFilter, searchQuery]);
+  }, [currentPage, pageSize, statusFilter, searchQuery]);
 
   const fetchTenants = async () => {
     try {
@@ -123,6 +119,15 @@ export default function TenantsClient() {
         page: currentPage.toString(),
         limit: pageSize.toString(),
       });
+
+      // Add filters to API request
+      if (statusFilter !== "all") {
+        params.append("status", statusFilter);
+      }
+      if (searchQuery) {
+        params.append("search", searchQuery);
+      }
+
       const response = await fetch(`/api/tenants?${params}`);
 
       if (!response.ok) {
@@ -131,6 +136,7 @@ export default function TenantsClient() {
 
       const data = await response.json();
       setTenants(data.items || data);
+      setFilteredTenants(data.items || data); // Set filtered tenants from API response
       setTotalItems(data.pagination?.total || 0);
       setTotalPages(data.pagination?.totalPages || 0);
     } catch (err) {
@@ -138,28 +144,6 @@ export default function TenantsClient() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const filterTenants = () => {
-    let filtered = tenants;
-
-    // Filter by status
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((tenant) => tenant.status === statusFilter);
-    }
-
-    // Filter by search query
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (tenant) =>
-          tenant.fullName.toLowerCase().includes(query) ||
-          tenant.email.toLowerCase().includes(query) ||
-          tenant.phone.toLowerCase().includes(query),
-      );
-    }
-
-    setFilteredTenants(filtered);
   };
 
   const handleOpenDialog = (tenant?: Tenant) => {
@@ -338,16 +322,6 @@ export default function TenantsClient() {
   };
 
   const handleDownloadTemplate = () => {
-    const headers = {
-      "Full Name": "Full Name",
-      Email: "Email",
-      Phone: "Phone",
-      Status: "Status",
-      "Prefer Email": "Prefer Email",
-      "Prefer WhatsApp": "Prefer WhatsApp",
-      "Prefer Telegram": "Prefer Telegram",
-    };
-
     const sampleRow = {
       "Full Name": "John Doe",
       Email: "john.doe@example.com",
@@ -359,7 +333,6 @@ export default function TenantsClient() {
     };
 
     downloadExcelTemplate(
-      headers,
       sampleRow,
       "haventium-tenants-template.xlsx",
       "Tenants"
@@ -430,11 +403,20 @@ export default function TenantsClient() {
                 <Input
                   placeholder="Search tenants..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setCurrentPage(1); // Reset to page 1 when search changes
+                  }}
                   className="pl-8 w-[250px]"
                 />
               </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <Select
+                value={statusFilter}
+                onValueChange={(value) => {
+                  setStatusFilter(value);
+                  setCurrentPage(1); // Reset to page 1 when filter changes
+                }}
+              >
                 <SelectTrigger className="w-[150px]">
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
