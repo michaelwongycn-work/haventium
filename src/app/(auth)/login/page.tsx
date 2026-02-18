@@ -4,6 +4,7 @@ import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
+import { trackLead } from "@/lib/meta-pixel";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@/lib/zod-resolver";
 import { z } from "zod";
@@ -128,7 +129,11 @@ function LoginFormContent() {
             </Button>
             <p className="text-center text-sm text-muted-foreground">
               {"Don't have an account?"}
-              <Link href="/signup" className="text-primary hover:underline">
+              <Link
+                href="/signup"
+                className="text-primary hover:underline"
+                onClick={trackLead}
+              >
                 Sign up
               </Link>
             </p>
