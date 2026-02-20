@@ -171,7 +171,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const baseUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
+    const baseUrl = process.env.BASE_URL ?? "http://localhost:3000";
     const externalId = `sub-${result.subscription.id}-${Date.now()}`;
     const xenditResult = await createXenditPaymentLink({
       apiKey: haventiumXenditKey,

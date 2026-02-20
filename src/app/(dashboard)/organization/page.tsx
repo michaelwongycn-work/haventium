@@ -19,10 +19,13 @@ export default async function SettingsPage() {
     return <AccessDenied resource="Settings" />;
   }
 
+  const baseUrl = process.env.BASE_URL ?? "http://localhost:3000";
+
   return (
     <SettingsClient
       hasSettingsManage={hasSettingsManage}
       hasUsersManage={hasUsersManage}
+      xenditWebhookUrl={`${baseUrl}/api/webhooks/xendit/rent`}
     />
   );
 }

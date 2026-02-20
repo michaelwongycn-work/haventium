@@ -101,7 +101,7 @@ export async function POST(
       select: { currency: true, name: true },
     });
 
-    const baseUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
+    const baseUrl = process.env.BASE_URL ?? "http://localhost:3000";
     const result = await createXenditPaymentLink({
       apiKey: apiKeyValue,
       externalId,

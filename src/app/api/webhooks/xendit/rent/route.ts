@@ -8,9 +8,8 @@ import { processNotifications } from "@/lib/services/notification-processor";
 
 // POST /api/webhooks/xendit/rent
 // Handles Xendit webhooks for RENT payments only.
-// Token verified against the organization's Xendit webhook token stored in the ApiKey table.
-// The org is identified via the external_id prefix "rent-{leaseId}-{timestamp}",
-// which is used to look up the PaymentTransaction → organizationId → ApiKey.
+// Token verified against the org's Xendit webhook token stored in the ApiKey table (service = XENDIT).
+// The org is identified via the external_id, used to look up the PaymentTransaction → organizationId.
 
 function mapPaymentMethod(
   xenditMethod?: string,
@@ -54,7 +53,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ received: true });
     }
 
-    // Look up org's Xendit webhook token from the ApiKey table
+    // Look up org's Xendit API key to get the webhook token
     const xenditApiKey = await prisma.apiKey.findUnique({
       where: {
         organizationId_service: {
@@ -71,35 +70,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // The webhook token is stored in the webhookToken field (separate from the secret key)
-    // If no dedicated webhook token is stored, fall back to verifying the decrypted key
-    // We store the webhook token as a separate ApiKey entry with service = XENDIT_WEBHOOK,
-    // or we can derive it. Per plan: per-org webhook token comes from the DB.
-    // Convention: webhook token stored in the `name` field isn't ideal — instead
-    // orgs configure it separately. For now we check the x-callback-token against
-    // a dedicated XENDIT_WEBHOOK service entry if it exists, otherwise skip token check
-    // (the external_id lookup already ties it to a known transaction).
-    const webhookTokenKey = await prisma.apiKey.findFirst({
-      where: {
-        organizationId: transaction.organizationId,
-        service: "XENDIT",
-        name: { contains: "webhook" },
-      },
-    });
+    const callbackToken = request.headers.get("x-callback-token") ?? "";
+    const storedJson = decrypt(
+      xenditApiKey.encryptedValue,
+      xenditApiKey.encryptionIv,
+      xenditApiKey.encryptionTag,
+    );
+    const { webhookToken } = JSON.parse(storedJson) as { secretKey: string; webhookToken: string };
 
-    if (webhookTokenKey) {
-      const callbackToken = request.headers.get("x-callback-token") ?? "";
-      const storedToken = decrypt(
-        webhookTokenKey.encryptedValue,
-        webhookTokenKey.encryptionIv,
-        webhookTokenKey.encryptionTag,
-      );
-      if (!verifyXenditWebhook(callbackToken, storedToken)) {
-        logger.error("Xendit rent webhook: invalid callback token for org", null, {
-          organizationId: transaction.organizationId,
-        });
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
+    if (!verifyXenditWebhook(callbackToken, webhookToken)) {
+      logger.error("Xendit rent webhook: invalid callback token", null, {
+        organizationId: transaction.organizationId,
+      });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     await handleRentPayment(transaction, body, payment_method);

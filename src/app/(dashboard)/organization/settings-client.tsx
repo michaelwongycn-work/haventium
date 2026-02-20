@@ -104,6 +104,7 @@ type User = {
 type SettingsClientProps = {
   hasSettingsManage: boolean;
   hasUsersManage: boolean;
+  xenditWebhookUrl: string;
 };
 
 // ========================================
@@ -128,6 +129,7 @@ function groupAccessesByResource(accesses: Access[]) {
 function SettingsContent({
   hasSettingsManage,
   hasUsersManage,
+  xenditWebhookUrl,
 }: SettingsClientProps) {
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab");
@@ -829,7 +831,7 @@ function SettingsContent({
         {/* ======================================== */}
         {hasSettingsManage && (
           <TabsContent value="api-keys" className="mt-6">
-            <ApiKeysClient />
+            <ApiKeysClient webhookUrl={xenditWebhookUrl} />
           </TabsContent>
         )}
 
@@ -1133,12 +1135,14 @@ function SettingsContent({
 export default function SettingsClient({
   hasSettingsManage,
   hasUsersManage,
+  xenditWebhookUrl,
 }: SettingsClientProps) {
   return (
     <Suspense fallback={<div>Loading...</div>}>
       <SettingsContent
         hasSettingsManage={hasSettingsManage}
         hasUsersManage={hasUsersManage}
+        xenditWebhookUrl={xenditWebhookUrl}
       />
     </Suspense>
   );
