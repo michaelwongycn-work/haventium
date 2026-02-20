@@ -10,7 +10,7 @@ import {
 import { decrypt } from "@/lib/encryption";
 
 const testApiKeySchema = z.object({
-  service: z.enum(["RESEND_EMAIL", "WHATSAPP_META", "TELEGRAM_BOT"]),
+  service: z.enum(["RESEND_EMAIL", "WHATSAPP_META", "TELEGRAM_BOT", "XENDIT"]),
   value: z.string().min(1, "API key value is required").optional(),
 });
 
@@ -69,6 +69,10 @@ export async function POST(
 
       case "TELEGRAM_BOT":
         testResult = await testTelegramKey(apiKeyValue);
+        break;
+
+      case "XENDIT":
+        testResult = await testXenditKey(apiKeyValue);
         break;
 
       default:
@@ -229,6 +233,43 @@ async function testTelegramKey(
     return {
       success: false,
       message: "Failed to test Telegram bot token",
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+/**
+ * Test Xendit API key by calling the balance endpoint
+ */
+async function testXenditKey(
+  apiKey: string,
+): Promise<{ success: boolean; message: string; error?: string }> {
+  try {
+    const response = await fetch("https://api.xendit.co/balance", {
+      method: "GET",
+      headers: {
+        Authorization:
+          "Basic " + Buffer.from(apiKey + ":").toString("base64"),
+      },
+    });
+
+    if (response.ok) {
+      return {
+        success: true,
+        message: "Xendit API key is valid",
+      };
+    } else {
+      const data = await response.json();
+      return {
+        success: false,
+        message: "Invalid Xendit API key",
+        error: data.message || "Authentication failed",
+      };
+    }
+  } catch (error) {
+    return {
+      success: false,
+      message: "Failed to test Xendit API key",
       error: error instanceof Error ? error.message : "Unknown error",
     };
   }

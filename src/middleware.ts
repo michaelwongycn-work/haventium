@@ -13,7 +13,9 @@ export default auth((req) => {
     pathname.startsWith("/signup") ||
     pathname.startsWith("/api/signup") ||
     pathname.startsWith("/api/auth") ||
-    pathname.startsWith("/api/cron");
+    pathname.startsWith("/api/cron") ||
+    pathname.startsWith("/api/webhooks") ||
+    pathname.startsWith("/api/subscription-tiers");
 
   // If accessing a public route, allow
   if (isPublicRoute) {
@@ -25,6 +27,19 @@ export default auth((req) => {
     const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
+  }
+
+  // Redirect PENDING_PAYMENT users to /subscribe (except allowed paths)
+  const subscriptionStatus = (req.auth as { user?: { subscription?: { status?: string } } })?.user?.subscription?.status;
+  if (subscriptionStatus === "PENDING_PAYMENT") {
+    const isAllowed =
+      pathname.startsWith("/subscribe") ||
+      pathname.startsWith("/api/") ||
+      pathname.startsWith("/login") ||
+      pathname.startsWith("/signup");
+    if (!isAllowed) {
+      return NextResponse.redirect(new URL("/subscribe", req.url));
+    }
   }
 
   // If authenticated, allow access

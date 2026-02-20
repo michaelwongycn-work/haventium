@@ -41,6 +41,7 @@ model Organization {
   apiKeys               ApiKey[]
   maintenanceRequests   MaintenanceRequest[]
   documents             Document[]
+  paymentTransactions   PaymentTransaction[]
 }
 
 model User {
@@ -317,6 +318,7 @@ model LeaseAgreement {
   activities          Activity[]
   maintenanceRequests MaintenanceRequest[]
   documents           Document[]
+  paymentTransactions PaymentTransaction[]
 
   @@unique([renewedFromId])
   @@index([tenantId])
@@ -476,6 +478,7 @@ enum ApiKeyService {
   RESEND_EMAIL
   WHATSAPP_META
   TELEGRAM_BOT
+  XENDIT
 }
 
 model ApiKey {
@@ -535,6 +538,9 @@ enum ActivityType {
   MAINTENANCE_REQUEST_COMPLETED
   DOCUMENT_UPLOADED
   DOCUMENT_DELETED
+  PAYMENT_LINK_CREATED
+  PAYMENT_WEBHOOK_RECEIVED
+  RECEIPT_GENERATED
   OTHER
 }
 
@@ -597,12 +603,21 @@ enum SubscriptionStatus {
   ACTIVE
   CANCELLED
   EXPIRED
-  TRIAL
+  PENDING_PAYMENT
 }
 
 enum BillingCycle {
   MONTHLY
   ANNUAL
+}
+
+enum PaymentTransactionType {
+  RENT
+  SUBSCRIPTION
+}
+
+enum PaymentGateway {
+  XENDIT
 }
 
 model SubscriptionTier {
@@ -659,7 +674,7 @@ model Subscription {
   tierId         String
   tier           SubscriptionTier @relation(fields: [tierId], references: [id])
 
-  status       SubscriptionStatus @default(TRIAL)
+  status       SubscriptionStatus @default(PENDING_PAYMENT)
   billingCycle BillingCycle       @default(MONTHLY)
 
   startDate          DateTime
@@ -675,7 +690,8 @@ model Subscription {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  invoices Invoice[]
+  invoices            Invoice[]
+  paymentTransactions PaymentTransaction[]
 
   @@index([organizationId])
   @@index([tierId])
@@ -700,6 +716,39 @@ model Invoice {
   @@index([subscriptionId])
   @@index([status])
   @@index([dueDate])
+}
+
+model PaymentTransaction {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  leaseId String?
+  lease   LeaseAgreement? @relation(fields: [leaseId], references: [id], onDelete: SetNull)
+
+  subscriptionId String?
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+
+  type             PaymentTransactionType @default(RENT)
+  gateway          PaymentGateway         @default(XENDIT)
+  externalId       String                 @unique
+  xenditInvoiceId  String?
+  paymentLinkUrl   String?                @db.Text
+  amount           Decimal                @db.Decimal(12, 2)
+  status           PaymentStatus          @default(PENDING)
+  externalResponse Json?
+  receiptUrl       String?
+  receiptStorageKey String?
+  webhookReceivedAt DateTime?
+  paidAt           DateTime?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+
+  @@index([organizationId])
+  @@index([leaseId])
+  @@index([subscriptionId])
+  @@index([externalId])
+  @@index([status])
 }
 
 // ========================================

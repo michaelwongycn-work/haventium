@@ -101,6 +101,10 @@ const TEMPLATE_VARIABLES = [
   { name: "{{rentAmount}}", description: "Lease rent amount" },
   { name: "{{propertyName}}", description: "Property name" },
   { name: "{{unitName}}", description: "Unit name" },
+  {
+    name: "{{paymentLink}}",
+    description: "Xendit payment link URL (if generated)",
+  },
 ];
 
 export default function NotificationTemplatesClient() {

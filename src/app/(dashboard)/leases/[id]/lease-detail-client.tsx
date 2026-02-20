@@ -203,6 +203,20 @@ export default function LeaseDetailClient({
   const [depositStatusForm, setDepositStatusForm] =
     useState<DepositStatus>("HELD");
 
+  // Payment link state
+  const [paymentTransactions, setPaymentTransactions] = useState<
+    Array<{
+      id: string;
+      status: string;
+      paymentLinkUrl: string | null;
+      receiptUrl: string | null;
+      paidAt: string | null;
+      amount: string;
+    }>
+  >([]);
+  const [isCreatingPaymentLink, setIsCreatingPaymentLink] = useState(false);
+  const [paymentLinkCopied, setPaymentLinkCopied] = useState(false);
+
   useEffect(() => {
     Promise.resolve(params).then((resolvedParams) => {
       setLeaseId(resolvedParams.id);
@@ -232,6 +246,54 @@ export default function LeaseDetailClient({
       fetchLease();
     }
   }, [leaseId, fetchLease]);
+
+  useEffect(() => {
+    if (!leaseId) return;
+    const fetchPayments = async () => {
+      try {
+        const res = await fetch(`/api/leases/${leaseId}/payments`);
+        if (res.ok) {
+          const data = await res.json();
+          setPaymentTransactions(data.items ?? []);
+        }
+      } catch {
+        // ignore
+      }
+    };
+    fetchPayments();
+  }, [leaseId]);
+
+  const handleCreatePaymentLink = async () => {
+    if (!leaseId) return;
+    setIsCreatingPaymentLink(true);
+    try {
+      const res = await fetch(`/api/leases/${leaseId}/create-payment-link`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Failed to create payment link");
+        return;
+      }
+      // Refresh transactions
+      const txRes = await fetch(`/api/leases/${leaseId}/payments`);
+      if (txRes.ok) {
+        const txData = await txRes.json();
+        setPaymentTransactions(txData.items ?? []);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create payment link");
+    } finally {
+      setIsCreatingPaymentLink(false);
+    }
+  };
+
+  const handleCopyPaymentLink = (url: string) => {
+    navigator.clipboard.writeText(url).then(() => {
+      setPaymentLinkCopied(true);
+      setTimeout(() => setPaymentLinkCopied(false), 2000);
+    });
+  };
 
   const getDaysRemaining = () => {
     if (!lease) return 0;
@@ -999,6 +1061,89 @@ export default function LeaseDetailClient({
                   Mark as Paid
                 </Button>
               )}
+
+              {/* Xendit Payment Link Section */}
+              {(() => {
+                const pending = paymentTransactions.find(
+                  (t) => t.status === "PENDING",
+                );
+                const completed = paymentTransactions.find(
+                  (t) => t.status === "COMPLETED",
+                );
+
+                if (completed?.receiptUrl) {
+                  return (
+                    <div className="rounded-md border p-3 space-y-2">
+                      <p className="text-sm font-medium">Payment Receipt</p>
+                      <a
+                        href={completed.receiptUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-primary hover:underline"
+                      >
+                        Download Receipt (PDF)
+                      </a>
+                    </div>
+                  );
+                }
+
+                if (pending?.paymentLinkUrl) {
+                  return (
+                    <div className="rounded-md border p-3 space-y-2">
+                      <p className="text-sm font-medium">Payment Link</p>
+                      <div className="flex gap-2">
+                        <Input
+                          readOnly
+                          value={pending.paymentLinkUrl}
+                          className="text-xs h-8"
+                        />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            handleCopyPaymentLink(pending.paymentLinkUrl!)
+                          }
+                        >
+                          {paymentLinkCopied ? "Copied!" : "Copy"}
+                        </Button>
+                      </div>
+                      {lease?.tenant?.phone && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => {
+                            const msg = `Halo ${lease.tenant.fullName},\n\nLink pembayaran sewa:\n${pending.paymentLinkUrl}\n\nTerima kasih.`;
+                            window.open(
+                              `https://wa.me/${lease.tenant.phone.replace(/\D/g, "")}?text=${encodeURIComponent(msg)}`,
+                              "_blank",
+                            );
+                          }}
+                        >
+                          Send via WhatsApp
+                        </Button>
+                      )}
+                    </div>
+                  );
+                }
+
+                if (!lease?.paidAt && lease?.status === "DRAFT") {
+                  return (
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={handleCreatePaymentLink}
+                      disabled={isCreatingPaymentLink}
+                    >
+                      {isCreatingPaymentLink
+                        ? "Creating Link..."
+                        : "Create Payment Link (Xendit)"}
+                    </Button>
+                  );
+                }
+
+                return null;
+              })()}
             </CardContent>
           </Card>
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { hashPassword, validatePassword } from "@/lib/password";
 import { handleApiError } from "@/lib/api";
+import { createXenditPaymentLink } from "@/lib/payment-gateways/xendit";
 import { z } from "zod";
 
 const signupSchema = z.object({
@@ -10,6 +11,7 @@ const signupSchema = z.object({
   name: z.string().min(1, "Name is required"),
   organizationName: z.string().min(1, "Organization name is required"),
   tier: z.enum(["FREE", "NORMAL", "PRO"]),
+  billingCycle: z.enum(["MONTHLY", "ANNUAL"]).default("MONTHLY"),
 });
 
 export async function POST(request: NextRequest) {
@@ -25,7 +27,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { email, password, name, organizationName, tier } = validation.data;
+    const { email, password, name, organizationName, tier, billingCycle } =
+      validation.data;
 
     // Validate password strength
     const passwordValidation = validatePassword(password);
@@ -66,6 +69,14 @@ export async function POST(request: NextRequest) {
     // Hash password
     const hashedPassword = await hashPassword(password);
 
+    // Determine price based on billing cycle
+    const price =
+      billingCycle === "ANNUAL"
+        ? Number(subscriptionTier.annualPrice)
+        : Number(subscriptionTier.monthlyPrice);
+
+    const isPaid = price > 0;
+
     // Create organization, user, subscription, and default role in a transaction
     const result = await prisma.$transaction(async (tx) => {
       // Create organization
@@ -87,20 +98,18 @@ export async function POST(request: NextRequest) {
 
       // Create subscription
       const now = new Date();
-      const trialEnds = new Date(now);
-      trialEnds.setDate(trialEnds.getDate() + 14); // 14 days trial
+      const far = new Date("2099-12-31");
 
       const subscription = await tx.subscription.create({
         data: {
           organizationId: organization.id,
           tierId: subscriptionTier.id,
-          status: tier === "FREE" ? "ACTIVE" : "TRIAL",
-          billingCycle: "MONTHLY",
+          status: isPaid ? "PENDING_PAYMENT" : "ACTIVE",
+          billingCycle,
           startDate: now,
-          endDate: tier === "FREE" ? new Date("2099-12-31") : trialEnds,
-          trialEndsAt: tier === "FREE" ? null : trialEnds,
+          endDate: isPaid ? now : far,
           currentPeriodStart: now,
-          currentPeriodEnd: trialEnds,
+          currentPeriodEnd: isPaid ? now : far,
         },
       });
 
@@ -136,14 +145,60 @@ export async function POST(request: NextRequest) {
       return { user, organization, subscription };
     });
 
+    // If free tier, return redirect to login
+    if (!isPaid) {
+      return NextResponse.json(
+        {
+          message: "User registered successfully",
+          redirect: "/login?signup=success",
+        },
+        { status: 201 },
+      );
+    }
+
+    // Paid tier: create Xendit payment link
+    const haventiumXenditKey = process.env.HAVENTIUM_XENDIT_SECRET_KEY;
+    if (!haventiumXenditKey) {
+      // Xendit key not configured — activate subscription anyway to not block signup
+      return NextResponse.json(
+        {
+          message: "User registered successfully",
+          redirect: "/login?signup=success",
+        },
+        { status: 201 },
+      );
+    }
+
+    const externalId = `sub-${result.subscription.id}-${Date.now()}`;
+    const xenditResult = await createXenditPaymentLink({
+      apiKey: haventiumXenditKey,
+      externalId,
+      amount: price,
+      payerEmail: email,
+      description: `Haventium ${subscriptionTier.name} subscription (${billingCycle.toLowerCase()})`,
+      currency: "IDR",
+    });
+
+    // Create PaymentTransaction for the subscription
+    await prisma.paymentTransaction.create({
+      data: {
+        organizationId: result.organization.id,
+        subscriptionId: result.subscription.id,
+        type: "SUBSCRIPTION",
+        gateway: "XENDIT",
+        externalId: xenditResult.externalId,
+        xenditInvoiceId: xenditResult.xenditInvoiceId,
+        paymentLinkUrl: xenditResult.paymentLinkUrl,
+        amount: price,
+        status: "PENDING",
+        externalResponse: JSON.parse(JSON.stringify(xenditResult.externalResponse)),
+      },
+    });
+
     return NextResponse.json(
       {
-        message: "User registered successfully",
-        user: {
-          id: result.user.id,
-          email: result.user.email,
-          name: result.user.name,
-        },
+        message: "User registered. Please complete payment.",
+        paymentLinkUrl: xenditResult.paymentLinkUrl,
       },
       { status: 201 },
     );

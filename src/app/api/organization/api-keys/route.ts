@@ -16,6 +16,7 @@ const API_KEY_SERVICES = [
   "RESEND_EMAIL",
   "WHATSAPP_META",
   "TELEGRAM_BOT",
+  "XENDIT",
 ] as const;
 
 const createApiKeySchema = z.object({

@@ -360,6 +360,16 @@ async function getEntityData(
 
     if (!lease) return null
 
+    // Check for active PENDING payment link
+    const pendingTransaction = await prisma.paymentTransaction.findFirst({
+      where: {
+        leaseId: entityId,
+        status: "PENDING",
+        type: "RENT",
+      },
+      select: { paymentLinkUrl: true },
+    })
+
     return {
       tenantId: lease.tenantId,
       variables: {
@@ -369,6 +379,7 @@ async function getEntityData(
         rentAmount: lease.rentAmount.toString(),
         propertyName: lease.unit.property.name,
         unitName: lease.unit.name,
+        paymentLink: pendingTransaction?.paymentLinkUrl ?? "",
       },
     }
   }

@@ -31,7 +31,13 @@ async function main() {
   // Create subscription tiers
   const freeTier = await prisma.subscriptionTier.upsert({
     where: { type: "FREE" },
-    update: {},
+    update: {
+      name: "Free Plan",
+      maxUsers: 1,
+      maxProperties: 1,
+      maxUnits: 10,
+      maxTenants: 100,
+    },
     create: {
       type: "FREE",
       name: "Free Plan",
@@ -40,132 +46,126 @@ async function main() {
       maxUsers: 1,
       maxProperties: 1,
       maxUnits: 10,
-      maxTenants: 10,
+      maxTenants: 100,
     },
   });
   console.log("✓ Created Free tier");
 
   const normalTier = await prisma.subscriptionTier.upsert({
     where: { type: "NORMAL" },
-    update: {},
+    update: {
+      name: "Standard Plan",
+      maxUsers: 5,
+      maxProperties: 5,
+      maxUnits: 50,
+      maxTenants: 1000,
+    },
     create: {
       type: "NORMAL",
-      name: "Normal Plan",
+      name: "Standard Plan",
       monthlyPrice: 29,
       annualPrice: 290,
       maxUsers: 5,
-      maxProperties: 3,
-      maxUnits: 100,
-      maxTenants: 100,
+      maxProperties: 5,
+      maxUnits: 50,
+      maxTenants: 1000,
     },
   });
-  console.log("✓ Created Normal tier");
+  console.log("✓ Created Standard tier");
 
   const proTier = await prisma.subscriptionTier.upsert({
     where: { type: "PRO" },
-    update: {},
+    update: {
+      name: "Pro Plan",
+      maxUsers: 10,
+      maxProperties: 10,
+      maxUnits: 100,
+      maxTenants: 10000,
+    },
     create: {
       type: "PRO",
       name: "Pro Plan",
       monthlyPrice: 99,
       annualPrice: 990,
-      maxUsers: -1, // -1 = unlimited
-      maxProperties: -1,
-      maxUnits: -1,
-      maxTenants: -1,
+      maxUsers: 10,
+      maxProperties: 10,
+      maxUnits: 100,
+      maxTenants: 10000,
     },
   });
   console.log("✓ Created Pro tier");
 
   // Create features
-  const emailNotify = await prisma.feature.upsert({
-    where: { code: "EMAIL_NOTIFY" },
-    update: {},
+  const docManagement = await prisma.feature.upsert({
+    where: { code: "DOCUMENT_MANAGEMENT" },
+    update: { name: "Document Management" },
     create: {
-      code: "EMAIL_NOTIFY",
-      name: "Email Notifications",
+      code: "DOCUMENT_MANAGEMENT",
+      name: "Document Management",
     },
   });
 
-  const whatsappNotify = await prisma.feature.upsert({
-    where: { code: "WHATSAPP_NOTIFY" },
-    update: {},
+  const maintenanceMgmt = await prisma.feature.upsert({
+    where: { code: "MAINTENANCE_MANAGEMENT" },
+    update: { name: "Maintenance Management" },
     create: {
-      code: "WHATSAPP_NOTIFY",
-      name: "WhatsApp Notifications",
+      code: "MAINTENANCE_MANAGEMENT",
+      name: "Maintenance Management",
     },
   });
 
-  const advancedReports = await prisma.feature.upsert({
-    where: { code: "ADVANCED_REPORTS" },
-    update: {},
+  const reminder = await prisma.feature.upsert({
+    where: { code: "REMINDER" },
+    update: { name: "Reminder" },
     create: {
-      code: "ADVANCED_REPORTS",
-      name: "Advanced Reports",
+      code: "REMINDER",
+      name: "Reminder",
     },
   });
 
-  // Link features to tiers
-  // FREE tier: Email notifications only
-  await prisma.tierFeature.upsert({
-    where: {
-      tierId_featureId: {
-        tierId: freeTier.id,
-        featureId: emailNotify.id,
-      },
-    },
-    update: {},
+  const paymentGateway = await prisma.feature.upsert({
+    where: { code: "PAYMENT_GATEWAY" },
+    update: { name: "Payment Gateway Integration" },
     create: {
-      tierId: freeTier.id,
-      featureId: emailNotify.id,
+      code: "PAYMENT_GATEWAY",
+      name: "Payment Gateway Integration",
     },
   });
 
-  // NORMAL tier: Email + WhatsApp
-  await prisma.tierFeature.upsert({
-    where: {
-      tierId_featureId: {
-        tierId: normalTier.id,
-        featureId: emailNotify.id,
-      },
-    },
-    update: {},
+  const dashboard = await prisma.feature.upsert({
+    where: { code: "DASHBOARD" },
+    update: { name: "Dashboard" },
     create: {
-      tierId: normalTier.id,
-      featureId: emailNotify.id,
+      code: "DASHBOARD",
+      name: "Dashboard",
     },
   });
 
-  await prisma.tierFeature.upsert({
-    where: {
-      tierId_featureId: {
-        tierId: normalTier.id,
-        featureId: whatsappNotify.id,
-      },
-    },
-    update: {},
-    create: {
-      tierId: normalTier.id,
-      featureId: whatsappNotify.id,
-    },
+  // Clear old tier features before re-linking
+  await prisma.tierFeature.deleteMany({
+    where: { tierId: { in: [freeTier.id, normalTier.id, proTier.id] } },
   });
 
-  // PRO tier: All features
-  const proFeatures = [emailNotify, whatsappNotify, advancedReports];
+  // FREE tier: no features (basic property/tenant/lease management only)
+  // STANDARD tier: Document Management, Maintenance Management, Reminder
+  const standardFeatures = [docManagement, maintenanceMgmt, reminder];
+  for (const feature of standardFeatures) {
+    await prisma.tierFeature.create({
+      data: { tierId: normalTier.id, featureId: feature.id },
+    });
+  }
 
+  // PRO tier: Document Management, Maintenance Management, Reminder, Payment Gateway Integration, Dashboard
+  const proFeatures = [
+    docManagement,
+    maintenanceMgmt,
+    reminder,
+    paymentGateway,
+    dashboard,
+  ];
   for (const feature of proFeatures) {
-    await prisma.tierFeature.upsert({
-      where: {
-        tierId_featureId: {
-          tierId: proTier.id,
-          featureId: feature.id,
-        },
-      },
-      update: {},
-      create: {
-        tierId: proTier.id,
-        featureId: feature.id,
-      },
+    await prisma.tierFeature.create({
+      data: { tierId: proTier.id, featureId: feature.id },
     });
   }
 
