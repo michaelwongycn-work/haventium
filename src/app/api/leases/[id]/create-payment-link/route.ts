@@ -43,7 +43,10 @@ export async function POST(
 
     // Guard: must be DRAFT and unpaid
     if (lease.status !== "DRAFT") {
-      return apiError("Payment links can only be created for DRAFT leases", 400);
+      return apiError(
+        "Payment links can only be created for DRAFT leases",
+        400,
+      );
     }
 
     if (lease.paidAt) {
@@ -98,6 +101,7 @@ export async function POST(
       select: { currency: true, name: true },
     });
 
+    const baseUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
     const result = await createXenditPaymentLink({
       apiKey: apiKeyValue,
       externalId,
@@ -105,6 +109,8 @@ export async function POST(
       payerEmail: lease.tenant.email ?? undefined,
       description: `Rent payment for ${lease.unit.property.name} / ${lease.unit.name}`,
       currency: org?.currency ?? "IDR",
+      successRedirectUrl: `${baseUrl}/leases/${id}?payment=success`,
+      failureRedirectUrl: `${baseUrl}/leases/${id}?payment=failed`,
     });
 
     // Create PaymentTransaction

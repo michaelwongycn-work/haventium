@@ -145,12 +145,13 @@ export async function POST(request: NextRequest) {
       return { user, organization, subscription };
     });
 
-    // If free tier, return redirect to login
+    // If free tier, return credentials for client-side auto-login
     if (!isPaid) {
       return NextResponse.json(
         {
           message: "User registered successfully",
-          redirect: "/login?signup=success",
+          redirect: "/dashboard",
+          autoLogin: { email, password },
         },
         { status: 201 },
       );
@@ -159,16 +160,18 @@ export async function POST(request: NextRequest) {
     // Paid tier: create Xendit payment link
     const haventiumXenditKey = process.env.HAVENTIUM_XENDIT_SECRET_KEY;
     if (!haventiumXenditKey) {
-      // Xendit key not configured — activate subscription anyway to not block signup
+      // Xendit key not configured — treat as free, auto-login
       return NextResponse.json(
         {
           message: "User registered successfully",
-          redirect: "/login?signup=success",
+          redirect: "/dashboard",
+          autoLogin: { email, password },
         },
         { status: 201 },
       );
     }
 
+    const baseUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
     const externalId = `sub-${result.subscription.id}-${Date.now()}`;
     const xenditResult = await createXenditPaymentLink({
       apiKey: haventiumXenditKey,
@@ -177,6 +180,8 @@ export async function POST(request: NextRequest) {
       payerEmail: email,
       description: `Haventium ${subscriptionTier.name} subscription (${billingCycle.toLowerCase()})`,
       currency: "IDR",
+      successRedirectUrl: `${baseUrl}/signup/success`,
+      failureRedirectUrl: `${baseUrl}/signup/payment-failed`,
     });
 
     // Create PaymentTransaction for the subscription

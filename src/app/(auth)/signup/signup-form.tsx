@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@/lib/zod-resolver";
@@ -58,7 +59,8 @@ function getLimits(tier: TierData): { label: string; value: string }[] {
   return [
     {
       label: "Properti",
-      value: tier.maxProperties === -1 ? "Tak terbatas" : String(tier.maxProperties),
+      value:
+        tier.maxProperties === -1 ? "Tak terbatas" : String(tier.maxProperties),
     },
     {
       label: "Unit per properti",
@@ -77,7 +79,11 @@ function getLimits(tier: TierData): { label: string; value: string }[] {
 
 // ─── Tier styles (index: FREE=0, STANDARD=1, PRO=2) — monotone ──────────────
 
-const TIER_ACCENT = ["text-muted-foreground", "text-foreground", "text-foreground"];
+const TIER_ACCENT = [
+  "text-muted-foreground",
+  "text-foreground",
+  "text-foreground",
+];
 const TIER_BORDER = [
   "border-border",
   "border-foreground ring-2 ring-foreground",
@@ -149,7 +155,15 @@ export default function SignupForm({ tiers }: { tiers: TierData[] }) {
         return;
       }
 
-      router.push(result.redirect || "/login?signup=success");
+      if (result.autoLogin) {
+        await signIn("credentials", {
+          email: result.autoLogin.email,
+          password: result.autoLogin.password,
+          redirect: false,
+        });
+      }
+
+      router.push(result.redirect || "/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
@@ -163,7 +177,10 @@ export default function SignupForm({ tiers }: { tiers: TierData[] }) {
       <span className="font-semibold text-lg tracking-tight">Haventium</span>
       <p className="text-sm text-muted-foreground">
         Sudah punya akun?{" "}
-        <Link href="/login" className="font-medium text-foreground hover:underline">
+        <Link
+          href="/login"
+          className="font-medium text-foreground hover:underline"
+        >
           Masuk
         </Link>
       </p>
@@ -250,14 +267,21 @@ export default function SignupForm({ tiers }: { tiers: TierData[] }) {
                     )}
 
                     {/* Tier name */}
-                    <p className={cn("text-xs font-semibold uppercase tracking-widest mb-3", accentClass)}>
+                    <p
+                      className={cn(
+                        "text-xs font-semibold uppercase tracking-widest mb-3",
+                        accentClass,
+                      )}
+                    >
                       {tier.name}
                     </p>
 
                     {/* Price */}
                     <div className="mb-1">
                       {price === 0 ? (
-                        <span className="text-4xl font-bold tracking-tight">Gratis</span>
+                        <span className="text-4xl font-bold tracking-tight">
+                          Gratis
+                        </span>
                       ) : (
                         <div className="flex items-baseline gap-1 flex-wrap">
                           <span className="text-4xl font-bold tracking-tight">
@@ -285,9 +309,16 @@ export default function SignupForm({ tiers }: { tiers: TierData[] }) {
                       </p>
                       <ul className="space-y-2">
                         {limits.map((l) => (
-                          <li key={l.label} className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">{l.label}</span>
-                            <span className={cn("font-semibold", accentClass)}>{l.value}</span>
+                          <li
+                            key={l.label}
+                            className="flex items-center justify-between text-sm"
+                          >
+                            <span className="text-muted-foreground">
+                              {l.label}
+                            </span>
+                            <span className={cn("font-semibold", accentClass)}>
+                              {l.value}
+                            </span>
                           </li>
                         ))}
                       </ul>
@@ -302,7 +333,10 @@ export default function SignupForm({ tiers }: { tiers: TierData[] }) {
                       {tier.features.length > 0 ? (
                         <ul className="space-y-2">
                           {tier.features.map((feature) => (
-                            <li key={feature} className="flex items-start gap-2 text-sm">
+                            <li
+                              key={feature}
+                              className="flex items-start gap-2 text-sm"
+                            >
                               <svg
                                 className="mt-0.5 h-4 w-4 shrink-0 text-foreground"
                                 fill="none"
@@ -310,14 +344,22 @@ export default function SignupForm({ tiers }: { tiers: TierData[] }) {
                                 stroke="currentColor"
                                 strokeWidth={2.5}
                               >
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M5 13l4 4L19 7"
+                                />
                               </svg>
-                              <span className="text-muted-foreground">{feature}</span>
+                              <span className="text-muted-foreground">
+                                {feature}
+                              </span>
                             </li>
                           ))}
                         </ul>
                       ) : (
-                        <p className="text-sm text-muted-foreground">Manajemen properti & penyewa dasar.</p>
+                        <p className="text-sm text-muted-foreground">
+                          Manajemen properti & penyewa dasar.
+                        </p>
                       )}
                     </div>
 
@@ -351,7 +393,6 @@ export default function SignupForm({ tiers }: { tiers: TierData[] }) {
 
       <form onSubmit={handleSubmit(onSubmit)} className="flex-1 flex flex-col">
         <div className="max-w-lg w-full mx-auto px-4 py-10 lg:py-14 flex flex-col flex-1">
-
           {/* Selected tier summary */}
           <div className="rounded-2xl border border-border bg-card p-4 mb-6 flex items-center justify-between gap-4">
             <div>
@@ -380,7 +421,9 @@ export default function SignupForm({ tiers }: { tiers: TierData[] }) {
           <div className="rounded-2xl border bg-card p-6 sm:p-8 space-y-5">
             <div>
               <h2 className="text-xl font-semibold">Buat akun</h2>
-              <p className="text-sm text-muted-foreground mt-0.5">Isi detail akun kamu di bawah ini.</p>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Isi detail akun kamu di bawah ini.
+              </p>
             </div>
 
             {error && (
@@ -399,7 +442,9 @@ export default function SignupForm({ tiers }: { tiers: TierData[] }) {
                   disabled={isLoading}
                 />
                 {errors.name && (
-                  <p className="text-xs text-destructive">{errors.name.message}</p>
+                  <p className="text-xs text-destructive">
+                    {errors.name.message}
+                  </p>
                 )}
               </div>
 
@@ -412,7 +457,9 @@ export default function SignupForm({ tiers }: { tiers: TierData[] }) {
                   disabled={isLoading}
                 />
                 {errors.organizationName && (
-                  <p className="text-xs text-destructive">{errors.organizationName.message}</p>
+                  <p className="text-xs text-destructive">
+                    {errors.organizationName.message}
+                  </p>
                 )}
               </div>
             </div>
@@ -427,7 +474,9 @@ export default function SignupForm({ tiers }: { tiers: TierData[] }) {
                 disabled={isLoading}
               />
               {errors.email && (
-                <p className="text-xs text-destructive">{errors.email.message}</p>
+                <p className="text-xs text-destructive">
+                  {errors.email.message}
+                </p>
               )}
             </div>
 
@@ -440,7 +489,9 @@ export default function SignupForm({ tiers }: { tiers: TierData[] }) {
                 disabled={isLoading}
               />
               {errors.password && (
-                <p className="text-xs text-destructive">{errors.password.message}</p>
+                <p className="text-xs text-destructive">
+                  {errors.password.message}
+                </p>
               )}
             </div>
 

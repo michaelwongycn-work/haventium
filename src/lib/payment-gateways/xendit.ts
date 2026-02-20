@@ -7,6 +7,8 @@ export interface XenditPaymentLinkParams {
   payerEmail?: string;
   description: string;
   currency?: string;
+  successRedirectUrl?: string;
+  failureRedirectUrl?: string;
 }
 
 export interface XenditPaymentLinkResult {
@@ -32,6 +34,8 @@ export async function createXenditPaymentLink(
       description: params.description,
       currency: params.currency ?? "IDR",
       shouldSendEmail: false,
+      successRedirectUrl: params.successRedirectUrl,
+      failureRedirectUrl: params.failureRedirectUrl,
     },
   });
 
