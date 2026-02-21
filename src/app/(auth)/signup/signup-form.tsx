@@ -156,6 +156,12 @@ export default function SignupForm({ tiers }: { tiers: TierData[] }) {
       }
 
       if (result.autoLogin) {
+        sessionStorage.setItem(
+          "pendingVerificationEmail",
+          result.autoLogin.email,
+        );
+        // Record cooldown timestamp so verify-email page knows email was just sent
+        localStorage.setItem("verifyEmailCooldownUntil", String(Date.now() + 60 * 1000));
         await signIn("credentials", {
           email: result.autoLogin.email,
           password: result.autoLogin.password,

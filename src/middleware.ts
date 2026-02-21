@@ -11,6 +11,7 @@ export default auth((req) => {
   const isPublicRoute =
     pathname.startsWith("/login") ||
     pathname.startsWith("/signup") ||
+    pathname.startsWith("/verify-email") ||
     pathname.startsWith("/api/signup") ||
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/cron") ||
@@ -27,6 +28,19 @@ export default auth((req) => {
     const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
+  }
+
+  // Email verification gate — must verify before accessing anything
+  const emailVerified = (req.auth as { user?: { emailVerified?: boolean } })?.user?.emailVerified;
+  if (!emailVerified) {
+    const isAllowed =
+      pathname.startsWith("/verify-email") ||
+      pathname.startsWith("/api/") ||
+      pathname.startsWith("/login") ||
+      pathname.startsWith("/signup");
+    if (!isAllowed) {
+      return NextResponse.redirect(new URL("/verify-email", req.url));
+    }
   }
 
   // Redirect PENDING_PAYMENT users to /subscribe (except allowed paths)

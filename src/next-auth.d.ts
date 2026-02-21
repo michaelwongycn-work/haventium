@@ -36,6 +36,7 @@ declare module "next-auth" {
       organizationId: string;
       subscription: UserSubscription | null;
       roles: UserRole[];
+      emailVerified: boolean;
     } & DefaultSession["user"];
   }
 
@@ -43,6 +44,7 @@ declare module "next-auth" {
     organizationId: string;
     subscription: UserSubscription | null;
     roles: UserRole[];
+    emailVerified: boolean;
   }
 }
 
@@ -52,5 +54,6 @@ declare module "next-auth/jwt" {
     organizationId: string;
     subscription: UserSubscription | null;
     roles: UserRole[];
+    emailVerified: boolean;
   }
 }

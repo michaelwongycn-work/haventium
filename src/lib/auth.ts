@@ -29,6 +29,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             name: true,
             hashedPassword: true,
             organizationId: true,
+            emailVerified: true,
             organization: {
               select: {
                 subscription: {
@@ -126,6 +127,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           organizationId: user.organizationId,
           subscription: safeSubscription,
           roles: roles,
+          emailVerified: !!user.emailVerified,
         };
       },
     }),

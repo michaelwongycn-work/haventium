@@ -2,7 +2,9 @@ import type { NextAuthConfig } from "next-auth";
 import type { UserRole } from "@/lib/access-utils";
 
 // Type guard to check if value is UserSubscription
-function isUserSubscription(value: unknown): value is NonNullable<import("next-auth").User["subscription"]> {
+function isUserSubscription(
+  value: unknown,
+): value is NonNullable<import("next-auth").User["subscription"]> {
   return value !== null && typeof value === "object";
 }
 
@@ -20,6 +22,7 @@ export const authConfig = {
         token.organizationId = user.organizationId;
         token.subscription = user.subscription;
         token.roles = user.roles;
+        token.emailVerified = user.emailVerified;
       }
       return token;
     },
@@ -27,8 +30,11 @@ export const authConfig = {
       if (token && session.user) {
         session.user.id = token.id as string;
         session.user.organizationId = token.organizationId as string;
-        session.user.subscription = isUserSubscription(token.subscription) ? token.subscription : null;
+        session.user.subscription = isUserSubscription(token.subscription)
+          ? token.subscription
+          : null;
         session.user.roles = isUserRoleArray(token.roles) ? token.roles : [];
+        (session.user as any).emailVerified = token.emailVerified ?? false;
       }
       return session;
     },

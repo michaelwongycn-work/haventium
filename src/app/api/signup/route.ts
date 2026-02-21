@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { randomBytes } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { hashPassword, validatePassword } from "@/lib/password";
 import { handleApiError } from "@/lib/api";
-import { createXenditPaymentLink } from "@/lib/payment-gateways/xendit";
+import { sendVerificationEmail } from "@/lib/mailersend";
 import { z } from "zod";
 
 const signupSchema = z.object({
@@ -75,7 +76,7 @@ export async function POST(request: NextRequest) {
         ? Number(subscriptionTier.annualPrice)
         : Number(subscriptionTier.monthlyPrice);
 
-    const isPaid = price > 0;
+    const isPaid = price > 0; // Used for subscription status: PENDING_PAYMENT vs ACTIVE
 
     // Create organization, user, subscription, and default role in a transaction
     const result = await prisma.$transaction(async (tx) => {
@@ -145,65 +146,36 @@ export async function POST(request: NextRequest) {
       return { user, organization, subscription };
     });
 
-    // If free tier, return credentials for client-side auto-login
-    if (!isPaid) {
-      return NextResponse.json(
-        {
-          message: "User registered successfully",
-          redirect: "/dashboard",
-          autoLogin: { email, password },
-        },
-        { status: 201 },
-      );
-    }
+    // Generate email verification token
+    const token = randomBytes(32).toString("hex");
+    const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
-    // Paid tier: create Xendit payment link
-    const haventiumXenditKey = process.env.HAVENTIUM_XENDIT_SECRET_KEY;
-    if (!haventiumXenditKey) {
-      // Xendit key not configured — treat as free, auto-login
-      return NextResponse.json(
-        {
-          message: "User registered successfully",
-          redirect: "/dashboard",
-          autoLogin: { email, password },
-        },
-        { status: 201 },
-      );
-    }
-
-    const baseUrl = process.env.BASE_URL ?? "http://localhost:3000";
-    const externalId = `sub-${result.subscription.id}-${Date.now()}`;
-    const xenditResult = await createXenditPaymentLink({
-      apiKey: haventiumXenditKey,
-      externalId,
-      amount: price,
-      payerEmail: email,
-      description: `Haventium ${subscriptionTier.name} subscription (${billingCycle.toLowerCase()})`,
-      currency: "IDR",
-      successRedirectUrl: `${baseUrl}/signup/success`,
-      failureRedirectUrl: `${baseUrl}/signup/payment-failed`,
-    });
-
-    // Create PaymentTransaction for the subscription
-    await prisma.paymentTransaction.create({
+    await prisma.verificationToken.create({
       data: {
-        organizationId: result.organization.id,
-        subscriptionId: result.subscription.id,
-        type: "SUBSCRIPTION",
-        gateway: "XENDIT",
-        externalId: xenditResult.externalId,
-        xenditInvoiceId: xenditResult.xenditInvoiceId,
-        paymentLinkUrl: xenditResult.paymentLinkUrl,
-        amount: price,
-        status: "PENDING",
-        externalResponse: JSON.parse(JSON.stringify(xenditResult.externalResponse)),
+        identifier: email,
+        token,
+        expires,
       },
     });
 
+    const baseUrl = process.env.BASE_URL ?? "http://localhost:3000";
+
+    // Send verification email non-blocking
+    sendVerificationEmail({
+      to: email,
+      toName: name,
+      token,
+      baseUrl,
+    }).catch((err) => {
+      console.error("[signup] Failed to send verification email:", err);
+    });
+
+    // Both FREE and PAID: auto-login and redirect to verify-email
     return NextResponse.json(
       {
-        message: "User registered. Please complete payment.",
-        paymentLinkUrl: xenditResult.paymentLinkUrl,
+        message: "User registered successfully. Please verify your email.",
+        redirect: "/verify-email",
+        autoLogin: { email, password },
       },
       { status: 201 },
     );
