@@ -13,7 +13,7 @@ import {
 import { encrypt, getLastFourChars, maskApiKey } from "@/lib/encryption";
 
 const API_KEY_SERVICES = [
-  "RESEND_EMAIL",
+  "MAILERSEND_EMAIL",
   "WHATSAPP_META",
   "TELEGRAM_BOT",
   "XENDIT",
@@ -56,9 +56,7 @@ export async function GET() {
     // Add masked display
     const maskedKeys = apiKeys.map((key) => ({
       ...key,
-      maskedValue: key.service.includes("RESEND")
-        ? `re_••••••••${key.lastFourChars}`
-        : `••••••••${key.lastFourChars}`,
+      maskedValue: `••••••••${key.lastFourChars}`,
     }));
 
     return apiSuccess({ items: maskedKeys });

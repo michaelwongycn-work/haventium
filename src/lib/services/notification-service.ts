@@ -3,7 +3,7 @@
  * Handles email, WhatsApp, and Telegram sending with organization-specific API keys
  */
 
-import { Resend } from "resend"
+import { MailerSend, EmailParams, Sender, Recipient } from "mailersend"
 import { logger } from "@/lib/logger"
 import { NotificationChannel } from "../constants"
 import {
@@ -21,7 +21,7 @@ export interface SendEmailParams {
   subject: string
   body: string
   from?: string
-  apiKey: string // Required: organization's Resend API key
+  apiKey: string // Required: organization's MailerSend API key
 }
 
 export interface SendEmailResult {
@@ -31,18 +31,18 @@ export interface SendEmailResult {
 }
 
 /**
- * Send an email via Resend using organization's API key
- * @param apiKey - Organization's Resend API key (required)
+ * Send an email via MailerSend using organization's API key
+ * @param apiKey - Organization's MailerSend API key (required)
  */
 export async function sendEmail({
   to,
   subject,
   body,
-  from = "Haventium <noreply@haventium.com>",
+  from = "noreply@haventium.com",
   apiKey,
 }: SendEmailParams): Promise<SendEmailResult> {
   if (!apiKey) {
-    logger.error("Resend API key not provided for email notification")
+    logger.error("MailerSend API key not provided for email notification")
     return {
       success: false,
       error: "Organization API key not configured for email",
@@ -50,29 +50,22 @@ export async function sendEmail({
   }
 
   try {
-    const resend = new Resend(apiKey)
+    const mailerSend = new MailerSend({ apiKey })
 
-    const { data, error } = await resend.emails.send({
-      from,
-      to: [to],
-      subject,
-      html: body,
-    })
+    const emailParams = new EmailParams()
+      .setFrom(new Sender(from, "Haventium"))
+      .setTo([new Recipient(to)])
+      .setSubject(subject)
+      .setHtml(body)
 
-    if (error) {
-      logger.error("Resend API error", error, { recipient: to })
-      return {
-        success: false,
-        error: error.message || "Failed to send email",
-      }
-    }
+    const response = await mailerSend.email.send(emailParams)
 
     return {
       success: true,
-      messageId: data?.id,
+      messageId: response.headers?.["x-message-id"] ?? undefined,
     }
   } catch (error) {
-    logger.error("Unexpected error sending email", error, { recipient: to })
+    logger.error("MailerSend API error", error, { recipient: to })
     return {
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",

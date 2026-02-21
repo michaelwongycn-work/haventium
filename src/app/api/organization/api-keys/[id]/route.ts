@@ -60,11 +60,7 @@ export async function GET(
 
     return apiSuccess({
       ...apiKey,
-      maskedValue: maskApiKey(
-        apiKey.service.includes("RESEND")
-          ? `re_••••••••${apiKey.lastFourChars}`
-          : `••••••••${apiKey.lastFourChars}`,
-      ),
+      maskedValue: maskApiKey(`••••••••${apiKey.lastFourChars}`),
     });
   } catch (error) {
     return handleApiError(error, "fetch API key");
@@ -129,11 +125,7 @@ export async function PATCH(
 
     return apiSuccess({
       ...updatedKey,
-      maskedValue: maskApiKey(
-        updatedKey.service.includes("RESEND")
-          ? `re_••••••••${updatedKey.lastFourChars}`
-          : `••••••••${updatedKey.lastFourChars}`,
-      ),
+      maskedValue: maskApiKey(`••••••••${updatedKey.lastFourChars}`),
     });
   } catch (error) {
     return handleApiError(error, "update API key");

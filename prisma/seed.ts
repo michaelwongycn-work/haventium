@@ -391,31 +391,31 @@ async function main() {
   // Note: In production, users should add their own API keys via the UI
   const { encrypt, getLastFourChars } = await import("../src/lib/encryption");
 
-  // Resend Email API key (use test key for development)
-  const testResendKey = process.env.RESEND_API_KEY || "re_test_key_12345678";
-  const resendEncrypted = encrypt(testResendKey);
+  // MailerSend Email API key (use test key for development)
+  const testMailerSendKey = process.env.MAILERSEND_API_KEY || "mlsn.test_key_12345678";
+  const mailerSendEncrypted = encrypt(testMailerSendKey);
 
   await prisma.apiKey.upsert({
     where: {
       organizationId_service: {
         organizationId: org.id,
-        service: "RESEND_EMAIL",
+        service: "MAILERSEND_EMAIL",
       },
     },
     update: {
-      encryptedValue: resendEncrypted.encrypted,
-      encryptionIv: resendEncrypted.iv,
-      encryptionTag: resendEncrypted.tag,
-      lastFourChars: getLastFourChars(testResendKey),
+      encryptedValue: mailerSendEncrypted.encrypted,
+      encryptionIv: mailerSendEncrypted.iv,
+      encryptionTag: mailerSendEncrypted.tag,
+      lastFourChars: getLastFourChars(testMailerSendKey),
     },
     create: {
       organizationId: org.id,
-      name: "Resend Production",
-      service: "RESEND_EMAIL",
-      encryptedValue: resendEncrypted.encrypted,
-      encryptionIv: resendEncrypted.iv,
-      encryptionTag: resendEncrypted.tag,
-      lastFourChars: getLastFourChars(testResendKey),
+      name: "MailerSend Production",
+      service: "MAILERSEND_EMAIL",
+      encryptedValue: mailerSendEncrypted.encrypted,
+      encryptionIv: mailerSendEncrypted.iv,
+      encryptionTag: mailerSendEncrypted.tag,
+      lastFourChars: getLastFourChars(testMailerSendKey),
       isActive: true,
     },
   });

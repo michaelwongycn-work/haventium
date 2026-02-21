@@ -10,7 +10,7 @@ import {
 import { decrypt } from "@/lib/encryption";
 
 const testApiKeySchema = z.object({
-  service: z.enum(["RESEND_EMAIL", "WHATSAPP_META", "TELEGRAM_BOT", "XENDIT"]),
+  service: z.enum(["MAILERSEND_EMAIL", "WHATSAPP_META", "TELEGRAM_BOT", "XENDIT"]),
   value: z.string().min(1, "API key value is required").optional(),
 });
 
@@ -59,8 +59,8 @@ export async function POST(
     let testResult: { success: boolean; message: string; error?: string };
 
     switch (validatedData.service) {
-      case "RESEND_EMAIL":
-        testResult = await testResendKey(apiKeyValue);
+      case "MAILERSEND_EMAIL":
+        testResult = await testMailerSendKey(apiKeyValue);
         break;
 
       case "WHATSAPP_META":
@@ -101,14 +101,13 @@ export async function POST(
 }
 
 /**
- * Test Resend API key by calling their API
+ * Test MailerSend API key by calling their API
  */
-async function testResendKey(
+async function testMailerSendKey(
   apiKey: string,
 ): Promise<{ success: boolean; message: string; error?: string }> {
   try {
-    // Call Resend API to verify the key (using /api-keys endpoint)
-    const response = await fetch("https://api.resend.com/api-keys", {
+    const response = await fetch("https://api.mailersend.com/v1/api-tokens", {
       method: "GET",
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -118,20 +117,20 @@ async function testResendKey(
     if (response.ok) {
       return {
         success: true,
-        message: "Resend API key is valid",
+        message: "MailerSend API key is valid",
       };
     } else {
       const data = await response.json();
       return {
         success: false,
-        message: "Invalid Resend API key",
+        message: "Invalid MailerSend API key",
         error: data.message || "Authentication failed",
       };
     }
   } catch (error) {
     return {
       success: false,
-      message: "Failed to test Resend API key",
+      message: "Failed to test MailerSend API key",
       error: error instanceof Error ? error.message : "Unknown error",
     };
   }

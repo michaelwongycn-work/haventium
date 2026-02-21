@@ -1,1065 +1,376 @@
-# Haventium
+# Haventium — Rental Property Management CRM
 
-Rental property management CRM. Multi-tenant SaaS where every piece of data is scoped to an organization — every Prisma query must include `organizationId` in its `where` clause.
+Multi-tenant SaaS platform for managing rental properties, units, tenants, and leases with automated billing and notifications. Every piece of data is scoped to an organization.
 
-## Development Rules
+## Core Development Rules
 
-- **Never run Prisma migrations** (`prisma migrate dev`, `prisma db push`, etc.) — the developer handles all migrations manually.
-- **Use pnpm** for package management (not npm or bun).
+1. **Multi-tenant security:** Every Prisma query MUST include `organizationId` in its `where` clause. Zero exceptions.
+2. **Never run Prisma migrations manually.** Developer handles all migrations. `prisma generate` IS allowed (required after schema changes).
+3. **Use pnpm only** (not npm or bun).
+4. **Package manager:** `pnpm install`, `pnpm dev`, `pnpm build`, `pnpm lint`
 
-## Product Features
+## Tech Stack
 
-### Properties & Units
+- **Framework:** Next.js 16 with App Router (TypeScript)
+- **ORM:** Prisma 7 with PostgreSQL (client output: `generated/prisma/`)
+- **Auth:** NextAuth 5 (beta) with Credentials provider, JWT sessions
+- **UI:** React 19, shadcn/ui, Tailwind CSS 4
+- **Icons:** @hugeicons/react
+- **Forms:** React Hook Form + Zod validation
+- **Payment:** Xendit (subscription billing + tenant rent collection)
+- **Email:** MailerSend (transactional + verification emails)
+- **File storage:** Vercel Blob
+- **Notifications:** Email (MailerSend), WhatsApp (Meta Cloud API), Telegram (Bot API)
 
-Properties are buildings or complexes. Each property has units. Units have optional `dailyRate`, `monthlyRate`, and `annualRate` (Decimal 12,2). A unit can be marked `isUnavailable` to block new leases on it. Units are the resource leases attach to — one active lease per unit at a time (overlap validation).
+## Database & Prisma
 
-**API:**
+- **Generated client location:** `generated/prisma/` (custom output in generator config)
+- **Enums auto-generated:** `generated/prisma/enums.ts` — updated by `prisma generate`
+- **JSON fields:** Must use `JSON.parse(JSON.stringify(value))` to satisfy TypeScript types (used in `externalResponse` fields on LeaseAgreement and PaymentTransaction)
+- **Activity enum:** `ActivityType` must match Prisma schema exactly; defined in `src/lib/api/activity-logger.ts`
 
-- `GET/POST /api/properties` — List and create properties
-- `GET/PATCH/DELETE /api/properties/[id]` — Get, update, delete property
-- `GET/POST /api/properties/[id]/units` — List units and create unit for property
-- `GET/PATCH/DELETE /api/properties/[id]/units/[unitId]` — Get, update, delete unit
-- `POST /api/properties/bulk-import` — Bulk import properties and units from Excel/CSV
+## API Architecture
 
-**Bulk Import:**
+### Standard Route Handler Pattern
 
-- Supports Excel/CSV upload with validation
-- Creates properties and their units in a single transaction
-- Validates subscription limits before import
-- Returns detailed success/failure report per row
+All route handlers in `src/app/api/` follow this pattern:
 
-**UI:**
+```typescript
+import { requireAccess, handleApiError, validateRequest, apiSuccess } from "@/lib/api";
 
-- `/properties` — List page with search and filters
-- `/properties/[id]` — Property detail with units list
-- `/properties/[id]/units/[unitId]` — Unit detail page
+export async function GET(request: Request) {
+  try {
+    // 1. Check RBAC
+    const { authorized, response, session } = await requireAccess("resource", "action");
+    if (!authorized) return response;
+    const organizationId = session.user.organizationId;
 
-### Tenants
+    // 2. Validate input (if needed)
+    const body = await request.json();
+    const validated = someSchema.parse(body);
 
-Tenants don't control their own status. It's driven entirely by lease lifecycle:
+    // 3. Scope all queries by organizationId
+    const data = await prisma.entity.findMany({
+      where: { organizationId },
+    });
 
-| Event                                     | Tenant becomes |
-| ----------------------------------------- | -------------- |
-| Created (no lease)                        | LEAD           |
-| Lease created (DRAFT)                     | BOOKED         |
-| Lease paid / activated                    | ACTIVE         |
-| Lease ended, no other active leases       | EXPIRED        |
-| Only DRAFT lease deleted, no other leases | LEAD           |
+    // 4. Log activity (if mutation)
+    await logActivity(session, { type: "ACTIVITY_TYPE", ... });
 
-There is no API endpoint to set tenant status directly — it's always a side effect of lease operations. A tenant can't be deleted if they have active leases.
-
-**Schema Fields:**
-
-- Required: `fullName`, at least one of `email` or `phone`
-- Optional: `preferEmail`, `preferWhatsapp`, `preferTelegram` (notification preferences)
-- Auto-managed: `status` (LEAD, BOOKED, ACTIVE, EXPIRED)
-
-**API:**
-
-- `GET/POST /api/tenants` — List and create tenants
-- `GET/PATCH/DELETE /api/tenants/[id]` — Get, update, delete tenant
-- `POST /api/tenants/bulk-import` — Bulk import tenants from Excel/CSV
-
-**UI:**
-
-- `/tenants` — List page with status filters and search
-- `/tenants/[id]` — Tenant detail with leases and activity timeline
-
-### Leases
-
-Leases are the core entity. Everything flows from them.
-
-**Status flow:** DRAFT → ACTIVE → ENDED or CANCELLED
-
-- A new lease is always created as DRAFT.
-- **Activation**: setting `paidAt` on a DRAFT auto-transitions it to ACTIVE and the tenant to ACTIVE.
-- **Ending**: ACTIVE → ENDED transitions the tenant to EXPIRED (if no other active leases remain).
-- **Cancellation**: only happens via the grace period cron — never manually.
-- **Deletion**: only DRAFT leases can be deleted.
-
-**What can't change after leaving DRAFT:** `startDate`, `endDate`, `paymentCycle`, `rentAmount`, `depositAmount`. These are locked once a lease is ACTIVE.
-
-**Payment model:** Each lease represents ONE payment period. The `paidAt` field tracks when that single payment was made. For recurring rentals:
-
-- **DAILY lease**: 1 day = 1 payment = 1 lease. Tomorrow's rent = new lease.
-- **MONTHLY lease**: 1 month = 1 payment = 1 lease. Next month's rent = new lease.
-- **ANNUAL lease**: 1 year = 1 payment = 1 lease. Next year's rent = new lease.
-- Auto-renewal automatically creates the next lease when the current one expires.
-- There is NO recurring payment tracking within a single lease — next payment = next lease.
-
-**Extended Payment Tracking:**
-Beyond `paidAt`, leases now support additional payment fields:
-
-- `paymentDate` — When payment was received (DateTime)
-- `paymentMethod` — CASH, BANK_TRANSFER, VIRTUAL_ACCOUNT, QRIS, MANUAL
-- `paymentStatus` — PENDING, PROCESSING, COMPLETED, FAILED, REFUNDED
-- `externalId` — Third-party payment gateway transaction ID
-- `externalResponse` — JSON response from payment gateway
-- `paymentNotes` — Internal notes about the payment
-
-**Overlapping lease validation:** Before creating a lease, the API checks for existing ACTIVE/DRAFT leases on the same unit with overlapping date ranges. Auto-renew leases that start before or on the new lease's `endDate` are also blocked.
-
-**API:**
-
-- `GET/POST /api/leases` — List and create leases
-- `GET/PATCH/DELETE /api/leases/[id]` — Get, update, delete lease
-- `GET /api/leases/[id]/check-future-lease` — Check if future lease exists (blocks auto-renew enable)
-- `GET /api/units/[id]/active-lease` — Get active lease for a unit
-- `POST /api/leases/bulk-import` — Bulk import leases with dry-run support
-
-**UI:**
-
-- `/leases` — List page with status filters, search, and quick actions
-- `/leases/[id]` — Lease detail with payment history and activity timeline
-
-### Auto-Renewal
-
-Leases can have `isAutoRenew = true` with an `autoRenewalNoticeDays` value. The cron job (`/api/cron/process-auto-renewals`, runs 1am UTC daily) finds ACTIVE auto-renew leases where the notice deadline has passed (`now >= endDate - autoRenewalNoticeDays`) and that haven't already been renewed (`renewedTo = null`).
-
-For each, it creates a new DRAFT lease as a renewal:
-
-- New `startDate` = old `endDate` + 1 day
-- New `endDate` calculated from `paymentCycle` (DAILY: +1 day, MONTHLY: +1 month - 1 day, ANNUAL: +1 year - 1 day)
-- Same terms carried forward, linked via `renewedFromId`
-- Original lease set to ENDED
-
-**Disabling auto-renew is blocked once the notice deadline has passed** — the API checks `now >= endDate - autoRenewalNoticeDays` and rejects the change. Enabling auto-renew is blocked if another lease already exists on the unit after the current lease's `endDate` (checked via `/api/leases/[id]/check-future-lease`).
-
-### Grace Period
-
-DRAFT leases can have a `gracePeriodDays`. The cron job (`/api/cron/cancel-unpaid-leases`, runs midnight UTC daily) finds all DRAFT leases with a grace period and cancels those where `now > startDate + gracePeriodDays`. Status → CANCELLED with a LEASE_TERMINATED activity logged.
-
-**Validation Helpers:**
-
-- `calculateGracePeriodDeadline(startDate, gracePeriodDays)` — Returns the exact deadline DateTime
-- `isLeaseOverdue(startDate, gracePeriodDays)` — Returns boolean if past deadline
-
-### Deposits
-
-Deposit status: HELD → RETURNED or FORFEITED. One-way, irreversible. Can only change on ENDED leases that haven't been renewed and are still HELD.
-
-**Schema:**
-
-- `depositAmount` (Decimal) — Amount held
-- `depositStatus` (enum) — HELD, RETURNED, FORFEITED
-- Deposit status transitions are validated in API — prevents reversal
-
-### Subscription Tiers
-
-| Tier   | maxUsers  | maxProperties | maxUnits  | maxTenants |
-| ------ | --------- | ------------- | --------- | ---------- |
-| FREE   | 1         | 1             | 10        | 10         |
-| NORMAL | 5         | 3             | 100       | 100        |
-| PRO    | unlimited | unlimited     | unlimited | unlimited  |
-
-Limits enforced server-side at creation time (POST handlers for tenants, properties, units, users). Returns 403 when exceeded. Signup creates a FREE subscription with ACTIVE status. Login is blocked if subscription is EXPIRED or CANCELLED.
-
-**Enforcement:**
-
-- `checkSubscriptionLimit(session, 'users' | 'properties' | 'units' | 'tenants')` helper
-- Checked before all creation operations (properties, units, tenants, users)
-- Bulk imports also validate against limits before processing
-
-### Dashboard
-
-Server component running 11 parallel Prisma queries. Shows:
-
-- Property count, unit count (total), unavailable unit count
-- Active tenant count, total tenant count
-- Active lease count, draft lease count
-- Monthly revenue: collected vs expected (filterable by month/year)
-- Occupancy rate (active leases / total units)
-- Expiring soon: top 10 active leases ending within 30 days with no renewal
-- Earliest to expire: top 10 upcoming payments
-
-Revenue calculation: "expected" = sum of `rentAmount` for ACTIVE leases overlapping the month; "collected" = sum of `rentAmount` for leases with `paidAt` in that month.
-
-**API:**
-
-- `GET /api/dashboard/overview?month=2&year=2026` — Returns all dashboard metrics
-
-**UI:**
-
-- `/dashboard` — Dashboard overview (server component)
-
-### Organization Settings
-
-Organizations can configure display preferences:
-
-**Format Settings:**
-
-- `dateFormat` — Date display format (dd/MM/yyyy, MM/dd/yyyy, yyyy-MM-dd). Default: dd/MM/yyyy
-- `currency` — ISO currency code. Default: USD
-- `currencySymbol` — Currency symbol for display. Default: $
-
-**API:**
-
-- `GET/PATCH /api/organization/formats` — Get and update organization format settings
-
-**UI:**
-
-- `/organization` — Organization settings page (includes formats, API keys, roles)
-
-### API Keys
-
-**Organization-specific API key management** for email, WhatsApp, and Telegram integrations.
-
-**Schema:**
-
-- `ApiKey` — Encrypted storage of organization API keys with service type
-- Encrypted at rest using AES-256-GCM (encryption utility in `src/lib/encryption.ts`)
-- Master key from `ENCRYPTION_SECRET` environment variable (32+ chars required)
-- Additional fields: `lastUsedAt` (tracking), `isActive` (soft disable)
-
-**Security:**
-
-- API keys encrypted with AES-256-GCM, stored with IV and auth tag
-- Full key shown only once at creation (copy-to-clipboard)
-- Masked display in UI (e.g., `re_••••••••5a3f`)
-- Decrypted only when sending notifications
-- Activity logging for all key operations (create/update/delete)
-- Deletion requires current password confirmation
-
-**Services:**
-
-- `RESEND_EMAIL` — Resend API key for email delivery
-- `WHATSAPP_META` — WhatsApp Meta Cloud API credentials (JSON with accessToken, phoneNumberId, businessAccountId)
-- `TELEGRAM_BOT` — Telegram bot token from @BotFather
-
-**API:**
-
-- `GET/POST /api/organization/api-keys` — List and create API keys
-- `GET/PATCH/DELETE /api/organization/api-keys/[id]` — Get, update, delete API key
-- `POST /api/organization/api-keys/[id]/test` — Test API key credentials (validates connection)
-
-**UI:**
-
-- `/organization` (API Keys tab) — Management interface with create/test/delete operations
-
-**Migration:** Global `RESEND_API_KEY` environment variable deprecated. Each organization must configure their own API keys. Notifications fail with clear error if keys not configured.
-
-### Notifications
-
-**Fully implemented** notification system with email (Resend), WhatsApp (Meta Cloud API), and Telegram (Bot API) delivery.
-
-**Schema:**
-
-- `NotificationTemplate` — Email/WhatsApp/Telegram message templates with dynamic variables
-- `NotificationRule` — Automated trigger rules with daysOffset, recipient config (TENANT/USER/ROLE)
-- `NotificationLog` — Delivery tracking (PENDING → SENT/FAILED)
-
-**Channels:**
-
-- `EMAIL` — Via Resend API (requires org RESEND_EMAIL API key)
-- `WHATSAPP` — Via Meta Cloud API (requires org WHATSAPP_META credentials)
-- `TELEGRAM` — Via Telegram Bot API (requires org TELEGRAM_BOT token). **Uses phone numbers as identifiers** (not chat IDs).
-
-**Template Variables:**
-
-- `{{tenantName}}` — Tenant full name
-- `{{leaseStartDate}}` — Lease start date (formatted per org settings)
-- `{{leaseEndDate}}` — Lease end date (formatted per org settings)
-- `{{rentAmount}}` — Lease rent amount (formatted per org currency)
-- `{{propertyName}}` — Property name
-- `{{unitName}}` — Unit name
-
-**Triggers:**
-
-- `PAYMENT_REMINDER` — Sent X days before payment due
-- `PAYMENT_LATE` — Sent when payment is overdue
-- `PAYMENT_CONFIRMED` — Sent when lease is paid (paidAt set)
-- `LEASE_EXPIRING` — Sent X days before lease ends
-- `LEASE_EXPIRED` — Sent when lease ends
-- `MANUAL` — Manually triggered
-
-**Tenant Preferences:** Respects `preferEmail`, `preferWhatsapp`, and `preferTelegram` flags on Tenant model. All phone-based channels (WhatsApp, Telegram) use the tenant's `phone` field.
-
-**WhatsApp Integration:** Meta Cloud API direct (no BSP fees). Supports template messages (marketing/utility) and plain text (service messages). Credentials stored as encrypted JSON in ApiKey table.
-
-**Telegram Integration:** Direct Telegram Bot API (no third-party library). Instant setup via @BotFather (< 1 minute). 100% free (up to 30 msg/sec). **Uses phone numbers for sending** (not chat IDs). Supports HTML formatting in messages.
-
-**API Key Requirement:** All notifications require organization-specific API keys. If not configured, notifications fail with status FAILED and clear error message in NotificationLog.
-
-**API:**
-
-- `GET/POST /api/notifications/templates` — List and create templates
-- `GET/PATCH/DELETE /api/notifications/templates/[id]` — Get, update, delete template
-- `GET/POST /api/notifications/rules` — List and create rules
-- `GET/PATCH/DELETE /api/notifications/rules/[id]` — Get, update, delete rule
-- `GET /api/notifications/logs` — List notification logs (paginated)
-- `GET /api/notifications/logs/[id]` — Get notification log details
-
-**Cron Jobs:**
-
-- `/api/cron/process-notifications` (2am UTC) — Processes PAYMENT_REMINDER, PAYMENT_LATE, and LEASE_EXPIRING notifications based on rules
-- `/api/cron/end-expired-leases` (3am UTC) — Ends ACTIVE leases where endDate has passed, triggers LEASE_EXPIRED notifications
-
-**Payment notification logic:**
-
-- `PAYMENT_REMINDER`: Calculates due dates based on paymentCycle. For MONTHLY leases, reminds on the same day each month (e.g., if lease starts on 15th, reminds on 15th of each month). For DAILY leases, reminds daily. For ANNUAL leases, reminds on anniversary date.
-- `PAYMENT_LATE`: Checks DRAFT leases with grace periods. If `now > startDate + gracePeriodDays`, triggers late notification.
-- Note: Each lease = one payment. Recurring payments = recurring leases (via auto-renewal).
-
-**UI:**
-
-- `/notifications/templates` — Template management page
-- `/notifications/rules` — Rule management page
-- `/notifications/logs` — Notification log viewer with filters
-
-### Maintenance Requests
-
-**Fully implemented** maintenance request tracking system for property and unit maintenance issues.
-
-**Schema:**
-
-- `MaintenanceRequest` — Work orders with status, priority, cost tracking
-- Status flow: OPEN → IN_PROGRESS → COMPLETED (or CANCELLED)
-- Priority levels: LOW, MEDIUM, HIGH, URGENT
-
-**Fields:**
-
-- Required: `propertyId`, `title`, `description`
-- Optional: `unitId`, `tenantId`, `leaseId` (flexible linking to any entity)
-- Cost tracking: `estimatedCost`, `actualCost` (Decimal)
-- Completion tracking: `completedAt` (auto-set when status → COMPLETED)
-
-**Business Rules:**
-
-- Only OPEN or CANCELLED requests can be deleted (not IN_PROGRESS or COMPLETED)
-- Prevents accidental deletion of historical records
-- Activity logging for all operations
-
-**API:**
-
-- `GET/POST /api/maintenance-requests` — List and create maintenance requests
-- `GET/PATCH/DELETE /api/maintenance-requests/[id]` — Get, update, delete maintenance request
-- `POST /api/maintenance-requests/bulk-import` — Bulk import maintenance requests from Excel/CSV
-
-**UI:**
-
-- `/maintenance-requests` — List page with filters (status, priority, property, search)
-- `/maintenance-requests/[id]` — Detail page with full info and activity timeline
-
-### Document Management
-
-**Fully implemented** document storage and management using Vercel Blob.
-
-**Schema:**
-
-- `Document` — File metadata with optional foreign keys to any entity
-- Stores: `filename`, `fileType`, `fileSize`, `fileUrl`, `storageKey`
-- Optional links: `propertyId`, `unitId`, `tenantId`, `leaseId`
-
-**File Storage:**
-
-- Vercel Blob for cloud storage (public access URLs)
-- Max file size: 10MB
-- Allowed types: PDF, images (JPEG, PNG, GIF, WebP)
-- Files stored with random suffix to avoid collisions
-
-**Upload Flow:**
-
-1. Client uploads file via FormData
-2. Server validates file type/size and entity ownership
-3. Upload to Vercel Blob
-4. Save metadata to database
-5. Log activity (DOCUMENT_UPLOADED)
-
-**Deletion Flow:**
-
-1. Verify document ownership
-2. Log activity (DOCUMENT_DELETED)
-3. Delete from Vercel Blob
-4. Delete from database
-
-**API:**
-
-- `POST /api/documents/upload` — Upload document (multipart/form-data)
-- `GET /api/documents` — List documents with filters (entityType, entityId, search)
-- `GET/DELETE /api/documents/[id]` — Get or delete document
-
-**UI:**
-
-- `/documents` — List page with filters (entity type, search) and upload dialog
-- Direct download/preview via `fileUrl` from Vercel Blob
-
-**Environment:** Requires `BLOB_READ_WRITE_TOKEN` from Vercel dashboard.
-
-### Analytics & Calendar
-
-**Analytics:**
-
-- Dashboard-style metrics with charts
-- Revenue trends, occupancy trends, tenant acquisition
-- Uses recharts for visualization
-
-**Calendar:**
-
-- Visual calendar view of lease schedules
-- Uses react-big-calendar
-- Shows lease start/end dates, overlaps, renewals
-
-**UI:**
-
-- `/analytics` — Analytics dashboard
-- `/calendar` — Calendar view
-
-### RBAC (Role-Based Access Control)
-
-**Fully implemented** throughout API and UI. Roles, accesses, and user-role associations are modeled in the schema. The Owner role is system-protected (`isSystem: true`) and cannot be edited or deleted.
-
-**Permission model:**
-
-| Resource      | Actions                          |
-| ------------- | -------------------------------- |
-| properties    | read, create, update, delete     |
-| units         | read, create, update, delete     |
-| tenants       | read, create, update, delete     |
-| leases        | read, create, update, delete     |
-| notifications | read, create, update, delete     |
-| maintenance   | read, create, update, delete     |
-| documents     | read, create, delete             |
-| settings      | manage (roles/accesses/api-keys) |
-| users         | manage                           |
-| roles         | read, create, update, delete     |
-| reports       | read                             |
-
-**API enforcement:** All route handlers use `requireAccess(resource, action)` from `src/lib/api` (auth-middleware.ts). It returns `{ authorized, response, session }` — handlers check `!authorized` and return the response (401/403 with error message). Session data is returned for convenience.
-
-**UI enforcement:** All pages use `checkPageAccess(resource, action)` from `src/lib/guards.tsx` in a server component wrapper. If unauthorized, renders `<AccessDenied />` component; otherwise renders the client component (e.g. `<PropertiesClient />`).
-
-**Navigation filtering:** `nav-links.tsx` uses `hasAccess()` helper to conditionally show links based on user permissions. Settings link only appears if user has `settings/manage` or `users/manage`.
-
-**Protected operations:**
-
-- Owner role: cannot be edited or deleted (enforced in API and UI)
-- User mutations (invite/edit/delete): require `currentPassword` field for confirmation
-- Signup: automatically creates Owner role with `isSystem: true` for new organizations
-
-**API:**
-
-- `GET/POST /api/accesses` — List and create accesses (for building permission system)
-
-### Users & Authentication
-
-**User Management:**
-
-- Users belong to an organization
-- Users have roles (many-to-many via UserRole)
-- Password change requires current password verification
-- Cannot delete last user in organization
-- Cannot delete/demote last owner in organization
-
-**API:**
-
-- `GET /api/users` — List users in organization
-- `POST /api/users/change-password` — Change user password (requires current password)
-
-**Auth:**
-
-- NextAuth 5 (beta) with Credentials provider
-- JWT session strategy
-- Password requirements: min 8 chars, lowercase, uppercase, digit, special char (`@$!%*?&`)
-
-## Technical Conventions
-
-### Project Structure
-
-```
-src/app/(auth)/           — login, signup pages
-src/app/(dashboard)/      — all authenticated pages (dashboard, properties, tenants, leases, etc.)
-src/app/api/              — route handlers (auth, signup, CRUD, crons)
-src/components/ui/        — shadcn/ui components
-src/lib/                  — utilities, auth, guards, API helpers
-src/lib/api/              — API utilities (auth, validation, error handling, etc.)
-src/lib/services/         — notification services (email, WhatsApp, Telegram)
-src/middleware.ts         — NextAuth route protection
-prisma/schema.prisma      — database schema
-prisma/seed.ts            — seed data
-generated/prisma/         — generated Prisma client + types
+    return apiSuccess(data);
+  } catch (error) {
+    return handleApiError(error, "operation description");
+  }
+}
 ```
 
-### Library Utilities (`src/lib/`)
+### API Utilities (`src/lib/api/`)
 
-**Core:**
+All re-exported from `index.ts` for convenience:
 
-- `auth.ts` / `auth.config.ts` — NextAuth 5 configuration with Credentials provider
-- `guards.tsx` — RBAC enforcement: `checkPageAccess()` (UI), `hasAccess()` (navigation), `<AccessDenied />` component
-- `access-utils.ts` — Permission checking: `hasAccess(roles, resource, action)`
-- `logger.ts` — Structured logging: `logger.info()`, `logger.error()`, `logger.apiError()`, `logger.cronError()`, `logger.cronInfo()` (server-side only)
-- `prisma.ts` — Singleton Prisma client instance
-- `utils.ts` — `cn()` for Tailwind class merging
-- `constants.ts` — App-wide constants (subscription limits, permissions)
-- `password.ts` — bcryptjs hashing/verification
-- `encryption.ts` — AES-256-GCM encryption for API keys
-- `zod-resolver.ts` — Zod integration for form validation
-- `format.ts` — Formatting utilities (dates, currency)
-- `bulk-validation.ts` — Bulk import validation helpers
-- `excel-utils.ts` — Excel file parsing: `parseBooleanField()`, `parseDateFromExcel()`
+- **`auth-middleware.ts`**
+  - `requireAuth()` — Session required, no permission check
+  - `requireAccess(resource, action)` — RBAC enforcement → `{ authorized, response, session }`
+  - `verifyCronAuth(request)` — Cron job secret validation (Bearer token vs CRON_SECRET env)
 
-**Date Utilities (`date-utils.ts`):**
-Comprehensive date helpers for lease calculations:
+- **`response.ts`** — Standardized HTTP responses
+  - `apiSuccess(data)` → 200 OK
+  - `apiCreated(data)` → 201 Created
+  - `apiError(msg, code)` → Custom code (default 400)
+  - `apiUnauthorized()` → 401
+  - `apiForbidden()` → 403
+  - `apiNotFound()` → 404
+  - `apiServerError(msg)` → 500
 
-- **Formatting:** `formatDate()`, `formatDateTime()`, `formatDateRange()`, `formatRelativeDate()`
-- **Calculations:** `addDaysToDate()`, `addMonthsToDate()`, `addYearsToDate()`, `daysBetween()`, `monthsBetween()`, `yearsBetween()`
-- **Comparisons:** `isPast()`, `isFuture()`, `isToday()`, `isDateInRange()`
-- **Lease-specific:**
-  - `calculateLeaseEndDate(startDate, paymentCycle)` — Calculate end date based on payment cycle
-  - `isWithinGracePeriod(startDate, gracePeriodDays)` — Check if within grace period
-  - `daysRemaining(endDate)` — Days until end date
-  - `isLeaseExpiringSoon(endDate, thresholdDays)` — Check if expiring soon
-  - `isLeaseExpired(endDate)` — Check if past end date
-  - `getLeaseStatus(startDate, endDate, paidAt)` — Derive lease status
-  - `calculateAutoRenewalNoticeDate(endDate, noticeDays)` — Calculate notice deadline
-  - `shouldSendAutoRenewalNotice(endDate, noticeDays)` — Check if notice should be sent
+- **`error-handler.ts`**
+  - `handleApiError(error, context)` — Auto-handles Zod + Prisma errors, logs via `logger.apiError()`
+  - Handles: Zod validation (→ 400), Prisma P2002 (unique), P2025 (not found), P2003 (foreign key)
 
-**Notification services (`src/lib/services/`):**
-
-- `notification-processor.ts` — Main notification processor: `processNotifications()`
-- `notification-service.ts` — Channel handlers:
-  - `sendEmail()` — Resend API integration
-  - `sendWhatsApp()` — Meta Cloud API integration
-  - `sendTelegram()` — Telegram Bot API integration
-  - `sendNotification()` — Multi-channel dispatcher
-- `whatsapp-meta-service.ts` — WhatsApp Meta Cloud API client
-- `telegram-service.ts` — Telegram Bot API client
-
-**API helpers (`src/lib/api/`):**
-All re-exported via `index.ts` for convenience:
-
-- `auth-middleware.ts` — Auth checking:
-  - `requireAuth()` — Requires authenticated session
-  - `requireAccess(resource, action)` — RBAC enforcement, returns `{ authorized, response, session }`
-  - `verifyCronAuth()` — Verify cron secret bearer token
-
-- `response.ts` — Standardized responses:
-  - `apiSuccess(data)` — 200 OK
-  - `apiCreated(data)` — 201 Created
-  - `apiError(message, code)` — Custom error code
-  - `apiUnauthorized()` — 401 Unauthorized
-  - `apiForbidden()` — 403 Forbidden
-  - `apiNotFound()` — 404 Not Found
-  - `apiServerError(message)` — 500 Internal Server Error
-
-- `error-handler.ts` — Centralized error handling:
-  - `handleApiError(error, context)` — Auto-handles Zod/Prisma errors, logs with context
-  - Handles: Zod validation errors (→ 400), Prisma P2002 (unique), P2025 (not found), P2003 (foreign key)
-
-- `validation.ts` — Request validation:
-  - `validateRequest(request, schema)` — Validate request body against Zod schema
-  - `validateSearchParams(params, schema)` — Validate URL search params
+- **`validation.ts`**
+  - `validateRequest(request, schema)` — Validate JSON body
+  - `validateSearchParams(params, schema)` — Validate URL params
   - `sanitizeSearchInput(input)` — Sanitize search strings
   - `parseEnumParam(value, enumValues)` — Parse enum from string
 
-- `password-verification.ts` — Password confirmation:
+- **`password-verification.ts`**
   - `verifyCurrentUserPassword(userId, password)` — Verify user's current password
-  - `extractPasswordFromRequest(request)` — Extract currentPassword from request body
+  - `extractPasswordFromRequest(request)` — Extract `currentPassword` from body
 
-- `subscription-limits.ts` — Tier limit enforcement:
+- **`subscription-limits.ts`**
   - `checkSubscriptionLimit(session, limitType)` — Check if can create more (users/properties/units/tenants)
   - Returns `{ allowed: boolean, message?: string }`
 
-- `query-helpers.ts` — Common Prisma patterns:
-  - `scopeToOrganization(organizationId)` — Returns `{ where: { organizationId } }`
-  - `findUserInOrganization(userId, organizationId)` — Find user, ensure belongs to org
-  - `findTenantInOrganization(tenantId, organizationId)` — Find tenant with validation
+- **`query-helpers.ts`**
   - SELECT/INCLUDE constants for consistent queries
+  - `findUserInOrganization(userId, organizationId)` — Find user, verify org membership
+  - `findTenantInOrganization(tenantId, organizationId)` — Find tenant with validation
 
-- `lease-validation.ts` — Lease validation:
-  - `validateLeaseAvailability(unitId, startDate, endDate, excludeLeaseId?, organizationId)` — Check for overlapping leases
-  - `canDeleteLease(lease)` — Check if lease can be deleted (only DRAFT)
-  - `calculateGracePeriodDeadline(startDate, gracePeriodDays)` — Calculate deadline DateTime
-  - `isLeaseOverdue(startDate, gracePeriodDays)` — Check if past grace period
-
-- `user-validation.ts` — User validation:
-  - `ensureNotLastOwner(userId, organizationId)` — Prevent removing last owner
-  - `ensureNotLastUser(userId, organizationId)` — Prevent deleting last user
-  - `validateRoleChange(userId, newRoleIds, organizationId)` — Validate role updates
-
-- `activity-logger.ts` — Activity logging:
-  - `logActivity(organizationId, type, metadata)` — Log activity with metadata
-  - `ActivityLogger` class with convenience methods for all activity types
-
-- `pagination.ts` — Pagination helpers:
-  - `parsePaginationParams(searchParams)` — Parse `page` and `limit` from URL params
-  - `createPaginatedResponse(items, total, page, limit)` — Create paginated response
-  - DEFAULT_LIMIT = 50, MAX_LIMIT = 100
-
-- `index.ts` — Re-exports all API utilities + logger for easy importing
-
-### API Patterns
-
-Route handlers in `src/app/api/`. Every handler follows this pattern:
-
-1. **Import utilities from `@/lib/api`:**
-
-```typescript
-import {
-  requireAccess,
-  handleApiError,
-  validateRequest,
-  apiSuccess,
-} from "@/lib/api";
-```
-
-2. **RBAC enforcement:**
-
-```typescript
-const { authorized, response, session } = await requireAccess(
-  "properties",
-  "create",
-);
-if (!authorized) return response;
-const organizationId = session.user.organizationId;
-```
-
-3. **Validate input** (optional helpers):
-
-```typescript
-const validatedData = await validateRequest(request, createPropertySchema);
-// OR inline:
-const body = await request.json();
-const validatedData = createPropertySchema.parse(body);
-```
-
-4. **Scope all queries by `organizationId`:**
-
-```typescript
-const properties = await prisma.property.findMany({
-  where: { organizationId },
-  // ...
-});
-```
-
-5. **Use centralized error handling:**
-
-```typescript
-try {
-  // ... handler logic
-  return apiSuccess(data);
-} catch (error) {
-  return handleApiError(error, "create property");
-}
-```
-
-**Error handling benefits:**
-
-- `handleApiError()` automatically handles Zod validation errors (→ 400)
-- Auto-handles Prisma errors: P2002 (unique constraint), P2025 (not found), P2003 (foreign key)
-- Logs errors via `logger.apiError()` with full context
-- Returns consistent error responses with appropriate status codes
-
-**Logging:**
-
-- Use `logger` from `@/lib/api` for all server-side logging
-- `logger.apiError(endpoint, error, { organizationId })` for API route errors (used automatically by `handleApiError`)
-- `logger.cronError(jobName, error, context)` for cron job errors
-- `logger.info(message, context)` for informational logs
-- Never use `console.log/error/warn` in production code
-
-**Response helpers:**
-
-```typescript
-return apiSuccess(data); // 200 OK
-return apiCreated(data); // 201 Created
-return apiError("Message", 400); // 400 Bad Request
-return apiUnauthorized(); // 401 Unauthorized
-return apiForbidden(); // 403 Forbidden
-return apiNotFound(); // 404 Not Found
-return apiServerError("Message"); // 500 Internal Server Error
-```
+- **`lease-validation.ts`**
+  - `validateLeaseAvailability(unitId, startDate, endDate, excludeLeaseId?, organizationId)` — Check overlaps
+  - `canDeleteLease(lease)` — Check if DRAFT (only DRAFT can delete)
+  - `calculateGracePeriodDeadline(startDate, gracePeriodDays)` — Deadline DateTime
+  - `isLeaseOverdue(startDate, gracePeriodDays)` — Check if past grace
 
-Business rules are always enforced server-side — never trust the client.
+- **`activity-logger.ts`**
+  - `logActivity(session, data)` — Log activity with metadata
+  - `ActivityLogger.*` — Convenience methods for common activities
+  - `ActivityType` enum matches Prisma schema exactly
 
-**Pagination:**
+- **`pagination.ts`**
+  - `parsePaginationParams(searchParams)` → `{ page, limit }`
+  - `createPaginatedResponse(items, total, page, limit)` → `{ items, pagination: { page, limit, total, totalPages } }`
+  - Defaults: DEFAULT_LIMIT = 50, MAX_LIMIT = 100
 
-- Use `parsePaginationParams(request.nextUrl.searchParams)` to get `{ page, limit }`
-- DEFAULT_LIMIT = 50, MAX_LIMIT = 100
-- Use `createPaginatedResponse(items, total, page, limit)` to create response
-- Returns `{ items: T[], pagination: { page, limit, total, totalPages } }`
+### Cron Jobs (4 total)
 
-### Cron Jobs
+All in `src/app/api/cron/*/route.ts`, protected by `verifyCronAuth()`, defined in `vercel.json`:
 
-Defined in `vercel.json`. All are POST endpoints protected by `CRON_SECRET` bearer token via `verifyCronAuth()`.
+| Job | Schedule | What it does |
+| --- | --- | --- |
+| `/api/cron/cancel-unpaid-leases` | `0 0 * * *` (midnight UTC) | Cancel DRAFT leases past grace deadline |
+| `/api/cron/process-auto-renewals` | `0 1 * * *` (1am UTC) | Create renewal DRAFT leases for auto-renew past notice deadline |
+| `/api/cron/process-notifications` | `0 2 * * *` (2am UTC) | Send PAYMENT_REMINDER, PAYMENT_LATE, LEASE_EXPIRING |
+| `/api/cron/end-expired-leases` | `0 3 * * *` (3am UTC) | End ACTIVE leases past endDate, trigger LEASE_EXPIRED |
 
-| Cron                              | Schedule                   | What it does                                                                        |
-| --------------------------------- | -------------------------- | ----------------------------------------------------------------------------------- |
-| `/api/cron/cancel-unpaid-leases`  | `0 0 * * *` (midnight UTC) | Cancels DRAFT leases past grace deadline (`now > startDate + gracePeriodDays`)      |
-| `/api/cron/process-auto-renewals` | `0 1 * * *` (1am UTC)      | Creates renewal DRAFT leases for auto-renew leases past notice deadline             |
-| `/api/cron/process-notifications` | `0 2 * * *` (2am UTC)      | Processes PAYMENT_REMINDER, PAYMENT_LATE, LEASE_EXPIRING notifications              |
-| `/api/cron/end-expired-leases`    | `0 3 * * *` (3am UTC)      | Ends ACTIVE leases where `endDate` has passed, triggers LEASE_EXPIRED notifications |
+**Response format:** `{ success: boolean, processed: number, details: Array<...> }`
 
-**Auth:**
+**Auth:** All crons verify `Authorization: Bearer {CRON_SECRET}` header via `verifyCronAuth()`.
 
-- All crons use `verifyCronAuth()` to verify `CRON_SECRET` bearer token
-- Returns 401 if secret missing or invalid
+## Authentication & Authorization
 
-**Response Format:**
-All crons return structured JSON with operation counts:
+### RBAC Implementation
 
-```typescript
-{
-  success: true,
-  processed: number,
-  details: Array<{ id: string, status: string, ... }>
-}
-```
+- **API enforcement:** `requireAccess(resource, action)` in all route handlers
+- **UI enforcement:** `checkPageAccess(resource, action)` in server component wrappers around client pages
+- **Navigation filtering:** `hasAccess()` helper in `nav-links.tsx`
+- **Roles & Accesses:** Modeled in Prisma; Owner role is system-protected (`isSystem: true`, cannot edit/delete)
 
-### UI Patterns
+### Email Verification (MailerSend)
 
-- **Components:** shadcn/ui components in `src/components/ui/`
-- **Icons:** `@hugeicons/react` + `@hugeicons/core-free-icons`
-- **Class merging:** `cn()` utility from `clsx` + `tailwind-merge`
+- Email verification on signup: `sendVerificationEmail()` in `src/lib/mailersend.ts`
+- Token stored on User model: `emailVerificationToken`
+- Token expires 24 hours
+- Routes: `POST /api/auth/verify-email`, `POST /api/auth/resend-verification`, `/verify-email` landing page
+- Env vars: `MAILERSEND_API_KEY`, `MAILERSEND_FROM_EMAIL`, `MAILERSEND_FROM_NAME`
+- Unverified users: Middleware blocks access until verified
 
-**Page structure:**
-Server component wrapper that calls `checkPageAccess(resource, action)` → renders client component (e.g. `<PropertiesClient />`) if authorized, otherwise `<AccessDenied />`.
+### Subscription Status
 
-Example:
+- **FREE tier:** ACTIVE immediately with endDate = 2099-12-31
+- **Paid tiers:** PENDING_PAYMENT until Xendit webhook confirms payment
+- **PENDING_PAYMENT users:** Can log in but middleware redirects to `/subscribe`
+- Limits enforced server-side at creation time; returns 403 when exceeded
 
-```typescript
-// src/app/(dashboard)/properties/page.tsx
-import { checkPageAccess } from "@/lib/guards";
-import PropertiesClient from "./PropertiesClient";
+## Payment Gateway (Xendit)
 
-export default async function PropertiesPage() {
-  const accessCheck = await checkPageAccess("properties", "read");
-  if (!accessCheck.authorized) {
-    return accessCheck.component; // <AccessDenied />
-  }
-  return <PropertiesClient />;
-}
-```
+- **Utility:** `src/lib/payment-gateways/xendit.ts`
+- **Receipts:** `src/lib/receipt-generator.ts` (jspdf + @vercel/blob)
+- **Webhook:** `POST /api/webhooks/xendit` — verified by `x-callback-token` header vs `XENDIT_WEBHOOK_TOKEN` env
+- **Subscription billing:** Uses `HAVENTIUM_XENDIT_SECRET_KEY` env var (platform-level key)
+- **Tenant rent collection:** Per-org keys stored encrypted in ApiKey table (`service = XENDIT`)
+- **Models:** PaymentTransaction links Organization, LeaseAgreement, and Subscription
 
-**UI Conventions:**
+## Notifications
 
-- List pages and detail pages are client components (`"use client"`) that fetch on mount
-- Dashboard is a server component (fetches directly)
-- Skeleton placeholders for loading states
-- `Dialog` for create/edit modals
-- `AlertDialog` for destructive confirmations
-- Activity timeline on detail pages with color-coded icons:
-  - Blue (lease icon) — lease events
-  - Violet (tenant icon) — tenant events
-  - Emerald (property icon) — property/unit events
-  - Amber (payment icon) — payment events
+**Fully implemented** with Email (MailerSend), WhatsApp (Meta Cloud API), Telegram (Bot API).
 
-**Navigation:**
+### Schema & Storage
 
-- Top-bar navigation with active state via `usePathname`
-- Tier badge showing subscription level
-- User dropdown with logout
-- Links filtered by `hasAccess()` helper
-- Settings link only visible if user has `settings/manage` or `users/manage`
+- `NotificationTemplate` — Email/WhatsApp/Telegram message templates with variables
+- `NotificationRule` — Automated trigger rules with daysOffset, recipient config
+- `NotificationLog` — Delivery tracking (PENDING → SENT/FAILED)
+- `ApiKey` table — Encrypted org-specific API keys (AES-256-GCM with `ENCRYPTION_SECRET` env)
 
-### Environment Variables
+### Tenant Preferences
 
-Required environment variables:
+Respects `preferEmail`, `preferWhatsapp`, `preferTelegram` flags. Phone-based channels use tenant's `phone` field.
 
-**Database:**
+### API Key Services
 
-- Database connection string (via Prisma/DATABASE_URL)
+`ApiKeyService` enum in Prisma schema:
 
-**Auth:**
+- `MAILERSEND_EMAIL` — MailerSend API key for sending emails
+- `WHATSAPP_META` — WhatsApp Meta Cloud API credentials JSON
+- `TELEGRAM_BOT` — Telegram Bot API token
+- `XENDIT` — Xendit API key for rent payment collection
 
-- `NEXTAUTH_SECRET` — NextAuth JWT signing secret
-- `NEXTAUTH_URL` — App URL for NextAuth
+### Services & Triggers
 
-**Encryption:**
+- **Email:** MailerSend API (requires org `MAILERSEND_EMAIL` API key)
+- **WhatsApp:** Meta Cloud API (requires org `WHATSAPP_META` credentials JSON)
+- **Telegram:** Telegram Bot API (requires org `TELEGRAM_BOT` token), **uses phone numbers as identifiers**
+- **Triggers:** PAYMENT_REMINDER, PAYMENT_LATE, PAYMENT_CONFIRMED, LEASE_EXPIRING, LEASE_EXPIRED, MANUAL
 
-- `ENCRYPTION_SECRET` — 32+ character secret for AES-256-GCM encryption of API keys
+### Cron Execution
 
-**Cron Jobs:**
+- `/api/cron/process-notifications` (2am UTC) — Processes PAYMENT_REMINDER, PAYMENT_LATE, LEASE_EXPIRING
+- `/api/cron/end-expired-leases` (3am UTC) — Ends ACTIVE leases, triggers LEASE_EXPIRED
 
-- `CRON_SECRET` — Bearer token for cron job authentication
+## Key Domain Models
 
-**File Storage:**
+### Leases (Core Entity)
 
-- `BLOB_READ_WRITE_TOKEN` — Vercel Blob access token
+Status flow: DRAFT → ACTIVE → ENDED or CANCELLED
 
-**Organization API Keys** (configured per-org in UI, not env vars):
-
-- RESEND_EMAIL — Resend API key
-- WHATSAPP_META — WhatsApp credentials JSON
-- TELEGRAM_BOT — Telegram bot token
-
-### Bulk Import
-
-All major entities support bulk import via Excel/CSV:
-
-**Endpoints:**
-
-- `POST /api/properties/bulk-import` — Properties with units
-- `POST /api/tenants/bulk-import` — Tenants
-- `POST /api/leases/bulk-import` — Leases (supports `dryRun` param)
-- `POST /api/maintenance-requests/bulk-import` — Maintenance requests
-
-**Process:**
-
-1. Upload Excel/CSV file via FormData
-2. Parse rows using `excel-utils.ts` helpers
-3. Validate each row against Zod schema
-4. Check subscription limits
-5. Insert valid rows, return detailed report
-
-**Response:**
-
-```typescript
-{
-  success: boolean,
-  imported: number,
-  failed: number,
-  errors: Array<{ row: number, message: string }>
-}
-```
-
-**Dry Run:**
-Lease bulk import supports `?dryRun=true` query param to validate without inserting.
-
-## API Endpoint Reference
-
-### Properties
-
-- `GET/POST /api/properties`
-- `GET/PATCH/DELETE /api/properties/[id]`
-- `GET/POST /api/properties/[id]/units`
-- `GET/PATCH/DELETE /api/properties/[id]/units/[unitId]`
-- `POST /api/properties/bulk-import`
+- **One lease = one payment period.** Recurring rentals = recurring leases via auto-renewal.
+- **Payment cycle:** DAILY, MONTHLY, or ANNUAL
+- **Setting `paidAt`** auto-transitions DRAFT → ACTIVE, tenant → ACTIVE
+- **Frozen after ACTIVE:** `startDate`, `endDate`, `paymentCycle`, `rentAmount`, `depositAmount` cannot change
+- **Auto-renewal:** `isAutoRenew` with `autoRenewalNoticeDays`; cron creates next DRAFT lease
+- **Grace period:** DRAFT leases can have `gracePeriodDays`; cron cancels if overdue
+- **Overlap validation:** Blocks new leases on same unit with date range overlap
+- **Payment fields:** `paidAt`, `paymentDate`, `paymentMethod` (CASH, BANK_TRANSFER, VIRTUAL_ACCOUNT, QRIS, MANUAL), `paymentStatus` (PENDING, PROCESSING, COMPLETED, FAILED, REFUNDED), `externalId`, `externalResponse`, `paymentNotes`
 
 ### Tenants
 
-- `GET/POST /api/tenants`
-- `GET/PATCH/DELETE /api/tenants/[id]`
-- `POST /api/tenants/bulk-import`
+Status auto-managed by lease lifecycle (LEAD → BOOKED → ACTIVE → EXPIRED). No manual status setting.
 
-### Leases
-
-- `GET/POST /api/leases`
-- `GET/PATCH/DELETE /api/leases/[id]`
-- `GET /api/leases/[id]/check-future-lease`
-- `GET /api/units/[id]/active-lease`
-- `POST /api/leases/bulk-import`
-
-### Maintenance
-
-- `GET/POST /api/maintenance-requests`
-- `GET/PATCH/DELETE /api/maintenance-requests/[id]`
-- `POST /api/maintenance-requests/bulk-import`
-
-### Documents
-
-- `POST /api/documents/upload`
-- `GET /api/documents`
-- `GET/DELETE /api/documents/[id]`
-
-### Notifications
-
-- `GET/POST /api/notifications/templates`
-- `GET/PATCH/DELETE /api/notifications/templates/[id]`
-- `GET/POST /api/notifications/rules`
-- `GET/PATCH/DELETE /api/notifications/rules/[id]`
-- `GET /api/notifications/logs`
-- `GET /api/notifications/logs/[id]`
-
-### Organization
-
-- `GET/PATCH /api/organization/formats`
-- `GET/POST /api/organization/api-keys`
-- `GET/PATCH/DELETE /api/organization/api-keys/[id]`
-- `POST /api/organization/api-keys/[id]/test`
-
-### Users & Auth
-
-- `GET /api/users`
-- `POST /api/users/change-password`
-- `POST /api/signup`
-
-### RBAC
-
-- `GET/POST /api/accesses`
-
-### Dashboard
-
-- `GET /api/dashboard/overview?month=2&year=2026`
-
-### Cron Jobs
-
-- `POST /api/cron/cancel-unpaid-leases`
-- `POST /api/cron/process-auto-renewals`
-- `POST /api/cron/process-notifications`
-- `POST /api/cron/end-expired-leases`
-
-## Page Routes
-
-### Auth
-
-- `/login` — Login page
-- `/signup` — Signup page (creates FREE subscription)
-
-### Dashboard
-
-- `/dashboard` — Overview dashboard
+- **Required:** `fullName`, `email`, `phone`
+- **Optional:** `preferEmail`, `preferWhatsapp`, `preferTelegram` (notification preferences)
 
 ### Properties & Units
 
-- `/properties` — Properties list
-- `/properties/[id]` — Property detail
-- `/properties/[id]/units/[unitId]` — Unit detail
+- **Property:** Building or complex
+- **Unit:** Individual rental unit with optional `dailyRate`, `monthlyRate`, `annualRate` (Decimal 12,2)
+- **Unit availability:** `isUnavailable` flag blocks new leases
 
-### Tenants
+### Subscriptions & Tiers
 
-- `/tenants` — Tenants list
-- `/tenants/[id]` — Tenant detail
+| Tier | Users | Properties | Units | Tenants |
+| --- | --- | --- | --- | --- |
+| FREE | 1 | 1 | 10 | 100 |
+| NORMAL | 5 | 5 | 50 | 1000 |
+| PRO | 10 | 10 | 100 | 10000 |
 
-### Leases
+### Deposits
 
-- `/leases` — Leases list
-- `/leases/[id]` — Lease detail
+- Status: HELD → RETURNED or FORFEITED (one-way, irreversible)
+- Can only change on ENDED leases that haven't been renewed and are still HELD
+- Validation prevents reversal
 
-### Maintenance
+### Maintenance Requests
 
-- `/maintenance-requests` — Maintenance requests list
-- `/maintenance-requests/[id]` — Maintenance request detail
+- Status flow: OPEN → IN_PROGRESS → COMPLETED (or CANCELLED)
+- Priority levels: LOW, MEDIUM, HIGH, URGENT
+- Optional links to unit, tenant, lease
+- Supports bulk import from Excel/CSV
 
 ### Documents
 
-- `/documents` — Documents list with upload
+- File storage via Vercel Blob (max 10MB, PDF/images)
+- Optional links to property, unit, tenant, lease
+- Upload/download via `POST /api/documents/upload`, `GET /api/documents/[id]`
 
-### Notifications
+## Directory Structure
 
-- `/notifications/templates` — Template management
-- `/notifications/rules` — Rule management
-- `/notifications/logs` — Notification logs
+```
+src/
+  app/
+    (auth)/              — login, signup, email verification
+    (dashboard)/         — all authenticated pages
+    api/
+      auth/              — authentication routes
+      cron/              — 4 cron jobs
+      properties/        — properties & units CRUD
+      tenants/           — tenants CRUD
+      leases/            — leases CRUD + payments
+      notifications/     — templates, rules, logs
+      maintenance-requests/
+      documents/
+      organization/      — settings, API keys, formats
+      webhooks/          — Xendit webhook
+  components/
+    ui/                  — shadcn/ui components
+  lib/
+    api/
+      index.ts           — re-export point for all utilities
+      auth-middleware.ts
+      response.ts
+      error-handler.ts
+      validation.ts
+      password-verification.ts
+      subscription-limits.ts
+      query-helpers.ts
+      lease-validation.ts
+      activity-logger.ts
+      pagination.ts
+    auth.ts / auth.config.ts  — NextAuth 5 config
+    access-utils.ts      — permission checking
+    logger.ts            — structured logging
+    prisma.ts            — singleton Prisma client
+    mailersend.ts        — email verification
+    payment-gateways/
+      xendit.ts          — Xendit API client
+    encryption.ts        — AES-256-GCM for API keys
+    format.ts            — date/currency formatting
+    guards.tsx           — RBAC UI enforcement
+  middleware.ts          — NextAuth route protection, subscription redirect
 
-### Organization
+prisma/
+  schema.prisma          — complete data model
+  seed.ts                — seed data
 
-- `/organization` — Organization settings (formats, API keys, roles)
+generated/prisma/        — Prisma client (custom output location)
+  enums.ts               — auto-generated enums
+```
 
-### Analytics & Calendar
+## Environment Variables
 
-- `/analytics` — Analytics dashboard
-- `/calendar` — Calendar view
+### Required
 
-## Database Schema Highlights
+- `DATABASE_URL` — PostgreSQL connection string
+- `NEXTAUTH_SECRET` — JWT signing secret
+- `NEXTAUTH_URL` — App URL
+- `ENCRYPTION_SECRET` — 32+ chars for AES-256-GCM
+- `CRON_SECRET` — Bearer token for cron jobs
+- `MAILERSEND_API_KEY` — MailerSend email API key
+- `MAILERSEND_FROM_EMAIL` — Sender email address
+- `MAILERSEND_FROM_NAME` — Sender name (optional, defaults to "Haventium")
+- `BLOB_READ_WRITE_TOKEN` — Vercel Blob
+- `XENDIT_WEBHOOK_TOKEN` — Webhook verification
+- `HAVENTIUM_XENDIT_SECRET_KEY` — Platform subscription billing key
 
-### Key Enums
+### Per-Organization (UI-Configured, Encrypted in DB)
 
-- **TenantStatus:** LEAD, BOOKED, ACTIVE, EXPIRED
-- **LeaseStatus:** DRAFT, ACTIVE, ENDED, CANCELLED
-- **PaymentCycle:** DAILY, MONTHLY, ANNUAL
-- **PaymentStatus:** PENDING, PROCESSING, COMPLETED, FAILED, REFUNDED
-- **PaymentMethod:** CASH, BANK_TRANSFER, VIRTUAL_ACCOUNT, QRIS, MANUAL
-- **DepositStatus:** HELD, RETURNED, FORFEITED
-- **MaintenanceRequestStatus:** OPEN, IN_PROGRESS, COMPLETED, CANCELLED
-- **MaintenanceRequestPriority:** LOW, MEDIUM, HIGH, URGENT
-- **NotificationChannel:** EMAIL, WHATSAPP, TELEGRAM
-- **NotificationTrigger:** PAYMENT_REMINDER, PAYMENT_LATE, PAYMENT_CONFIRMED, LEASE_EXPIRING, LEASE_EXPIRED, MANUAL
-- **NotificationStatus:** PENDING, SENT, FAILED
-- **SubscriptionTierType:** FREE, NORMAL, PRO
-- **ApiKeyService:** RESEND_EMAIL, WHATSAPP_META, TELEGRAM_BOT
+- `MAILERSEND_EMAIL` — MailerSend API key (stored as `ApiKeyService.MAILERSEND_EMAIL`)
+- `WHATSAPP_META` — WhatsApp credentials JSON (stored as `ApiKeyService.WHATSAPP_META`)
+- `TELEGRAM_BOT` — Telegram bot token (stored as `ApiKeyService.TELEGRAM_BOT`)
+- `XENDIT` — Per-org Xendit key for rent collection (stored as `ApiKeyService.XENDIT`)
 
-### Core Models
+## Logging
 
-**Organization:**
+- **Module:** `src/lib/logger.ts` (server-side only)
+- **Use:** `logger.info()`, `logger.error()`, `logger.apiError()`, `logger.cronError()`, `logger.cronInfo()`
+- **Never** use `console.log/error/warn` in production code
+- Errors logged automatically by `handleApiError()` with full context
 
-- Basic info: `name`, `createdAt`, `updatedAt`
-- Format settings: `dateFormat`, `currency`, `currencySymbol`
-- Relations: users, properties, units, tenants, leases, documents, etc.
+## Bulk Import
 
-**User:**
+Entities support Excel/CSV bulk import:
 
-- Auth: `email`, `password` (hashed)
-- Profile: `fullName`
-- Relations: `organizationId`, `roles` (many-to-many via UserRole)
+- `POST /api/properties/bulk-import`
+- `POST /api/tenants/bulk-import`
+- `POST /api/leases/bulk-import?dryRun=true` (supports dry-run)
+- `POST /api/maintenance-requests/bulk-import`
 
-**Property:**
+Validates subscription limits before import, returns detailed success/failure report per row.
 
-- Info: `name`, `address`, `organizationId`
-- Relations: units, leases, documents, maintenance requests
+## Common Patterns to Avoid
 
-**Unit:**
+- **Don't skip `organizationId` in Prisma queries.** Always scope by org.
+- **Don't set tenant status directly.** Status is auto-managed by lease lifecycle.
+- **Don't modify frozen lease fields.** After a lease becomes ACTIVE, `startDate`, `endDate`, `paymentCycle`, `rentAmount`, `depositAmount` are locked.
+- **Don't delete ACTIVE/ENDED leases.** Only DRAFT leases can be deleted.
+- **Don't use `console.log` for logging.** Use `logger` from `@/lib/api`.
+- **Don't trust client input.** Validate and enforce business rules server-side.
+- **Don't run migrations manually.** Developer-only responsibility.
+- **Don't commit Prisma migrations without `prisma generate`.** Client must be regenerated.
 
-- Info: `name`, `propertyId`, `organizationId`
-- Pricing: `dailyRate`, `monthlyRate`, `annualRate` (Decimal 12,2)
-- Availability: `isUnavailable`
-- Relations: leases, documents, maintenance requests
+## Testing & Development
 
-**Tenant:**
-
-- Info: `fullName`, `email`, `phone`, `organizationId`
-- Status: `status` (auto-managed by lease lifecycle)
-- Preferences: `preferEmail`, `preferWhatsapp`, `preferTelegram`
-- Relations: leases, documents, maintenance requests
-
-**LeaseAgreement:**
-
-- Core: `unitId`, `tenantId`, `organizationId`, `startDate`, `endDate`, `paymentCycle`, `status`
-- Pricing: `rentAmount`, `depositAmount`, `depositStatus`
-- Payment: `paidAt`, `paymentDate`, `paymentMethod`, `paymentStatus`, `externalId`, `externalResponse`, `paymentNotes`
-- Auto-renewal: `isAutoRenew`, `autoRenewalNoticeDays`, `renewedFromId`, `renewedTo`
-- Grace: `gracePeriodDays`
-- Relations: property, unit, tenant, documents
-
-**Document:**
-
-- File: `filename`, `fileType`, `fileSize`, `fileUrl`, `storageKey`
-- Links: `propertyId`, `unitId`, `tenantId`, `leaseId` (all optional)
-- Relations: organization, property, unit, tenant, lease
-
-**MaintenanceRequest:**
-
-- Info: `title`, `description`, `status`, `priority`
-- Links: `propertyId` (required), `unitId`, `tenantId`, `leaseId` (optional)
-- Cost: `estimatedCost`, `actualCost`
-- Completion: `completedAt`
-
-**NotificationTemplate:**
-
-- Info: `name`, `channel`, `subject` (email only), `body`
-- System: `isSystem` (protected from deletion)
-
-**NotificationRule:**
-
-- Trigger: `trigger`, `daysOffset`
-- Recipients: `recipientType`, `recipientRoleId`, `recipientUserId`
-- Template: `templateId`, `channel`
-- System: `isSystem` (protected from deletion)
-
-**NotificationLog:**
-
-- Tracking: `channel`, `status`, `recipient`, `subject`, `body`
-- Error: `errorMessage`
-- Links: `tenantId`, `leaseId` (optional)
-- Sent: `sentAt`
-
-**ApiKey:**
-
-- Info: `name`, `service`, `encryptedKey`, `iv`, `authTag`
-- Tracking: `lastUsedAt`, `isActive`
-- Security: AES-256-GCM encryption
-
-**Activity:**
-
-- Info: `type`, `metadata` (JSON)
-- Relations: organization, user
-
-**Role:**
-
-- Info: `name`, `description`, `organizationId`
-- System: `isSystem` (Owner role protected)
-- Relations: accesses (many-to-many via RoleAccess), users (many-to-many via UserRole)
-
-**Access:**
-
-- Info: `resource`, `action`, `organizationId`
-
-**Subscription:**
-
-- Info: `tier`, `status`, `organizationId`
-- Billing: `currentPeriodStart`, `currentPeriodEnd`, `billingCycle`
-- Relations: organization, invoices
-
-**SubscriptionTier:**
-
-- Limits: `maxUsers`, `maxProperties`, `maxUnits`, `maxTenants`
-- Pricing: `monthlyPrice`, `annualPrice`
-- Features: features (many-to-many via TierFeature)
+- **Dev server:** `pnpm dev` → http://localhost:3000
+- **Build:** `pnpm build` → `pnpm start`
+- **Lint:** `pnpm lint`
+- **Database:** PostgreSQL via environment variable
+- **Seed data:** `pnpm prisma db seed` (calls `prisma/seed.ts`)
+- **Generate Prisma client:** `pnpm prisma generate` (runs on `postinstall`)

@@ -61,7 +61,7 @@ import {
 import { formatDistanceToNow } from "date-fns";
 
 type ApiKeyService =
-  | "RESEND_EMAIL"
+  | "MAILERSEND_EMAIL"
   | "WHATSAPP_META"
   | "TELEGRAM_BOT"
   | "XENDIT";
@@ -79,14 +79,14 @@ type ApiKey = {
 };
 
 const SERVICE_LABELS: Record<ApiKeyService, string> = {
-  RESEND_EMAIL: "Resend Email",
+  MAILERSEND_EMAIL: "MailerSend Email",
   WHATSAPP_META: "WhatsApp (Meta Cloud API)",
   TELEGRAM_BOT: "Telegram Bot",
   XENDIT: "Xendit Payment Gateway",
 };
 
 const SERVICE_DESCRIPTIONS: Record<ApiKeyService, string> = {
-  RESEND_EMAIL: "Email delivery via Resend API",
+  MAILERSEND_EMAIL: "Email delivery via MailerSend API",
   WHATSAPP_META:
     "WhatsApp messaging via Meta Cloud API (requires JSON with accessToken and phoneNumberId)",
   TELEGRAM_BOT:
@@ -573,7 +573,7 @@ export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
               <>
                 <div className="space-y-2">
                   <Label htmlFor="value">
-                    {formData.service === "RESEND_EMAIL"
+                    {formData.service === "MAILERSEND_EMAIL"
                       ? "API Key"
                       : formData.service === "WHATSAPP_META"
                         ? "Credentials (JSON)"
@@ -598,8 +598,8 @@ export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
                       id="value"
                       type="password"
                       placeholder={
-                        formData.service === "RESEND_EMAIL"
-                          ? "re_..."
+                        formData.service === "MAILERSEND_EMAIL"
+                          ? "mlsn...."
                           : formData.service === "TELEGRAM_BOT"
                             ? "123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
                             : ""

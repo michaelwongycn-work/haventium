@@ -475,7 +475,7 @@ model NotificationLog {
 // ========================================
 
 enum ApiKeyService {
-  RESEND_EMAIL
+  MAILERSEND_EMAIL
   WHATSAPP_META
   TELEGRAM_BOT
   XENDIT
@@ -729,20 +729,20 @@ model PaymentTransaction {
   subscriptionId String?
   subscription   Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
 
-  type             PaymentTransactionType @default(RENT)
-  gateway          PaymentGateway         @default(XENDIT)
-  externalId       String                 @unique
-  xenditInvoiceId  String?
-  paymentLinkUrl   String?                @db.Text
-  amount           Decimal                @db.Decimal(12, 2)
-  status           PaymentStatus          @default(PENDING)
-  externalResponse Json?
-  receiptUrl       String?
+  type              PaymentTransactionType @default(RENT)
+  gateway           PaymentGateway         @default(XENDIT)
+  externalId        String                 @unique
+  xenditInvoiceId   String?
+  paymentLinkUrl    String?                @db.Text
+  amount            Decimal                @db.Decimal(12, 2)
+  status            PaymentStatus          @default(PENDING)
+  externalResponse  Json?
+  receiptUrl        String?
   receiptStorageKey String?
   webhookReceivedAt DateTime?
-  paidAt           DateTime?
-  createdAt        DateTime               @default(now())
-  updatedAt        DateTime               @updatedAt
+  paidAt            DateTime?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
 
   @@index([organizationId])
   @@index([leaseId])
