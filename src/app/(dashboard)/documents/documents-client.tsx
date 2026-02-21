@@ -138,8 +138,8 @@ export default function DocumentsClient() {
         const data = await response.json();
         setProperties(data.items || data);
       }
-    } catch (err) {
-      console.error("Failed to fetch properties:", err);
+    } catch {
+      // silently ignore — properties are optional filter data
     }
   }, []);
 
@@ -150,8 +150,8 @@ export default function DocumentsClient() {
         const data = await response.json();
         setTenants(data.items || data);
       }
-    } catch (err) {
-      console.error("Failed to fetch tenants:", err);
+    } catch {
+      // silently ignore — tenants are optional filter data
     }
   }, []);
 

@@ -159,8 +159,8 @@ export default function MaintenanceRequestsClient() {
         const data = await response.json();
         setProperties(data.items || data);
       }
-    } catch (err) {
-      console.error("Failed to fetch properties:", err);
+    } catch {
+      // silently ignore — properties are optional filter data
     }
   }, []);
 
@@ -171,8 +171,8 @@ export default function MaintenanceRequestsClient() {
         const data = await response.json();
         setUnits(data.units || []);
       }
-    } catch (err) {
-      console.error("Failed to fetch units:", err);
+    } catch {
+      // silently ignore — units are optional filter data
     }
   }, []);
 
@@ -193,8 +193,7 @@ export default function MaintenanceRequestsClient() {
           setFormData((prev) => ({ ...prev, tenantId: "", leaseId: "" }));
         }
       }
-    } catch (err) {
-      console.error("Failed to fetch active lease:", err);
+    } catch {
       setActiveLease(null);
     }
   }, []);

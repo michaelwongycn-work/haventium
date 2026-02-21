@@ -224,7 +224,6 @@ export default function UnitDetailClient({
       const result = await response.json();
       setData(result);
     } catch (err) {
-      console.error("Error fetching unit:", err);
       setError(err instanceof Error ? err.message : "Failed to load unit data");
     } finally {
       setIsLoading(false);
