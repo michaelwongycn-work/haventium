@@ -34,6 +34,7 @@ export const authConfig = {
           ? token.subscription
           : null;
         session.user.roles = isUserRoleArray(token.roles) ? token.roles : [];
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (session.user as any).emailVerified = token.emailVerified ?? false;
       }
       return session;

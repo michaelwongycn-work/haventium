@@ -147,22 +147,4 @@ export function formatTelegramHTML(text: string): string {
     .replace(/<(?!\/?[bius]|\/?(code|pre|a)[\s>])/g, '&lt;');
 }
 
-/**
- * Replace template variables in message text
- * @param template - Message template with variables like {{tenantName}}
- * @param variables - Object with variable values
- * @returns Message with variables replaced
- */
-export function replaceTelegramVariables(
-  template: string,
-  variables: Record<string, string | number | undefined>
-): string {
-  let message = template;
-
-  Object.entries(variables).forEach(([key, value]) => {
-    const regex = new RegExp(`{{${key}}}`, 'g');
-    message = message.replace(regex, String(value || ''));
-  });
-
-  return message;
-}
+export { replaceTemplateVariables } from "./template-utils"

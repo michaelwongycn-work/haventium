@@ -1,11 +1,19 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
 export default function VerifyEmailPage() {
+  return (
+    <Suspense>
+      <VerifyEmailContent />
+    </Suspense>
+  );
+}
+
+function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const verified = searchParams.get("verified") === "true";
   const next = searchParams.get("next"); // "dashboard" | "subscribe" | null
@@ -53,7 +61,7 @@ export default function VerifyEmailPage() {
     const remaining = getRemainingCooldown();
     if (remaining > 0) startCooldownTimer(remaining);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleResend = async () => {
     setIsSending(true);

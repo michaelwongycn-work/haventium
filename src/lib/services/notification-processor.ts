@@ -5,7 +5,8 @@
 
 import { prisma } from "@/lib/prisma"
 import { logger } from "@/lib/logger"
-import { sendNotification, replaceTemplateVariables } from "./notification-service"
+import { sendNotification } from "./notification-service"
+import { replaceTemplateVariables } from "./template-utils"
 import type { NotificationTrigger, NotificationChannel } from "../constants"
 import { decrypt } from "@/lib/encryption"
 import type { WhatsAppMetaCredentials } from "./whatsapp-meta-service"

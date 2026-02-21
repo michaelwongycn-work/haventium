@@ -1,6 +1,5 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { CURRENCY } from "./constants";
 
 // ========================================
 // TAILWIND UTILITIES
@@ -11,107 +10,6 @@ import { CURRENCY } from "./constants";
  */
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
-}
-
-// ========================================
-// CURRENCY FORMATTING
-// ========================================
-
-/**
- * Format a number as currency
- * @param amount - The amount to format
- * @param currency - Currency code (default: IDR)
- * @param locale - Locale for formatting (default: id-ID)
- * @example
- * formatCurrency(1000000) // "Rp 1.000.000"
- */
-export function formatCurrency(
-  amount: number | string | null | undefined,
-  currency: string = CURRENCY.DEFAULT,
-  locale: string = CURRENCY.LOCALE,
-): string {
-  if (amount === null || amount === undefined) return "-";
-
-  const numAmount = typeof amount === "string" ? parseFloat(amount) : amount;
-
-  if (isNaN(numAmount)) return "-";
-
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(numAmount);
-}
-
-/**
- * Format a number as compact currency (e.g., 1.5M, 2.3K)
- * @param amount - The amount to format
- * @example
- * formatCompactCurrency(1500000) // "Rp 1.5M"
- */
-export function formatCompactCurrency(
-  amount: number | string | null | undefined,
-  currency: string = CURRENCY.DEFAULT,
-  locale: string = CURRENCY.LOCALE,
-): string {
-  if (amount === null || amount === undefined) return "-";
-
-  const numAmount = typeof amount === "string" ? parseFloat(amount) : amount;
-
-  if (isNaN(numAmount)) return "-";
-
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency,
-    notation: "compact",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 1,
-  }).format(numAmount);
-}
-
-// ========================================
-// NUMBER FORMATTING
-// ========================================
-
-/**
- * Format a number with thousand separators
- * @param num - The number to format
- * @example
- * formatNumber(1000000) // "1.000.000"
- */
-export function formatNumber(
-  num: number | string | null | undefined,
-  locale: string = CURRENCY.LOCALE,
-): string {
-  if (num === null || num === undefined) return "-";
-
-  const numValue = typeof num === "string" ? parseFloat(num) : num;
-
-  if (isNaN(numValue)) return "-";
-
-  return new Intl.NumberFormat(locale).format(numValue);
-}
-
-/**
- * Format a number as a percentage
- * @param value - The value to format (0-100 or 0-1)
- * @param decimals - Number of decimal places
- * @param isDecimal - Whether the value is already a decimal (0-1) or percentage (0-100)
- * @example
- * formatPercentage(75) // "75%"
- * formatPercentage(0.75, 1, true) // "75.0%"
- */
-export function formatPercentage(
-  value: number | null | undefined,
-  decimals: number = 0,
-  isDecimal: boolean = false,
-): string {
-  if (value === null || value === undefined) return "-";
-
-  const percentage = isDecimal ? value * 100 : value;
-
-  return `${percentage.toFixed(decimals)}%`;
 }
 
 // ========================================

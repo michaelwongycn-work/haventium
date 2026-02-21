@@ -6,6 +6,7 @@
 import { MailerSend, EmailParams, Sender, Recipient } from "mailersend"
 import { logger } from "@/lib/logger"
 import { NotificationChannel } from "../constants"
+import { replaceTemplateVariables } from "./template-utils"
 import {
   sendWhatsAppMeta,
   type WhatsAppMetaCredentials,
@@ -215,20 +216,4 @@ export async function sendNotification(params: {
   }
 }
 
-/**
- * Template variable replacement
- */
-export function replaceTemplateVariables(
-  template: string,
-  variables: Record<string, string | number | null | undefined>
-): string {
-  let result = template
-
-  for (const [key, value] of Object.entries(variables)) {
-    const placeholder = `{{${key}}}`
-    const replacement = value?.toString() || ""
-    result = result.replace(new RegExp(placeholder, "g"), replacement)
-  }
-
-  return result
-}
+export { replaceTemplateVariables }
