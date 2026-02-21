@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { hashPassword, validatePassword } from "@/lib/password";
-import { handleApiError } from "@/lib/api";
+import { handleApiError, logger } from "@/lib/api";
 import { sendVerificationEmail } from "@/lib/mailersend";
 import { z } from "zod";
 
@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
       token,
       baseUrl,
     }).catch((err) => {
-      console.error("[signup] Failed to send verification email:", err);
+      logger.error("[signup] Failed to send verification email", err);
     });
 
     // Both FREE and PAID: auto-login and redirect to verify-email
@@ -175,7 +175,7 @@ export async function POST(request: NextRequest) {
       {
         message: "User registered successfully. Please verify your email.",
         redirect: "/verify-email",
-        autoLogin: { email, password },
+        autoLogin: { email },
       },
       { status: 201 },
     );

@@ -5,26 +5,10 @@ import {
   ActivityLogger,
   apiSuccess,
   apiNotFound,
+  logger,
+  DOCUMENT_WITH_RELATIONS,
 } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
-
-const DOCUMENT_WITH_RELATIONS = {
-  include: {
-    property: true,
-    unit: true,
-    tenant: true,
-    lease: {
-      include: {
-        tenant: true,
-        unit: {
-          include: {
-            property: true,
-          },
-        },
-      },
-    },
-  },
-};
 
 // GET /api/documents/[id] - Get single document
 export async function GET(
@@ -112,7 +96,7 @@ export async function DELETE(
       await del(existingDocument.storageKey);
     } catch (error) {
       // Log but don't fail - file might already be deleted
-      console.warn("Failed to delete file from blob storage:", error);
+      logger.warn("Failed to delete file from blob storage");
     }
 
     // Delete from database (activities will be set to null via onDelete: SetNull)

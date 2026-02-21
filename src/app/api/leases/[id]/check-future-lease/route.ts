@@ -1,5 +1,4 @@
-import { NextResponse } from "next/server";
-import { requireAccess, handleApiError } from "@/lib/api";
+import { requireAccess, handleApiError, apiSuccess, apiNotFound } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(
@@ -23,19 +22,20 @@ export async function GET(
     });
 
     if (!lease) {
-      return NextResponse.json({ error: "Lease not found" }, { status: 404 });
+      return apiNotFound("Lease not found");
     }
 
     const futureLease = await prisma.leaseAgreement.findFirst({
       where: {
         unitId: lease.unitId,
+        organizationId: session.user.organizationId,
         id: { not: id },
         status: { in: ["DRAFT", "ACTIVE"] },
         startDate: { gt: lease.endDate },
       },
     });
 
-    return NextResponse.json({ hasFutureLease: !!futureLease });
+    return apiSuccess({ hasFutureLease: !!futureLease });
   } catch (error) {
     return handleApiError(error, "check future leases");
   }

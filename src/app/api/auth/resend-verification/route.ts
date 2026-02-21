@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { sendVerificationEmail } from "@/lib/mailersend";
+import { logger } from "@/lib/logger";
 
 export async function POST(request: NextRequest) {
   try {
@@ -74,7 +75,7 @@ export async function POST(request: NextRequest) {
       token,
       baseUrl,
     }).catch((err) => {
-      console.error("[resend-verification] Failed to send email:", err);
+      logger.error("[resend-verification] Failed to send email", err);
     });
 
     return NextResponse.json({

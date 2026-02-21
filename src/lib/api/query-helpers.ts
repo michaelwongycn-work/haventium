@@ -141,6 +141,42 @@ export async function findUnitInOrganization(
   });
 }
 
+export const MAINTENANCE_REQUEST_WITH_RELATIONS = {
+  include: {
+    property: true,
+    unit: true,
+    tenant: true,
+    lease: {
+      include: {
+        tenant: true,
+        unit: {
+          include: {
+            property: true,
+          },
+        },
+      },
+    },
+  },
+} as const;
+
+export const DOCUMENT_WITH_RELATIONS = {
+  include: {
+    property: true,
+    unit: true,
+    tenant: true,
+    lease: {
+      include: {
+        tenant: true,
+        unit: {
+          include: {
+            property: true,
+          },
+        },
+      },
+    },
+  },
+} as const;
+
 export async function findLeaseInOrganization(
   leaseId: string,
   organizationId: string,

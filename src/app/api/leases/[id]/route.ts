@@ -1,6 +1,5 @@
-import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAccess, handleApiError, logger } from "@/lib/api";
+import { requireAccess, handleApiError, logger, apiSuccess, apiNotFound, apiError, logActivity } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { processNotifications } from "@/lib/services/notification-processor";
 import { NOTIFICATION_TRIGGER } from "@/lib/constants";
@@ -72,7 +71,7 @@ export async function GET(
     });
 
     if (!lease) {
-      return NextResponse.json({ error: "Lease not found" }, { status: 404 });
+      return apiNotFound("Lease not found");
     }
 
     const activities = await prisma.activity.findMany({
@@ -99,7 +98,7 @@ export async function GET(
       activities,
     };
 
-    return NextResponse.json(leaseWithActivities);
+    return apiSuccess(leaseWithActivities);
   } catch (error) {
     return handleApiError(error, "fetch lease");
   }
@@ -138,7 +137,7 @@ export async function PATCH(
     });
 
     if (!existingLease) {
-      return NextResponse.json({ error: "Lease not found" }, { status: 404 });
+      return apiNotFound("Lease not found");
     }
 
     // Block general field edits for non-DRAFT leases (only allow auto-renewal, payment, status, and deposit status changes)
@@ -154,45 +153,28 @@ export async function PATCH(
         (f) => validatedData[f] !== undefined,
       );
       if (attemptedDraftFields.length > 0) {
-        return NextResponse.json(
-          {
-            error:
-              "Cannot edit lease details after it has been activated. Only auto-renewal settings can be changed.",
-          },
-          { status: 400 },
-        );
+        return apiError("Cannot edit lease details after it has been activated. Only auto-renewal settings can be changed.", 400);
       }
     }
 
     // Deposit status can only be changed for ENDED leases that haven't been renewed and are still HELD
     if (validatedData.depositStatus !== undefined) {
       if (existingLease.status !== "ENDED") {
-        return NextResponse.json(
-          { error: "Deposit status can only be changed for ended leases" },
-          { status: 400 },
-        );
+        return apiError("Deposit status can only be changed for ended leases", 400);
       }
 
       const renewedTo = await prisma.leaseAgreement.findFirst({
         where: { renewedFromId: id },
       });
       if (renewedTo) {
-        return NextResponse.json(
-          { error: "Deposit status cannot be changed for renewed leases" },
-          { status: 400 },
-        );
+        return apiError("Deposit status cannot be changed for renewed leases", 400);
       }
 
       if (
         existingLease.depositStatus &&
         existingLease.depositStatus !== "HELD"
       ) {
-        return NextResponse.json(
-          {
-            error: "Deposit status can only be changed while it is still held",
-          },
-          { status: 400 },
-        );
+        return apiError("Deposit status can only be changed while it is still held", 400);
       }
     }
 
@@ -216,13 +198,7 @@ export async function PATCH(
           (f) => validatedData[f] !== undefined,
         );
         if (attemptedFields.length > 0) {
-          return NextResponse.json(
-            {
-              error:
-                "Cannot modify auto-renewal settings after the notice period deadline has passed",
-            },
-            { status: 400 },
-          );
+          return apiError("Cannot modify auto-renewal settings after the notice period deadline has passed", 400);
         }
       }
     }
@@ -242,13 +218,7 @@ export async function PATCH(
         },
       });
       if (futureLeaseOnUnit) {
-        return NextResponse.json(
-          {
-            error:
-              "Cannot enable auto-renewal because another lease is scheduled for this unit after the current period",
-          },
-          { status: 400 },
-        );
+        return apiError("Cannot enable auto-renewal because another lease is scheduled for this unit after the current period", 400);
       }
     }
 
@@ -262,10 +232,7 @@ export async function PATCH(
         : existingLease.endDate;
 
       if (startDate >= endDate) {
-        return NextResponse.json(
-          { error: "End date must be after start date" },
-          { status: 400 },
-        );
+        return apiError("End date must be after start date", 400);
       }
 
       // Check for overlapping leases when updating dates
@@ -283,13 +250,7 @@ export async function PATCH(
       });
 
       if (autoRenewalLease) {
-        return NextResponse.json(
-          {
-            error:
-              "Unit has an active auto-renewal lease. The lease must be ended before booking future dates.",
-          },
-          { status: 400 },
-        );
+        return apiError("Unit has an active auto-renewal lease. The lease must be ended before booking future dates.", 400);
       }
 
       // Check for regular overlapping leases (non-auto-renewal)
@@ -309,10 +270,7 @@ export async function PATCH(
       });
 
       if (overlappingLease) {
-        return NextResponse.json(
-          { error: "Unit already has an overlapping lease for these dates" },
-          { status: 400 },
-        );
+        return apiError("Unit already has an overlapping lease for these dates", 400);
       }
     }
 
@@ -342,10 +300,7 @@ export async function PATCH(
     // Handle payment status update
     if (validatedData.paidAt !== undefined) {
       if (existingLease.status === "ENDED") {
-        return NextResponse.json(
-          { error: "Cannot mark ended leases as paid" },
-          { status: 400 },
-        );
+        return apiError("Cannot mark ended leases as paid", 400);
       }
 
       if (validatedData.paidAt === null) {
@@ -384,17 +339,9 @@ export async function PATCH(
         // End lease - tenant status update will be done atomically below
         updateData.status = "ENDED";
       } else if (oldStatus === "ENDED") {
-        return NextResponse.json(
-          { error: "Cannot change status of an ended lease" },
-          { status: 400 },
-        );
+        return apiError("Cannot change status of an ended lease", 400);
       } else {
-        return NextResponse.json(
-          {
-            error: `Invalid status transition from ${oldStatus} to ${newStatus}`,
-          },
-          { status: 400 },
-        );
+        return apiError(`Invalid status transition from ${oldStatus} to ${newStatus}`, 400);
       }
     }
 
@@ -493,7 +440,7 @@ export async function PATCH(
       });
     }
 
-    return NextResponse.json(lease);
+    return apiSuccess(lease);
   } catch (error) {
     return handleApiError(error, "update lease");
   }
@@ -533,43 +480,27 @@ export async function DELETE(
     });
 
     if (!existingLease) {
-      return NextResponse.json({ error: "Lease not found" }, { status: 404 });
+      return apiNotFound("Lease not found");
     }
 
     // Only allow deletion of DRAFT leases
     if (existingLease.status !== "DRAFT") {
-      return NextResponse.json(
-        {
-          error:
-            "Only draft leases can be deleted. Active or ended leases cannot be removed.",
-        },
-        { status: 400 },
-      );
+      return apiError("Only draft leases can be deleted. Active or ended leases cannot be removed.", 400);
     }
 
     // Prevent deletion of leases in a renewal chain
     if (existingLease.renewedFromId || existingLease.renewedTo) {
-      return NextResponse.json(
-        {
-          error:
-            "Cannot delete leases that are part of a renewal chain. This lease has been renewed from or to another lease.",
-        },
-        { status: 400 },
-      );
+      return apiError("Cannot delete leases that are part of a renewal chain. This lease has been renewed from or to another lease.", 400);
     }
 
     // Log activity before deletion so leaseId FK is valid
-    await prisma.activity.create({
-      data: {
-        type: "LEASE_UPDATED",
-        description: `Deleted draft lease for ${existingLease.tenant.fullName} at ${existingLease.unit.property.name} - ${existingLease.unit.name}`,
-        userId: session.user.id,
-        organizationId: session.user.organizationId,
-        tenantId: existingLease.tenantId,
-        propertyId: existingLease.unit.propertyId,
-        leaseId: id,
-        unitId: existingLease.unitId,
-      },
+    await logActivity(session, {
+      type: "LEASE_UPDATED",
+      description: `Deleted draft lease for ${existingLease.tenant.fullName} at ${existingLease.unit.property.name} - ${existingLease.unit.name}`,
+      tenantId: existingLease.tenantId,
+      propertyId: existingLease.unit.propertyId,
+      leaseId: id,
+      unitId: existingLease.unitId,
     });
 
     await prisma.leaseAgreement.delete({
@@ -592,7 +523,7 @@ export async function DELETE(
       });
     }
 
-    return NextResponse.json({ success: true });
+    return apiSuccess({ success: true });
   } catch (error) {
     return handleApiError(error, "delete lease");
   }

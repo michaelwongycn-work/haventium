@@ -13,6 +13,7 @@ import {
   parseEnumParam,
   parsePaginationParams,
   createPaginatedResponse,
+  MAINTENANCE_REQUEST_WITH_RELATIONS,
 } from "@/lib/api";
 
 const createMaintenanceRequestSchema = z.object({
@@ -30,24 +31,6 @@ const createMaintenanceRequestSchema = z.object({
 
 const MAINTENANCE_REQUEST_STATUSES = ["OPEN", "IN_PROGRESS", "COMPLETED", "CANCELLED"] as const;
 const MAINTENANCE_REQUEST_PRIORITIES = ["LOW", "MEDIUM", "HIGH", "URGENT"] as const;
-
-const MAINTENANCE_REQUEST_WITH_RELATIONS = {
-  include: {
-    property: true,
-    unit: true,
-    tenant: true,
-    lease: {
-      include: {
-        tenant: true,
-        unit: {
-          include: {
-            property: true,
-          },
-        },
-      },
-    },
-  },
-};
 
 // GET /api/maintenance-requests - List all maintenance requests for the organization
 export async function GET(request: Request) {

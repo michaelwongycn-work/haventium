@@ -357,62 +357,64 @@ export async function POST(request: Request) {
       });
     }
 
-    // Actually create the leases
+    // Actually create the leases (atomic transaction)
     const createdIds: string[] = [];
 
-    for (const enrichedItem of enrichedData.filter(
-      (item) => item.errors.length === 0
-    )) {
-      const data = enrichedItem.validationRow.data;
+    await prisma.$transaction(async (tx) => {
+      for (const enrichedItem of enrichedData.filter(
+        (item) => item.errors.length === 0
+      )) {
+        const data = enrichedItem.validationRow.data;
 
-      const lease = await prisma.leaseAgreement.create({
-        data: {
-          organizationId: session.user.organizationId,
-          tenantId: enrichedItem.tenantId!,
-          unitId: enrichedItem.unitId!,
-          startDate: enrichedItem.startDate!,
-          endDate: enrichedItem.endDate!,
-          paymentCycle: data["Payment Cycle"],
-          rentAmount: data["Rent Amount"],
-          depositAmount: data["Deposit Amount"] ?? 0,
-          gracePeriodDays: data["Grace Period Days"] ?? 0,
-          isAutoRenew: data["Auto Renew"],
-          autoRenewalNoticeDays: data["Auto Renewal Notice Days"] ?? null,
-          status: "DRAFT", // All imported leases start as DRAFT
-          depositStatus: "HELD",
-        },
-      });
+        const lease = await tx.leaseAgreement.create({
+          data: {
+            organizationId: session.user.organizationId,
+            tenantId: enrichedItem.tenantId!,
+            unitId: enrichedItem.unitId!,
+            startDate: enrichedItem.startDate!,
+            endDate: enrichedItem.endDate!,
+            paymentCycle: data["Payment Cycle"],
+            rentAmount: data["Rent Amount"],
+            depositAmount: data["Deposit Amount"] ?? 0,
+            gracePeriodDays: data["Grace Period Days"] ?? 0,
+            isAutoRenew: data["Auto Renew"],
+            autoRenewalNoticeDays: data["Auto Renewal Notice Days"] ?? null,
+            status: "DRAFT", // All imported leases start as DRAFT
+            depositStatus: "HELD",
+          },
+        });
 
-      createdIds.push(lease.id);
+        createdIds.push(lease.id);
 
-      // Update tenant status to BOOKED
-      await prisma.tenant.update({
-        where: { id: enrichedItem.tenantId! },
-        data: { status: "BOOKED" },
-      });
+        // Update tenant status to BOOKED
+        await tx.tenant.update({
+          where: { id: enrichedItem.tenantId! },
+          data: { status: "BOOKED" },
+        });
 
-      // Fetch tenant details for activity logging
-      const tenant = await prisma.tenant.findUnique({
-        where: { id: enrichedItem.tenantId! },
-        select: { fullName: true },
-      });
+        // Fetch tenant details for activity logging
+        const tenant = await tx.tenant.findUnique({
+          where: { id: enrichedItem.tenantId! },
+          select: { fullName: true },
+        });
 
-      // Log activity
-      await ActivityLogger.leaseCreated(
-        session,
-        {
-          id: lease.id,
-          tenantId: lease.tenantId,
-          unitId: lease.unitId,
-        },
-        {
-          tenantName: tenant?.fullName || data["Tenant Email"],
-          propertyName: data["Property Name"],
-          unitName: data["Unit Name"],
-          propertyId: enrichedItem.propertyId!,
-        }
-      );
-    }
+        // Log activity
+        await ActivityLogger.leaseCreated(
+          session,
+          {
+            id: lease.id,
+            tenantId: lease.tenantId,
+            unitId: lease.unitId,
+          },
+          {
+            tenantName: tenant?.fullName || data["Tenant Email"],
+            propertyName: data["Property Name"],
+            unitName: data["Unit Name"],
+            propertyId: enrichedItem.propertyId!,
+          }
+        );
+      }
+    });
 
     return apiSuccess({
       summary: {

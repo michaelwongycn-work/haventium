@@ -6,25 +6,8 @@ import {
   sanitizeSearchInput,
   parsePaginationParams,
   createPaginatedResponse,
+  DOCUMENT_WITH_RELATIONS,
 } from "@/lib/api";
-
-const DOCUMENT_WITH_RELATIONS = {
-  include: {
-    property: true,
-    unit: true,
-    tenant: true,
-    lease: {
-      include: {
-        tenant: true,
-        unit: {
-          include: {
-            property: true,
-          },
-        },
-      },
-    },
-  },
-};
 
 // GET /api/documents - List all documents for the organization
 export async function GET(request: Request) {

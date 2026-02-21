@@ -95,11 +95,10 @@ export async function PATCH(
     }
 
     // Require password for sensitive operations (deactivation)
-    if (
-      validatedData.isActive === false &&
-      existingKey.isActive &&
-      validatedData.currentPassword
-    ) {
+    if (validatedData.isActive === false && existingKey.isActive) {
+      if (!validatedData.currentPassword) {
+        return apiError("Current password is required to deactivate an API key", 400);
+      }
       const { verified } = await verifyCurrentUserPassword(
         session,
         validatedData.currentPassword,

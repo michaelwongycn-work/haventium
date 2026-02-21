@@ -6,6 +6,7 @@ import {
   apiSuccess,
   apiNotFound,
   apiError,
+  MAINTENANCE_REQUEST_WITH_RELATIONS,
 } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 
@@ -17,24 +18,6 @@ const updateMaintenanceRequestSchema = z.object({
   estimatedCost: z.number().min(0, "Estimated cost must be positive").optional().nullable(),
   actualCost: z.number().min(0, "Actual cost must be positive").optional().nullable(),
 });
-
-const MAINTENANCE_REQUEST_WITH_RELATIONS = {
-  include: {
-    property: true,
-    unit: true,
-    tenant: true,
-    lease: {
-      include: {
-        tenant: true,
-        unit: {
-          include: {
-            property: true,
-          },
-        },
-      },
-    },
-  },
-};
 
 // GET /api/maintenance-requests/[id] - Get single maintenance request
 export async function GET(

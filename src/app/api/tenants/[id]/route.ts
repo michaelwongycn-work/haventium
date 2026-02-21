@@ -1,6 +1,5 @@
-import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAccess, handleApiError } from "@/lib/api";
+import { requireAccess, handleApiError, apiSuccess, apiNotFound, apiError, logActivity } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 
 const updateTenantSchema = z.object({
@@ -85,10 +84,10 @@ export async function GET(
     });
 
     if (!tenant) {
-      return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
+      return apiNotFound("Tenant not found");
     }
 
-    return NextResponse.json(tenant);
+    return apiSuccess(tenant);
   } catch (error) {
     return handleApiError(error, "fetch tenant");
   }
@@ -119,7 +118,7 @@ export async function PATCH(
     });
 
     if (!existingTenant) {
-      return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
+      return apiNotFound("Tenant not found");
     }
 
     // If email is being changed, check for duplicates
@@ -133,10 +132,7 @@ export async function PATCH(
       });
 
       if (duplicateTenant) {
-        return NextResponse.json(
-          { error: "A tenant with this email already exists" },
-          { status: 400 },
-        );
+        return apiError("A tenant with this email already exists", 400);
       }
     }
 
@@ -158,17 +154,13 @@ export async function PATCH(
     });
 
     // Log activity
-    await prisma.activity.create({
-      data: {
-        type: "TENANT_UPDATED",
-        description: `Updated tenant: ${tenant.fullName}`,
-        userId: session.user.id,
-        organizationId: session.user.organizationId,
-        tenantId: tenant.id,
-      },
+    await logActivity(session, {
+      type: "TENANT_UPDATED",
+      description: `Updated tenant: ${tenant.fullName}`,
+      tenantId: tenant.id,
     });
 
-    return NextResponse.json(tenant);
+    return apiSuccess(tenant);
   } catch (error) {
     return handleApiError(error, "update tenant");
   }
@@ -204,25 +196,20 @@ export async function DELETE(
     });
 
     if (!existingTenant) {
-      return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
+      return apiNotFound("Tenant not found");
     }
 
     // Check if tenant has active leases
     const activeLeases = await prisma.leaseAgreement.count({
       where: {
         tenantId: id,
+        organizationId: session.user.organizationId,
         status: "ACTIVE",
       },
     });
 
     if (activeLeases > 0) {
-      return NextResponse.json(
-        {
-          error:
-            "Cannot delete tenant with active lease agreements. Please end the leases first.",
-        },
-        { status: 400 },
-      );
+      return apiError("Cannot delete tenant with active lease agreements. Please end the leases first.", 400);
     }
 
     await prisma.tenant.delete({
@@ -230,16 +217,12 @@ export async function DELETE(
     });
 
     // Log activity
-    await prisma.activity.create({
-      data: {
-        type: "TENANT_UPDATED",
-        description: `Deleted tenant: ${existingTenant.fullName} (${existingTenant.email})`,
-        userId: session.user.id,
-        organizationId: session.user.organizationId,
-      },
+    await logActivity(session, {
+      type: "TENANT_UPDATED",
+      description: `Deleted tenant: ${existingTenant.fullName} (${existingTenant.email})`,
     });
 
-    return NextResponse.json({ success: true });
+    return apiSuccess({ success: true });
   } catch (error) {
     return handleApiError(error, "delete tenant");
   }

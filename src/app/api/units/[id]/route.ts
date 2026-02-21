@@ -1,6 +1,5 @@
-import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAccess, handleApiError } from "@/lib/api";
+import { requireAccess, handleApiError, apiSuccess, apiNotFound, apiError, logActivity } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 
 const updateUnitSchema = z.object({
@@ -50,7 +49,7 @@ export async function GET(
     });
 
     if (!unit) {
-      return NextResponse.json({ error: "Unit not found" }, { status: 404 });
+      return apiNotFound("Unit not found");
     }
 
     // Fetch all leases for this unit (sorted by start date, newest first)
@@ -94,11 +93,7 @@ export async function GET(
       take: 50, // Limit to most recent 50 activities
     });
 
-    return NextResponse.json({
-      unit,
-      leases,
-      activities,
-    });
+    return apiSuccess({ unit, leases, activities });
   } catch (error) {
     return handleApiError(error, "fetch unit");
   }
@@ -126,13 +121,7 @@ export async function PATCH(
       !validatedData.monthlyRate &&
       !validatedData.annualRate
     ) {
-      return NextResponse.json(
-        {
-          error:
-            "At least one rate (daily, monthly, or annual) must be provided",
-        },
-        { status: 400 },
-      );
+      return apiError("At least one rate (daily, monthly, or annual) must be provided", 400);
     }
 
     // Verify unit belongs to organization
@@ -149,7 +138,7 @@ export async function PATCH(
     });
 
     if (!existingUnit) {
-      return NextResponse.json({ error: "Unit not found" }, { status: 404 });
+      return apiNotFound("Unit not found");
     }
 
     const unit = await prisma.unit.update({
@@ -166,18 +155,14 @@ export async function PATCH(
     });
 
     // Log activity
-    await prisma.activity.create({
-      data: {
-        type: "UNIT_UPDATED",
-        description: `Updated unit: ${unit.name} in ${existingUnit.property.name}`,
-        userId: session.user.id,
-        organizationId: session.user.organizationId,
-        propertyId: existingUnit.property.id,
-        unitId: id,
-      },
+    await logActivity(session, {
+      type: "UNIT_UPDATED",
+      description: `Updated unit: ${unit.name} in ${existingUnit.property.name}`,
+      propertyId: existingUnit.property.id,
+      unitId: id,
     });
 
-    return NextResponse.json(unit);
+    return apiSuccess(unit);
   } catch (error) {
     return handleApiError(error, "update unit");
   }
@@ -211,19 +196,15 @@ export async function DELETE(
     });
 
     if (!existingUnit) {
-      return NextResponse.json({ error: "Unit not found" }, { status: 404 });
+      return apiNotFound("Unit not found");
     }
 
     // Log activity before deletion so unitId FK is valid
-    await prisma.activity.create({
-      data: {
-        type: "UNIT_UPDATED",
-        description: `Deleted unit: ${existingUnit.name} from ${existingUnit.property.name}`,
-        userId: session.user.id,
-        organizationId: session.user.organizationId,
-        propertyId: existingUnit.property.id,
-        unitId: id,
-      },
+    await logActivity(session, {
+      type: "UNIT_UPDATED",
+      description: `Deleted unit: ${existingUnit.name} from ${existingUnit.property.name}`,
+      propertyId: existingUnit.property.id,
+      unitId: id,
     });
 
     await prisma.unit.delete({
@@ -232,7 +213,7 @@ export async function DELETE(
       },
     });
 
-    return NextResponse.json({ success: true });
+    return apiSuccess({ success: true });
   } catch (error) {
     return handleApiError(error, "delete unit");
   }

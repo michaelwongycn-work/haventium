@@ -146,30 +146,32 @@ export async function POST(request: Request) {
       });
     }
 
-    // Actually create the tenants
+    // Actually create the tenants (atomic transaction)
     const createdIds: string[] = [];
 
-    for (const validRow of validationResult.valid) {
-      const data = validRow.data;
+    await prisma.$transaction(async (tx) => {
+      for (const validRow of validationResult.valid) {
+        const data = validRow.data;
 
-      const tenant = await prisma.tenant.create({
-        data: {
-          organizationId: session.user.organizationId,
-          fullName: trimString(data["Full Name"]),
-          email: trimString(data.Email),
-          phone: trimString(data.Phone),
-          status: data.Status,
-          preferEmail: data["Prefer Email"],
-          preferWhatsapp: data["Prefer WhatsApp"],
-          preferTelegram: data["Prefer Telegram"],
-        },
-      });
+        const tenant = await tx.tenant.create({
+          data: {
+            organizationId: session.user.organizationId,
+            fullName: trimString(data["Full Name"]),
+            email: trimString(data.Email),
+            phone: trimString(data.Phone),
+            status: data.Status,
+            preferEmail: data["Prefer Email"],
+            preferWhatsapp: data["Prefer WhatsApp"],
+            preferTelegram: data["Prefer Telegram"],
+          },
+        });
 
-      createdIds.push(tenant.id);
+        createdIds.push(tenant.id);
 
-      // Log activity
-      await ActivityLogger.tenantCreated(session, tenant);
-    }
+        // Log activity
+        await ActivityLogger.tenantCreated(session, tenant);
+      }
+    });
 
     return apiSuccess({
       summary: {

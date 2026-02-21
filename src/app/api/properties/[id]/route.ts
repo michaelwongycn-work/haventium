@@ -1,6 +1,5 @@
-import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAccess, handleApiError } from "@/lib/api";
+import { requireAccess, handleApiError, apiSuccess, apiNotFound, logActivity } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 
 const updatePropertySchema = z.object({
@@ -41,10 +40,7 @@ export async function GET(
     });
 
     if (!property) {
-      return NextResponse.json(
-        { error: "Property not found" },
-        { status: 404 },
-      );
+      return apiNotFound("Property not found");
     }
 
     const activities = await prisma.activity.findMany({
@@ -57,7 +53,7 @@ export async function GET(
       take: 50,
     });
 
-    return NextResponse.json({ ...property, activities });
+    return apiSuccess({ ...property, activities });
   } catch (error) {
     return handleApiError(error, "fetch property");
   }
@@ -88,10 +84,7 @@ export async function PATCH(
     });
 
     if (!existingProperty) {
-      return NextResponse.json(
-        { error: "Property not found" },
-        { status: 404 },
-      );
+      return apiNotFound("Property not found");
     }
 
     const property = await prisma.property.update({
@@ -111,17 +104,13 @@ export async function PATCH(
     });
 
     // Log activity
-    await prisma.activity.create({
-      data: {
-        type: "PROPERTY_UPDATED",
-        description: `Updated property: ${property.name}`,
-        userId: session.user.id,
-        organizationId: session.user.organizationId,
-        propertyId: property.id,
-      },
+    await logActivity(session, {
+      type: "PROPERTY_UPDATED",
+      description: `Updated property: ${property.name}`,
+      propertyId: property.id,
     });
 
-    return NextResponse.json(property);
+    return apiSuccess(property);
   } catch (error) {
     return handleApiError(error, "update property");
   }
@@ -150,10 +139,7 @@ export async function DELETE(
     });
 
     if (!existingProperty) {
-      return NextResponse.json(
-        { error: "Property not found" },
-        { status: 404 },
-      );
+      return apiNotFound("Property not found");
     }
 
     await prisma.property.delete({
@@ -163,16 +149,12 @@ export async function DELETE(
     });
 
     // Log activity
-    await prisma.activity.create({
-      data: {
-        type: "PROPERTY_UPDATED",
-        description: `Deleted property: ${existingProperty.name}`,
-        userId: session.user.id,
-        organizationId: session.user.organizationId,
-      },
+    await logActivity(session, {
+      type: "PROPERTY_UPDATED",
+      description: `Deleted property: ${existingProperty.name}`,
     });
 
-    return NextResponse.json({ success: true });
+    return apiSuccess({ success: true });
   } catch (error) {
     return handleApiError(error, "delete property");
   }
