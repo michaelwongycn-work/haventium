@@ -5,7 +5,7 @@ import { z } from "zod";
 const updateFormatsSchema = z.object({
   dateFormat: z.enum(["dd/MM/yyyy", "MM/dd/yyyy", "yyyy-MM-dd"]),
   currency: z.string().min(3).max(3), // ISO currency code
-  currencySymbol: z.string().min(1).max(5),
+  currencySymbol: z.string().min(1).max(5).regex(/^[\w$€£¥₹₽₩¢₪₦₨₱₡₲₴₵₺₼฿₫]+$/, "Invalid currency symbol"),
 });
 
 // GET /api/settings/formats

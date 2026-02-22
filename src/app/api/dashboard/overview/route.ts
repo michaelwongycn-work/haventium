@@ -16,8 +16,10 @@ export async function GET(request: NextRequest) {
 
     // Parse month/year from query params (default to current)
     const now = new Date();
-    const month = parseInt(searchParams.get("month") || String(now.getMonth() + 1));
-    const year = parseInt(searchParams.get("year") || String(now.getFullYear()));
+    const rawMonth = parseInt(searchParams.get("month") || String(now.getMonth() + 1));
+    const rawYear = parseInt(searchParams.get("year") || String(now.getFullYear()));
+    const month = Math.max(1, Math.min(12, isNaN(rawMonth) ? now.getMonth() + 1 : rawMonth));
+    const year = Math.max(2000, Math.min(2100, isNaN(rawYear) ? now.getFullYear() : rawYear));
 
     // Calculate month date range for revenue
     const monthStart = new Date(year, month - 1, 1);
