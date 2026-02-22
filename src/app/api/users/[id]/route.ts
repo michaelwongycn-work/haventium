@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 import {
   requireAccess,
   verifyCurrentUserPassword,
@@ -171,7 +172,15 @@ export async function DELETE(
     }
 
     // Verify current user's password
-    const body = await request.json().catch(() => ({})) as { currentPassword?: string; [key: string]: unknown };
+    let body: { currentPassword?: string; [key: string]: unknown } = {};
+    try {
+      body = await request.json();
+    } catch (error) {
+      logger.error("Failed to parse request body in DELETE /api/users/[id]", error, {
+        userId: session.user.id,
+      });
+      return apiError("Invalid request body", 400);
+    }
     const currentPassword = body.currentPassword || "";
 
     const passwordCheck = await verifyCurrentUserPassword(

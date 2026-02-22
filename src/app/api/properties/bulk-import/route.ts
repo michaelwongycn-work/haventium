@@ -88,7 +88,10 @@ export async function POST(request: Request) {
         if (!propertiesByName.has(propertyName)) {
           propertiesByName.set(propertyName, []);
         }
-        propertiesByName.get(propertyName)!.push(v.data);
+        const propertyRows = propertiesByName.get(propertyName);
+        if (propertyRows) {
+          propertyRows.push(v.data);
+        }
       });
 
       // Fetch existing properties and their units
@@ -245,7 +248,10 @@ export async function POST(request: Request) {
       if (!propertiesByName.has(propertyName)) {
         propertiesByName.set(propertyName, []);
       }
-      propertiesByName.get(propertyName)!.push(v.data);
+      const propertyRows = propertiesByName.get(propertyName);
+      if (propertyRows) {
+        propertyRows.push(v.data);
+      }
     });
 
     // Create/find properties and add units

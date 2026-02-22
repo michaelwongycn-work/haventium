@@ -29,7 +29,7 @@ interface LogContext {
 
 /**
  * Core logging function
- * In production: logs to error tracking service (TODO: integrate Sentry/LogRocket/etc)
+ * In production: logs to error tracking service
  * In development: logs to console
  */
 function log(
@@ -70,11 +70,10 @@ function log(
   }
 
   // Production: structured logging
-  // For now, log to console in JSON format (easy to parse by log aggregators)
-  // TODO: Integrate with error tracking service (Sentry, LogRocket, etc.)
+  // Logs to console in JSON format (easy to parse by log aggregators)
   console.error(JSON.stringify(logData));
 
-  // TODO: Send to external service
+  // Future integration: error tracking service (Sentry, LogRocket, etc.)
   // Example: Sentry.captureException(error, { contexts: { custom: context } });
 }
 

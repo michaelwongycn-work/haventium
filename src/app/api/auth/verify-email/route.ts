@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { timingSafeEqual } from "crypto";
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   const token = request.nextUrl.searchParams.get("token");
@@ -35,8 +36,13 @@ export async function GET(request: NextRequest) {
   }
 
   if (verificationToken.expires < new Date()) {
-    // Clean up expired token
-    await prisma.verificationToken.delete({ where: { token } }).catch(() => {});
+    try {
+      await prisma.verificationToken.delete({ where: { token } });
+    } catch (error) {
+      logger.error("Failed to delete expired verification token", error, {
+        token: "[REDACTED]",
+      });
+    }
     return NextResponse.redirect(
       new URL("/verify-email?error=expired_token", request.url),
     );

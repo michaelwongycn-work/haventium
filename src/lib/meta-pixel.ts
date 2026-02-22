@@ -3,14 +3,21 @@
  * All functions are safe to call — they check for fbq availability first.
  */
 
+type MetaPixelEvent = "Lead" | "StartTrial" | "InitiateCheckout" | "Purchase";
+
+interface MetaPixelTrackParams {
+  value?: number;
+  currency?: string;
+  content_name?: string;
+}
+
 declare global {
   interface Window {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    fbq?: (...args: any[]) => void;
+    fbq?: (action: "track", event: MetaPixelEvent, params?: MetaPixelTrackParams) => void;
   }
 }
 
-function track(event: string, params?: Record<string, unknown>) {
+function track(event: MetaPixelEvent, params?: MetaPixelTrackParams) {
   if (typeof window !== "undefined" && typeof window.fbq === "function") {
     window.fbq("track", event, params);
   }
@@ -34,7 +41,7 @@ export function trackSignupIntent(
   price: number,
   tierName: string,
   currency: string,
-) {
+): void {
   if (price === 0) {
     track("StartTrial", { value: 0, currency });
   } else {
