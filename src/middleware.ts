@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import { authConfig } from "@/lib/auth.config";
 import { NextResponse } from "next/server";
+import type { SubscriptionStatus } from "@prisma/client";
 
 const { auth } = NextAuth(authConfig);
 
@@ -31,7 +32,8 @@ export default auth((req) => {
   }
 
   // Email verification gate — must verify before accessing anything
-  const emailVerified = (req.auth as { user?: { emailVerified?: boolean } })?.user?.emailVerified;
+  const emailVerified = (req.auth as { user?: { emailVerified?: boolean } })
+    ?.user?.emailVerified;
   if (!emailVerified) {
     const isAllowed =
       pathname.startsWith("/verify-email") ||
@@ -44,8 +46,11 @@ export default auth((req) => {
   }
 
   // Redirect PENDING_PAYMENT users to /subscribe (except allowed paths)
-  const subscriptionStatus = (req.auth as { user?: { subscription?: { status?: string } } })?.user?.subscription?.status;
-  if (subscriptionStatus === "PENDING_PAYMENT") {
+  const subscriptionStatus = (
+    req.auth as { user?: { subscription?: { status?: SubscriptionStatus } } }
+  )?.user?.subscription?.status;
+  const PENDING_PAYMENT: SubscriptionStatus = "PENDING_PAYMENT";
+  if (subscriptionStatus === PENDING_PAYMENT) {
     const isAllowed =
       pathname.startsWith("/subscribe") ||
       pathname.startsWith("/api/") ||

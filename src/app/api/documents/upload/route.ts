@@ -82,12 +82,13 @@ export async function POST(request: Request) {
         const unit = await prisma.unit.findFirst({
           where: {
             id: entityId,
+            property: {
+              organizationId: session.user.organizationId,
+            },
           },
-          include: {
-            property: true,
-          },
+          select: { propertyId: true },
         });
-        if (!unit || unit.property.organizationId !== session.user.organizationId) {
+        if (!unit) {
           return apiNotFound("Unit not found");
         }
         unitId = entityId;

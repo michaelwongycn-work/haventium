@@ -109,6 +109,14 @@ export async function PATCH(
 
       // Replace accesses if provided
       if (validatedData.accessIds) {
+        const validAccesses = await tx.access.findMany({
+          where: { id: { in: validatedData.accessIds } },
+          select: { id: true },
+        });
+        if (validAccesses.length !== validatedData.accessIds.length) {
+          throw new Error("One or more invalid access IDs provided");
+        }
+
         await tx.roleAccess.deleteMany({
           where: { roleId: id },
         });

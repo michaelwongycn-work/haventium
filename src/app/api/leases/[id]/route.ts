@@ -170,10 +170,10 @@ export async function PATCH(
         return apiError("Deposit status cannot be changed for renewed leases", 400);
       }
 
-      if (
-        existingLease.depositStatus &&
-        existingLease.depositStatus !== "HELD"
-      ) {
+      if (validatedData.depositStatus !== "HELD" && existingLease.depositStatus !== "HELD") {
+        return apiError("Deposit must be in HELD status before it can be returned or forfeited", 400);
+      }
+      if (existingLease.depositStatus && existingLease.depositStatus !== "HELD") {
         return apiError("Deposit status can only be changed while it is still held", 400);
       }
     }

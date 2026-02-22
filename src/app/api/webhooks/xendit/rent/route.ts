@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ received: true });
     }
 
-    // Find the transaction to get the organizationId
+    // Find the transaction to identify the organization (needed to look up org's webhook token)
     const transaction = await prisma.paymentTransaction.findUnique({
       where: { externalId: external_id },
     });
@@ -41,19 +41,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ received: true });
     }
 
-    if (transaction.status === "COMPLETED") {
-      return NextResponse.json({ received: true });
-    }
-
-    if (transaction.type !== "RENT") {
-      logger.info("Xendit rent webhook: transaction is not a rent payment", {
-        externalId: external_id,
-        type: transaction.type,
-      });
-      return NextResponse.json({ received: true });
-    }
-
-    // Look up org's Xendit API key to get the webhook token
+    // Look up org's Xendit API key and verify token BEFORE any mutation or idempotency short-circuit
     const xenditApiKey = await prisma.apiKey.findUnique({
       where: {
         organizationId_service: {
@@ -83,6 +71,19 @@ export async function POST(request: NextRequest) {
         organizationId: transaction.organizationId,
       });
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Token verified — now safe to check idempotency and type
+    if (transaction.status === "COMPLETED") {
+      return NextResponse.json({ received: true });
+    }
+
+    if (transaction.type !== "RENT") {
+      logger.info("Xendit rent webhook: transaction is not a rent payment", {
+        externalId: external_id,
+        type: transaction.type,
+      });
+      return NextResponse.json({ received: true });
     }
 
     await handleRentPayment(transaction, body, payment_method);
@@ -184,7 +185,7 @@ async function handleRentPayment(
       unitName: lease.unit.name,
       leaseStartDate: lease.startDate.toLocaleDateString(),
       leaseEndDate: lease.endDate.toLocaleDateString(),
-      amount: transaction.amount.toString(),
+      amount: Number(transaction.amount).toFixed(2),
       currency: org?.currencySymbol ?? "$",
       paidAt: now.toLocaleString(),
     });

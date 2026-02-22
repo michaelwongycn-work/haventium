@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { Invoice } from "xendit-node/invoice";
 
 export interface XenditPaymentLinkParams {
@@ -54,5 +55,10 @@ export function verifyXenditWebhook(
   callbackToken: string,
   webhookToken: string,
 ): boolean {
-  return callbackToken === webhookToken;
+  if (!callbackToken || !webhookToken) return false;
+  try {
+    return crypto.timingSafeEqual(Buffer.from(callbackToken), Buffer.from(webhookToken));
+  } catch {
+    return false;
+  }
 }

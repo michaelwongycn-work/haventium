@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { timingSafeEqual } from "crypto";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(request: NextRequest) {
@@ -16,6 +17,18 @@ export async function GET(request: NextRequest) {
   });
 
   if (!verificationToken) {
+    return NextResponse.redirect(
+      new URL("/verify-email?error=invalid_token", request.url),
+    );
+  }
+
+  // Timing-safe comparison to prevent timing attacks on token lookup
+  const tokenBuf = Buffer.from(token);
+  const storedBuf = Buffer.from(verificationToken.token);
+  const tokensMatch =
+    tokenBuf.length === storedBuf.length &&
+    timingSafeEqual(tokenBuf, storedBuf);
+  if (!tokensMatch) {
     return NextResponse.redirect(
       new URL("/verify-email?error=invalid_token", request.url),
     );
