@@ -5,7 +5,6 @@ import { z } from "zod";
 const updateFormatsSchema = z.object({
   dateFormat: z.enum(["dd/MM/yyyy", "MM/dd/yyyy", "yyyy-MM-dd"]),
   currency: z.string().min(3).max(3), // ISO currency code
-  currencySymbol: z.string().min(1).max(5).regex(/^[\w$€£¥₹₽₩¢₪₦₨₱₡₲₴₵₺₼฿₫]+$/, "Invalid currency symbol"),
 });
 
 // GET /api/settings/formats
@@ -19,7 +18,6 @@ export async function GET() {
       select: {
         dateFormat: true,
         currency: true,
-        currencySymbol: true,
       },
     });
 
@@ -27,7 +25,6 @@ export async function GET() {
       return apiSuccess({
         dateFormat: "dd/MM/yyyy",
         currency: "USD",
-        currencySymbol: "$",
       });
     }
 
@@ -50,12 +47,10 @@ export async function PATCH(request: Request) {
       data: {
         dateFormat: validatedData.dateFormat,
         currency: validatedData.currency,
-        currencySymbol: validatedData.currencySymbol,
       },
       select: {
         dateFormat: true,
         currency: true,
-        currencySymbol: true,
       },
     });
 

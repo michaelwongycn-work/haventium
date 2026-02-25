@@ -368,6 +368,7 @@ async function main() {
       name: "Test User",
       hashedPassword,
       organizationId: org.id,
+      emailVerified: new Date(),
     },
   });
 
@@ -392,7 +393,8 @@ async function main() {
   const { encrypt, getLastFourChars } = await import("../src/lib/encryption");
 
   // MailerSend Email API key (use test key for development)
-  const testMailerSendKey = process.env.MAILERSEND_API_KEY || "mlsn.test_key_12345678";
+  const testMailerSendKey =
+    process.env.MAILERSEND_API_KEY || "mlsn.test_key_12345678";
   const mailerSendEncrypted = encrypt(testMailerSendKey);
 
   await prisma.apiKey.upsert({
@@ -2271,6 +2273,313 @@ Haventium Property Management`,
   });
 
   console.log("✓ Created 3 documents");
+
+  // ===========================================
+  // Special Tenant: Michael Wong (for portal testing)
+  // ===========================================
+
+  console.log("👤 Creating special tenant Michael Wong...");
+
+  // Use the first property/unit for Michael's tenancy
+  const michaelProperty = properties[0];
+  const michaelUnit = michaelProperty.units[0];
+
+  const michaelTenant = await prisma.tenant.upsert({
+    where: {
+      email_organizationId: {
+        email: "michaelwongycn@gmail.com",
+        organizationId: org.id,
+      },
+    },
+    update: {
+      fullName: "Michael Wong",
+      phone: "+60123456789",
+      organizationId: org.id,
+      status: "ACTIVE",
+      preferEmail: true,
+      preferWhatsapp: false,
+      preferTelegram: false,
+    },
+    create: {
+      fullName: "Michael Wong",
+      email: "michaelwongycn@gmail.com",
+      phone: "+60123456789",
+      organizationId: org.id,
+      status: "ACTIVE",
+      preferEmail: true,
+      preferWhatsapp: false,
+      preferTelegram: false,
+    },
+  });
+
+  // Auto-renewal chain: 5 consecutive ENDED leases starting 6 months ago,
+  // linked via renewedFromId to represent real auto-renewal history.
+  // Only the first lease has a deposit (returned after it ended).
+  const autoRenewPaymentMethods: Array<
+    "CASH" | "BANK_TRANSFER" | "VIRTUAL_ACCOUNT" | "QRIS"
+  > = [
+    "BANK_TRANSFER",
+    "BANK_TRANSFER",
+    "VIRTUAL_ACCOUNT",
+    "QRIS",
+    "BANK_TRANSFER",
+  ];
+
+  const michaelRentAmount = Number(michaelUnit.monthlyRate);
+  const michaelDepositAmount = Math.round(michaelRentAmount * 1.5);
+
+  // Anchor chain to the 1st of the month, 6 months ago — so each lease is a clean calendar month
+  const chainAnchor = addMonths(today, -6);
+  const michaelHistStart = new Date(chainAnchor.getFullYear(), chainAnchor.getMonth(), 1);
+  let chainStart = michaelHistStart;
+
+  const michaelHistLeases: Prisma.LeaseAgreementGetPayload<
+    Record<string, never>
+  >[] = [];
+  let prevLeaseId: string | null = null;
+
+  for (let i = 0; i < 5; i++) {
+    // End on the last day of that calendar month
+    const chainEnd = new Date(chainStart.getFullYear(), chainStart.getMonth() + 1, 0);
+    const lease: Prisma.LeaseAgreementGetPayload<Record<string, never>> =
+      await prisma.leaseAgreement.create({
+        data: {
+          tenantId: michaelTenant.id,
+          unitId: michaelUnit.id,
+          organizationId: org.id,
+          startDate: chainStart,
+          endDate: chainEnd,
+          paymentCycle: "MONTHLY",
+          rentAmount: michaelRentAmount,
+          // Deposit carried over on each renewal — marked CARRIED on old lease
+          depositAmount: michaelDepositAmount,
+          depositStatus: "CARRIED",
+          status: "ENDED",
+          paidAt: chainStart,
+          paymentMethod: autoRenewPaymentMethods[i],
+          paymentStatus: "COMPLETED",
+          isAutoRenew: true,
+          autoRenewalNoticeDays: 5,
+          gracePeriodDays: 5,
+          renewedFromId: prevLeaseId ?? undefined,
+        },
+      });
+    michaelHistLeases.push(lease);
+    prevLeaseId = lease.id;
+    // Next lease starts on the 1st of the following month
+    chainStart = new Date(chainStart.getFullYear(), chainStart.getMonth() + 1, 1);
+  }
+  const michaelHistLease = michaelHistLeases[0]; // used for maintenance/docs below
+
+  console.log("  ✓ Created 5 auto-renewed ENDED leases for Michael");
+
+  // ACTIVE lease — 1st to last day of THIS month (today)
+  const michaelActiveStart = new Date(today.getFullYear(), today.getMonth(), 1);
+  const michaelActiveEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+  const michaelActiveLease = await prisma.leaseAgreement.create({
+    data: {
+      tenantId: michaelTenant.id,
+      unitId: michaelUnit.id,
+      organizationId: org.id,
+      startDate: michaelActiveStart,
+      endDate: michaelActiveEnd,
+      paymentCycle: "MONTHLY",
+      rentAmount: michaelRentAmount,
+      depositAmount: michaelDepositAmount,
+      depositStatus: "HELD",
+      status: "ACTIVE",
+      paidAt: michaelActiveStart,
+      paymentMethod: "VIRTUAL_ACCOUNT",
+      paymentStatus: "COMPLETED",
+      isAutoRenew: true,
+      autoRenewalNoticeDays: 5,
+      gracePeriodDays: 5,
+      renewedFromId: prevLeaseId,
+    },
+  });
+  prevLeaseId = michaelActiveLease.id;
+
+  // DRAFT future lease — 1st to last day of next month
+  const michaelFutureStart = new Date(michaelActiveStart.getFullYear(), michaelActiveStart.getMonth() + 1, 1);
+  const michaelFutureEnd = new Date(michaelFutureStart.getFullYear(), michaelFutureStart.getMonth() + 1, 0);
+  const michaelFutureLease = await prisma.leaseAgreement.create({
+    data: {
+      tenantId: michaelTenant.id,
+      unitId: michaelUnit.id,
+      organizationId: org.id,
+      startDate: michaelFutureStart,
+      endDate: michaelFutureEnd,
+      paymentCycle: "MONTHLY",
+      rentAmount: michaelRentAmount,
+      depositAmount: michaelDepositAmount,
+      depositStatus: "HELD",
+      status: "DRAFT",
+      paidAt: null,
+      paymentMethod: null,
+      paymentStatus: "PENDING",
+      isAutoRenew: true,
+      autoRenewalNoticeDays: 5,
+      gracePeriodDays: 5,
+      renewedFromId: prevLeaseId,
+    },
+  });
+
+  console.log(
+    "  ✓ Created 7 leases for Michael (5× ENDED → ACTIVE → DRAFT, all auto-renewed chain)",
+  );
+
+  // Payment transactions — one MANUAL COMPLETED transaction per paid lease (ENDED + ACTIVE)
+  type LeaseRecord = { id: string; paidAt: Date | null };
+  const michaelPaidLeases: LeaseRecord[] = [
+    ...michaelHistLeases.map((l) => ({ id: l.id, paidAt: l.paidAt })),
+    { id: michaelActiveLease.id, paidAt: michaelActiveLease.paidAt },
+  ];
+  for (const lease of michaelPaidLeases) {
+    await prisma.paymentTransaction.create({
+      data: {
+        organizationId: org.id,
+        leaseId: lease.id,
+        type: "RENT",
+        gateway: "MANUAL",
+        externalId: `seed-manual-${lease.id}`,
+        amount: michaelRentAmount,
+        status: "COMPLETED",
+        paidAt: lease.paidAt,
+      },
+    });
+  }
+  console.log(
+    `  ✓ Created ${michaelPaidLeases.length} payment transactions for Michael`,
+  );
+
+  // Maintenance requests — one per lease
+  await prisma.maintenanceRequest.create({
+    data: {
+      organizationId: org.id,
+      propertyId: michaelProperty.id,
+      unitId: michaelUnit.id,
+      tenantId: michaelTenant.id,
+      leaseId: michaelHistLease.id,
+      title: "Broken Window Latch",
+      description:
+        "The latch on the bedroom window is broken and won't lock properly.",
+      priority: "HIGH",
+      status: "COMPLETED",
+      estimatedCost: 200,
+      actualCost: 180,
+      completedAt: addDays(michaelHistStart, 10),
+      createdAt: addDays(michaelHistStart, 5),
+      updatedAt: addDays(michaelHistStart, 10),
+    },
+  });
+
+  await prisma.maintenanceRequest.create({
+    data: {
+      organizationId: org.id,
+      propertyId: michaelProperty.id,
+      unitId: michaelUnit.id,
+      tenantId: michaelTenant.id,
+      leaseId: michaelActiveLease.id,
+      title: "Leaking Kitchen Faucet",
+      description:
+        "Kitchen faucet drips constantly even when fully closed. Needs washer replacement.",
+      priority: "MEDIUM",
+      status: "IN_PROGRESS",
+      estimatedCost: 150,
+      createdAt: addDays(michaelActiveStart, 3),
+      updatedAt: addDays(michaelActiveStart, 3),
+    },
+  });
+
+  await prisma.maintenanceRequest.create({
+    data: {
+      organizationId: org.id,
+      propertyId: michaelProperty.id,
+      unitId: michaelUnit.id,
+      tenantId: michaelTenant.id,
+      leaseId: michaelFutureLease.id,
+      title: "AC Pre-Move-In Inspection",
+      description:
+        "Please inspect and service the air conditioning unit before the new lease period begins.",
+      priority: "LOW",
+      status: "OPEN",
+      estimatedCost: 100,
+      createdAt: addDays(today, 5),
+      updatedAt: addDays(today, 5),
+    },
+  });
+
+  console.log("  ✓ Created 3 maintenance requests for Michael");
+
+  // Documents — one per lease + one general tenant doc
+  await prisma.document.create({
+    data: {
+      organizationId: org.id,
+      propertyId: michaelProperty.id,
+      unitId: michaelUnit.id,
+      tenantId: michaelTenant.id,
+      leaseId: michaelHistLease.id,
+      filename: "lease-agreement-historical.pdf",
+      fileType: "application/pdf",
+      fileSize: 312450,
+      fileUrl: "https://example.com/placeholder/michael-lease-historical.pdf",
+      storageKey: "seed-michael-lease-historical",
+      createdAt: michaelHistStart,
+      updatedAt: michaelHistStart,
+    },
+  });
+
+  await prisma.document.create({
+    data: {
+      organizationId: org.id,
+      propertyId: michaelProperty.id,
+      unitId: michaelUnit.id,
+      tenantId: michaelTenant.id,
+      leaseId: michaelActiveLease.id,
+      filename: "lease-agreement-active.pdf",
+      fileType: "application/pdf",
+      fileSize: 298760,
+      fileUrl: "https://example.com/placeholder/michael-lease-active.pdf",
+      storageKey: "seed-michael-lease-active",
+      createdAt: michaelActiveStart,
+      updatedAt: michaelActiveStart,
+    },
+  });
+
+  await prisma.document.create({
+    data: {
+      organizationId: org.id,
+      propertyId: michaelProperty.id,
+      unitId: michaelUnit.id,
+      tenantId: michaelTenant.id,
+      leaseId: michaelFutureLease.id,
+      filename: "lease-agreement-upcoming.pdf",
+      fileType: "application/pdf",
+      fileSize: 301120,
+      fileUrl: "https://example.com/placeholder/michael-lease-upcoming.pdf",
+      storageKey: "seed-michael-lease-upcoming",
+      createdAt: today,
+      updatedAt: today,
+    },
+  });
+
+  await prisma.document.create({
+    data: {
+      organizationId: org.id,
+      propertyId: michaelProperty.id,
+      tenantId: michaelTenant.id,
+      filename: "michael-id-verification.pdf",
+      fileType: "application/pdf",
+      fileSize: 145230,
+      fileUrl: "https://example.com/placeholder/michael-id.pdf",
+      storageKey: "seed-michael-id",
+      createdAt: michaelHistStart,
+      updatedAt: michaelHistStart,
+    },
+  });
+
+  console.log("  ✓ Created 4 documents for Michael");
+  console.log("✓ Special tenant Michael Wong ready — michaelwongycn@gmail.com");
 
   console.log("🎉 Seed completed successfully!");
 }

@@ -158,7 +158,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    const baseUrl = process.env.BASE_URL ?? "http://localhost:3000";
+    const baseUrl = process.env.PUBLIC_URL ?? "http://localhost:3000";
 
     // Send verification email non-blocking
     sendVerificationEmail({

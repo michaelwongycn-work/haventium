@@ -408,7 +408,7 @@ export async function PATCH(
         }
       }
 
-      // Log payment activity if payment was recorded
+      // Log payment activity and create transaction record if payment was recorded
       if (wasPaymentRecorded) {
         await tx.activity.create({
           data: {
@@ -420,6 +420,19 @@ export async function PATCH(
             propertyId: existingLease.unit.propertyId,
             leaseId: id,
             unitId: existingLease.unitId,
+          },
+        });
+
+        await tx.paymentTransaction.create({
+          data: {
+            organizationId: session.user.organizationId,
+            leaseId: id,
+            type: "RENT",
+            gateway: "MANUAL",
+            externalId: `manual-${id}-${Date.now()}`,
+            amount: existingLease.rentAmount,
+            status: "COMPLETED",
+            paidAt: new Date(validatedData.paidAt as string),
           },
         });
       }

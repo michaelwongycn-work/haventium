@@ -3,7 +3,36 @@ import { format as dateFnsFormat } from "date-fns";
 // Default formats (can be overridden by organization settings)
 let defaultDateFormat = "dd/MM/yyyy";
 let defaultCurrency = "USD";
-let defaultCurrencySymbol = "$";
+
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  // Southeast Asia
+  IDR: "Rp",
+  MYR: "RM",
+  SGD: "S$",
+  THB: "฿",
+  PHP: "₱",
+  VND: "₫",
+  MMK: "K",
+  KHR: "៛",
+  LAK: "₭",
+  BND: "B$",
+  // Major global
+  USD: "$",
+  EUR: "€",
+  GBP: "£",
+  AUD: "A$",
+  CAD: "C$",
+  CHF: "CHF",
+  JPY: "¥",
+  CNY: "¥",
+  HKD: "HK$",
+  KRW: "₩",
+  INR: "₹",
+};
+
+export function getCurrencySymbol(currency: string): string {
+  return CURRENCY_SYMBOLS[currency] ?? currency;
+}
 
 /**
  * Set global format preferences (should be called on app initialization with org settings)
@@ -11,11 +40,9 @@ let defaultCurrencySymbol = "$";
 export function setFormatPreferences(preferences: {
   dateFormat?: string;
   currency?: string;
-  currencySymbol?: string;
 }) {
   if (preferences.dateFormat) defaultDateFormat = preferences.dateFormat;
   if (preferences.currency) defaultCurrency = preferences.currency;
-  if (preferences.currencySymbol) defaultCurrencySymbol = preferences.currencySymbol;
 }
 
 /**
@@ -25,7 +52,7 @@ export function getFormatPreferences() {
   return {
     dateFormat: defaultDateFormat,
     currency: defaultCurrency,
-    currencySymbol: defaultCurrencySymbol,
+    currencySymbol: getCurrencySymbol(defaultCurrency),
   };
 }
 
@@ -84,21 +111,21 @@ export function formatCurrency(
   value: number | string | null | undefined,
   options?: {
     currency?: string;
-    symbol?: string;
     minimumFractionDigits?: number;
     maximumFractionDigits?: number;
   }
 ): string {
-  if (value === null || value === undefined) return `${options?.symbol || defaultCurrencySymbol}0.00`;
-  const num = typeof value === "string" ? parseFloat(value) : value;
-  if (isNaN(num)) return `${options?.symbol || defaultCurrencySymbol}0.00`;
-
   const currency = options?.currency || defaultCurrency;
+  const symbol = getCurrencySymbol(currency);
+  if (value === null || value === undefined) return `${symbol}0.00`;
+  const num = typeof value === "string" ? parseFloat(value) : value;
+  if (isNaN(num)) return `${symbol}0.00`;
 
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
+  const formatted = new Intl.NumberFormat("en-US", {
+    style: "decimal",
     minimumFractionDigits: options?.minimumFractionDigits ?? 2,
     maximumFractionDigits: options?.maximumFractionDigits ?? 2,
   }).format(num);
+
+  return `${symbol}${formatted}`;
 }

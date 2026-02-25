@@ -27,21 +27,18 @@ export default async function DashboardLayout({
     select: {
       dateFormat: true,
       currency: true,
-      currencySymbol: true,
     },
   });
 
   const formatPrefs = {
     dateFormat: organization?.dateFormat || "dd/MM/yyyy",
     currency: organization?.currency || "USD",
-    currencySymbol: organization?.currencySymbol || "$",
   };
 
   return (
     <FormatProvider
       dateFormat={formatPrefs.dateFormat}
       currency={formatPrefs.currency}
-      currencySymbol={formatPrefs.currencySymbol}
     >
       <div className="flex min-h-screen flex-col">
         {/* Top Navigation */}

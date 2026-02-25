@@ -58,6 +58,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import ApiKeysClient from "./api-keys/api-keys-client";
 import { FormatsClient } from "./formats/formats-client";
+import { PortalSettingsClient } from "./portal/portal-settings-client";
 
 // ========================================
 // Types
@@ -136,7 +137,7 @@ function SettingsContent({
 
   // Determine default tab based on permissions
   const getDefaultTab = () => {
-    if (tabParam && ["roles", "users", "api-keys", "formats"].includes(tabParam)) {
+    if (tabParam && ["roles", "users", "api-keys", "formats", "portal"].includes(tabParam)) {
       return tabParam;
     }
     return hasUsersManage ? "users" : "roles";
@@ -512,9 +513,9 @@ function SettingsContent({
   // Determine grid class based on available tabs
   const getGridClass = () => {
     if (hasSettingsManage && hasUsersManage) {
-      return "grid-cols-4"; // All 4 tabs: Roles, Users, API Keys, Formats
+      return "grid-cols-5"; // All 5 tabs: Roles, Users, API Keys, Formats, Portal
     } else if (hasSettingsManage) {
-      return "grid-cols-3"; // Roles, API Keys, Formats
+      return "grid-cols-4"; // Roles, API Keys, Formats, Portal
     } else {
       return "grid-cols-1"; // Only Users
     }
@@ -535,6 +536,7 @@ function SettingsContent({
           {hasUsersManage && <TabsTrigger value="users">Users</TabsTrigger>}
           {hasSettingsManage && <TabsTrigger value="api-keys">API Keys</TabsTrigger>}
           {hasSettingsManage && <TabsTrigger value="formats">Formats</TabsTrigger>}
+          {hasSettingsManage && <TabsTrigger value="portal">Portal</TabsTrigger>}
         </TabsList>
 
         {/* ======================================== */}
@@ -841,6 +843,15 @@ function SettingsContent({
         {hasSettingsManage && (
           <TabsContent value="formats" className="mt-6">
             <FormatsClient />
+          </TabsContent>
+        )}
+
+        {/* ======================================== */}
+        {/* PORTAL TAB */}
+        {/* ======================================== */}
+        {hasSettingsManage && (
+          <TabsContent value="portal" className="mt-6">
+            <PortalSettingsClient />
           </TabsContent>
         )}
       </Tabs>

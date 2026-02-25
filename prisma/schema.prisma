@@ -28,6 +28,9 @@ model Organization {
   currency       String @default("USD") // ISO currency code
   currencySymbol String @default("$")
 
+  // Tenant portal
+  subdomain String? @unique // e.g. "kos-tosca" → kos-tosca.haventium.com
+
   users                 User[]
   properties            Property[]
   tenants               Tenant[]
@@ -42,6 +45,9 @@ model Organization {
   maintenanceRequests   MaintenanceRequest[]
   documents             Document[]
   paymentTransactions   PaymentTransaction[]
+  tenantOtpTokens       TenantOtpToken[]
+
+  @@index([subdomain])
 }
 
 model User {
@@ -251,6 +257,7 @@ model Tenant {
   activities          Activity[]
   maintenanceRequests MaintenanceRequest[]
   documents           Document[]
+  tenantOtpTokens     TenantOtpToken[]
 
   @@unique([email, organizationId])
   @@index([organizationId])
@@ -337,6 +344,7 @@ model LeaseAgreement {
 
 enum DepositStatus {
   HELD
+  CARRIED
   RETURNED
   FORFEITED
 }
@@ -513,6 +521,28 @@ model ApiKey {
 // ACTIVITY & AUDIT LOG
 // ========================================
 
+enum OtpChannel {
+  EMAIL
+  WHATSAPP
+}
+
+model TenantOtpToken {
+  id             String       @id @default(cuid())
+  tenantId       String
+  tenant         Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  hashedToken    String
+  channel        OtpChannel
+  expiresAt      DateTime
+  usedAt         DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@index([tenantId])
+  @@index([organizationId])
+  @@index([expiresAt])
+}
+
 enum ActivityType {
   TENANT_CREATED
   TENANT_UPDATED
@@ -541,6 +571,9 @@ enum ActivityType {
   PAYMENT_LINK_CREATED
   PAYMENT_WEBHOOK_RECEIVED
   RECEIPT_GENERATED
+  TENANT_PORTAL_LOGIN
+  TENANT_MAINTENANCE_SUBMITTED
+  TENANT_PAYMENT_LINK_CREATED
   OTHER
 }
 
@@ -618,6 +651,7 @@ enum PaymentTransactionType {
 
 enum PaymentGateway {
   XENDIT
+  MANUAL
 }
 
 model SubscriptionTier {
@@ -731,7 +765,7 @@ model PaymentTransaction {
 
   type              PaymentTransactionType @default(RENT)
   gateway           PaymentGateway         @default(XENDIT)
-  externalId        String                 @unique
+  externalId        String?                @unique
   xenditInvoiceId   String?
   paymentLinkUrl    String?                @db.Text
   amount            Decimal                @db.Decimal(12, 2)

@@ -4,6 +4,7 @@ import { logger } from "@/lib/logger";
 import { decrypt } from "@/lib/encryption";
 import { verifyXenditWebhook } from "@/lib/payment-gateways/xendit";
 import { generateReceipt } from "@/lib/receipt-generator";
+import { getCurrencySymbol } from "@/lib/format";
 import { processNotifications } from "@/lib/services/notification-processor";
 
 // POST /api/webhooks/xendit/rent
@@ -129,7 +130,7 @@ async function handleRentPayment(
 
   const org = await prisma.organization.findUnique({
     where: { id: organizationId },
-    select: { name: true, currency: true, currencySymbol: true },
+    select: { name: true, currency: true },
   });
 
   await prisma.$transaction(async (tx) => {
@@ -186,7 +187,7 @@ async function handleRentPayment(
       leaseStartDate: lease.startDate.toLocaleDateString(),
       leaseEndDate: lease.endDate.toLocaleDateString(),
       amount: Number(transaction.amount).toFixed(2),
-      currency: org?.currencySymbol ?? "$",
+      currency: getCurrencySymbol(org?.currency ?? "USD"),
       paidAt: now.toLocaleString(),
     });
 

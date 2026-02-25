@@ -14,6 +14,7 @@ export * from "./validation";
 
 // Authentication & Authorization
 export * from "./auth-middleware";
+export * from "./tenant-auth-middleware";
 export * from "./password-verification";
 
 // Business logic

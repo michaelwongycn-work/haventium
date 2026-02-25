@@ -71,6 +71,12 @@ async function createRenewalLease(
         throw new Error("Unit not available for renewal");
       }
 
+      // Carry over deposit if it exists and is still held — tenant hasn't received it back
+      const carryDeposit =
+        originalLease.depositAmount &&
+        Number(originalLease.depositAmount) > 0 &&
+        originalLease.depositStatus === "HELD";
+
       const newLease = await tx.leaseAgreement.create({
         data: {
           tenantId: originalLease.tenantId,
@@ -83,7 +89,8 @@ async function createRenewalLease(
           gracePeriodDays: originalLease.gracePeriodDays,
           isAutoRenew: originalLease.isAutoRenew,
           autoRenewalNoticeDays: originalLease.autoRenewalNoticeDays,
-          depositAmount: originalLease.depositAmount,
+          depositAmount: carryDeposit ? originalLease.depositAmount : null,
+          depositStatus: carryDeposit ? "HELD" : null,
           status: "DRAFT",
           renewedFromId: originalLease.id,
         },
@@ -91,7 +98,11 @@ async function createRenewalLease(
 
       await tx.leaseAgreement.update({
         where: { id: originalLease.id },
-        data: { status: "ENDED" },
+        data: {
+          status: "ENDED",
+          // Mark deposit as carried over to the new lease
+          ...(carryDeposit ? { depositStatus: "CARRIED" } : {}),
+        },
       });
 
       // Log activity inside transaction

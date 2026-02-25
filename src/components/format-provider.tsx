@@ -6,21 +6,18 @@ import { setFormatPreferences } from "@/lib/format";
 export function FormatProvider({
   dateFormat,
   currency,
-  currencySymbol,
   children,
 }: {
   dateFormat: string;
   currency: string;
-  currencySymbol: string;
   children: React.ReactNode;
 }) {
+  // Set synchronously so formatCurrency calls during initial render use the correct currency
+  setFormatPreferences({ dateFormat, currency });
+
   useEffect(() => {
-    setFormatPreferences({
-      dateFormat,
-      currency,
-      currencySymbol,
-    });
-  }, [dateFormat, currency, currencySymbol]);
+    setFormatPreferences({ dateFormat, currency });
+  }, [dateFormat, currency]);
 
   return <>{children}</>;
 }

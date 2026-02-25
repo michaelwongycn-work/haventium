@@ -19,7 +19,7 @@ export default async function SettingsPage() {
     return <AccessDenied resource="Settings" />;
   }
 
-  const baseUrl = process.env.BASE_URL ?? "http://localhost:3000";
+  const baseUrl = process.env.PUBLIC_URL ?? "http://localhost:3000";
 
   return (
     <SettingsClient
