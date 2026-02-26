@@ -251,7 +251,6 @@ async function main() {
   await prisma.apiKey.create({
     data: {
       organizationId: org.id,
-      name: "MailerSend Production",
       service: "MAILERSEND_EMAIL",
       encryptedValue: mailerSendEncrypted.encrypted,
       encryptionIv: mailerSendEncrypted.iv,
@@ -271,7 +270,6 @@ async function main() {
   await prisma.apiKey.create({
     data: {
       organizationId: org.id,
-      name: "WhatsApp Business",
       service: "WHATSAPP_META",
       encryptedValue: whatsappEncrypted.encrypted,
       encryptionIv: whatsappEncrypted.iv,

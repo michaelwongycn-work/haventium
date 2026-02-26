@@ -86,11 +86,15 @@ export async function POST(
       );
     }
 
-    const apiKeyValue = decrypt(
+    const decryptedValue = decrypt(
       xenditKey.encryptedValue,
       xenditKey.encryptionIv,
       xenditKey.encryptionTag,
     );
+    const { secretKey: apiKeyValue } = JSON.parse(decryptedValue) as {
+      secretKey: string;
+      webhookToken: string;
+    };
 
     const externalId = `rent-${id}-${Date.now()}`;
     const amount = Number(lease.rentAmount);
