@@ -1273,7 +1273,7 @@ async function main() {
       chainStart.getMonth() + 1,
       0,
     );
-    const lease = await prisma.leaseAgreement.create({
+    const lease: Awaited<ReturnType<typeof prisma.leaseAgreement.create>> = await prisma.leaseAgreement.create({
       data: {
         tenantId: michaelTenant.id,
         unitId: michaelUnit.id,
