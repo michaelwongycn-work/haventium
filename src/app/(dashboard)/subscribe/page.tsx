@@ -83,7 +83,6 @@ export default function SubscribePage() {
       return;
     }
     setIsLoading(true);
-    setError(null);
     try {
       const res = await fetch("/api/subscribe/create-payment", {
         method: "POST",
