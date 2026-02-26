@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import {
   Card,
   CardAction,
@@ -10,7 +11,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import Link from "next/link";
 import { formatDateShort, formatCurrency } from "@/lib/format";
 
@@ -75,7 +75,6 @@ export function OverviewClient() {
   const currentDate = new Date();
   const [data, setData] = useState<OverviewData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
 
@@ -83,7 +82,6 @@ export function OverviewClient() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        setError(null);
         const response = await fetch(
           `/api/dashboard/overview?month=${selectedMonth}&year=${selectedYear}`,
         );
@@ -95,7 +93,7 @@ export function OverviewClient() {
         const result = await response.json();
         setData(result);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "An error occurred");
+        toast.error(err instanceof Error ? err.message : "An error occurred");
       } finally {
         setLoading(false);
       }
@@ -156,13 +154,6 @@ export function OverviewClient() {
     );
   }
 
-  if (error) {
-    return (
-      <Alert variant="destructive">
-        <AlertDescription>{error}</AlertDescription>
-      </Alert>
-    );
-  }
   if (!data) return null;
 
   const now = new Date();

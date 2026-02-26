@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { formatDate, formatCurrency as formatCurrencyUtil } from "@/lib/format";
 import {
@@ -187,7 +188,7 @@ export default function LeasesClient() {
       setTotalItems(data.pagination?.total || 0);
       setTotalPages(data.pagination?.totalPages || 0);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load leases");
+      toast.error(err instanceof Error ? err.message : "Failed to load leases");
     } finally {
       setIsLoading(false);
     }
@@ -519,7 +520,7 @@ export default function LeasesClient() {
       await fetchLeases();
       handleCloseDeleteDialog();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete lease");
+      toast.error(err instanceof Error ? err.message : "Failed to delete lease");
     } finally {
       setIsSaving(false);
     }

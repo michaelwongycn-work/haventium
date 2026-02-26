@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import {
   Card,
   CardContent,
@@ -17,7 +18,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 
 type FormatSettings = {
@@ -73,8 +73,6 @@ export function FormatsClient() {
   const [settings, setSettings] = useState<FormatSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     fetchSettings();
@@ -92,7 +90,7 @@ export function FormatsClient() {
       const data = await response.json();
       setSettings(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load settings");
+      toast.error(err instanceof Error ? err.message : "Failed to load settings");
     } finally {
       setLoading(false);
     }
@@ -103,8 +101,6 @@ export function FormatsClient() {
 
     try {
       setSaving(true);
-      setError(null);
-      setSuccess(false);
 
       const response = await fetch("/api/organization/formats", {
         method: "PATCH",
@@ -117,14 +113,9 @@ export function FormatsClient() {
         throw new Error(data.error || "Failed to save settings");
       }
 
-      setSuccess(true);
-
-      // Auto-clear success message after 3 seconds
-      setTimeout(() => {
-        setSuccess(false);
-      }, 3000);
+      toast.success("Settings saved successfully");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save settings");
+      toast.error(err instanceof Error ? err.message : "Failed to save settings");
     } finally {
       setSaving(false);
     }
@@ -151,18 +142,6 @@ export function FormatsClient() {
 
   return (
     <div className="space-y-6">
-      {error && (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-
-      {success && (
-        <Alert>
-          <AlertDescription>Settings saved successfully!</AlertDescription>
-        </Alert>
-      )}
-
       <Card>
         <CardHeader>
           <CardTitle>Date Format</CardTitle>

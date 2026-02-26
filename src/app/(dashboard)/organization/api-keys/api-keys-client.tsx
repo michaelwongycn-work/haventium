@@ -90,7 +90,6 @@ const SERVICE_DESCRIPTIONS: Record<ApiKeyService, string> = {
 export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   // Dialog states
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -123,7 +122,6 @@ export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
   async function fetchApiKeys() {
     try {
       setLoading(true);
-      setError(null);
       const response = await fetch("/api/organization/api-keys");
       if (!response.ok) {
         throw new Error("Failed to fetch API keys");
@@ -131,7 +129,7 @@ export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
       const data = await response.json();
       setApiKeys(data.items || []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch API keys");
+      toast.error(err instanceof Error ? err.message : "Failed to fetch API keys");
     } finally {
       setLoading(false);
     }
@@ -139,7 +137,6 @@ export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
 
   async function handleCreate() {
     setSubmitting(true);
-    setError(null);
 
     try {
       const value =
@@ -189,7 +186,7 @@ export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
       // Refresh list
       await fetchApiKeys();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create API key");
+      toast.error(err instanceof Error ? err.message : "Failed to create API key");
     } finally {
       setSubmitting(false);
     }
@@ -199,7 +196,6 @@ export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
     if (!selectedKey) return;
 
     setSubmitting(true);
-    setError(null);
 
     try {
       const response = await fetch(
@@ -268,7 +264,6 @@ export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
 
   function openCreateDialog() {
     setFormData({ service: "", value: "", webhookToken: "" });
-    setError(null);
     setCreateDialogOpen(true);
   }
 
@@ -328,13 +323,6 @@ export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
           </div>
         </CardHeader>
         <CardContent>
-          {error && (
-            <Alert variant="destructive" className="mb-4">
-              <HugeiconsIcon icon={AlertCircleIcon} className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
           {apiKeys.length === 0 ? (
             <div className="text-center py-12">
               <HugeiconsIcon

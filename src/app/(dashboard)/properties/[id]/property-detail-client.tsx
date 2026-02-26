@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { toast } from "sonner";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { hasAccess, type UserRole } from "@/lib/access-utils";
@@ -194,7 +195,7 @@ export default function PropertyDetailClient({
       const data = await response.json();
       setProperty(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load property");
+      toast.error(err instanceof Error ? err.message : "Failed to load property");
     }
   }, [propertyId]);
 
@@ -210,7 +211,7 @@ export default function PropertyDetailClient({
       const data = await response.json();
       setUnits(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load units");
+      toast.error(err instanceof Error ? err.message : "Failed to load units");
     } finally {
       setIsLoading(false);
     }
@@ -332,6 +333,7 @@ export default function PropertyDetailClient({
       await fetchUnits();
       await fetchProperty();
       handleCloseDialog();
+      toast.success(editingUnit ? "Unit updated" : "Unit created");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save unit");
     } finally {
@@ -367,8 +369,9 @@ export default function PropertyDetailClient({
       await fetchUnits();
       await fetchProperty();
       handleCloseDeleteDialog();
+      toast.success("Unit deleted");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete unit");
+      toast.error(err instanceof Error ? err.message : "Failed to delete unit");
     } finally {
       setIsSaving(false);
     }

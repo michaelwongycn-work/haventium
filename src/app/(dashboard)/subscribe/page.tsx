@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -18,7 +19,6 @@ export default function SubscribePage() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [paymentLinkUrl, setPaymentLinkUrl] = useState<string | null>(null);
 
   // On return from Xendit redirect, refresh session then go to dashboard
@@ -40,9 +40,7 @@ export default function SubscribePage() {
                     router.replace("/");
                   } else {
                     setIsRefreshing(false);
-                    setError(
-                      "Payment received but not yet confirmed. Please wait a moment and try again, or contact support.",
-                    );
+                    toast.error("Payment received but not yet confirmed. Please wait a moment and try again, or contact support.");
                   }
                 })
                 .catch(() => setIsRefreshing(false));
@@ -55,7 +53,7 @@ export default function SubscribePage() {
 
   useEffect(() => {
     if (paymentParam === "failed") {
-      setError("Payment was not completed. Please try again.");
+      toast.error("Payment was not completed. Please try again.");
     }
   }, [paymentParam]);
 
@@ -92,14 +90,14 @@ export default function SubscribePage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Failed to create payment link");
+        toast.error(data.error || "Failed to create payment link");
         return;
       }
       if (data.paymentLinkUrl) {
         window.location.href = data.paymentLinkUrl;
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      toast.error(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setIsLoading(false);
     }
@@ -136,11 +134,6 @@ export default function SubscribePage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {error && (
-            <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-              {error}
-            </div>
-          )}
           <Button
             className="w-full"
             onClick={handlePay}

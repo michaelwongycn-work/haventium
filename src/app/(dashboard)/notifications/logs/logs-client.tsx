@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { toast } from "sonner";
 import {
   Card,
   CardContent,
@@ -98,7 +99,6 @@ export default function NotificationLogsClient() {
     totalPages: 0,
   });
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [triggerFilter, setTriggerFilter] = useState<string>("all");
   const [channelFilter, setChannelFilter] = useState<string>("all");
@@ -122,7 +122,7 @@ export default function NotificationLogsClient() {
       setLogs(data.logs || []);
       setPagination(data.pagination || { page: 1, limit: 50, total: 0, totalPages: 0 });
     } catch {
-      setError("Failed to load notification logs");
+      toast.error("Failed to load notification logs");
     } finally {
       setIsLoading(false);
     }
@@ -153,14 +153,6 @@ export default function NotificationLogsClient() {
 
   return (
     <>
-      {error && (
-        <Card className="border-destructive">
-          <CardContent className="pt-6">
-            <p className="text-sm text-destructive">{error}</p>
-          </CardContent>
-        </Card>
-      )}
-
       <Card>
         <CardHeader>
           <CardTitle>Logs</CardTitle>

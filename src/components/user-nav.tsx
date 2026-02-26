@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -40,7 +41,6 @@ export function UserNav({ user, roles }: UserNavProps) {
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
@@ -67,7 +67,6 @@ export function UserNav({ user, roles }: UserNavProps) {
     setNewPassword("")
     setConfirmPassword("")
     setError(null)
-    setSuccess(false)
     setChangePasswordOpen(false)
   }
 
@@ -99,10 +98,10 @@ export function UserNav({ user, roles }: UserNavProps) {
         throw new Error(data.error || "Failed to change password")
       }
 
-      setSuccess(true)
+      toast.success("Password changed successfully")
       setTimeout(() => {
         handleClosePasswordDialog()
-      }, 1500)
+      }, 1000)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to change password")
     } finally {
@@ -173,18 +172,13 @@ export function UserNav({ user, roles }: UserNavProps) {
                 {error}
               </div>
             )}
-            {success && (
-              <div className="rounded-md bg-emerald-500/15 p-3 text-sm text-emerald-600">
-                Password changed successfully
-              </div>
-            )}
             <div className="space-y-2">
               <Label htmlFor="current-password">Current Password</Label>
               <PasswordInput
                 id="current-password"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
-                disabled={isSaving || success}
+                disabled={isSaving}
               />
             </div>
             <div className="space-y-2">
@@ -193,7 +187,7 @@ export function UserNav({ user, roles }: UserNavProps) {
                 id="new-password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                disabled={isSaving || success}
+                disabled={isSaving}
               />
             </div>
             <div className="space-y-2">
@@ -202,7 +196,7 @@ export function UserNav({ user, roles }: UserNavProps) {
                 id="confirm-password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                disabled={isSaving || success}
+                disabled={isSaving}
               />
             </div>
           </div>
@@ -210,7 +204,7 @@ export function UserNav({ user, roles }: UserNavProps) {
             <Button variant="ghost" onClick={handleClosePasswordDialog} disabled={isSaving}>
               Cancel
             </Button>
-            <Button onClick={handleSubmitPassword} disabled={isSaving || success}>
+            <Button onClick={handleSubmitPassword} disabled={isSaving}>
               {isSaving ? "Changing..." : "Change Password"}
             </Button>
           </DialogFooter>

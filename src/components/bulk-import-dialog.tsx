@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { toast } from "sonner";
 import { useDropzone } from "react-dropzone";
 import { Button } from "@/components/ui/button";
 import {
@@ -132,7 +133,7 @@ export function BulkImportDialog<T = Record<string, unknown>>({
 
       setValidationResult(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to validate file");
+      toast.error(err instanceof Error ? err.message : "Failed to validate file");
     } finally {
       setIsValidating(false);
     }
@@ -169,12 +170,13 @@ export function BulkImportDialog<T = Record<string, unknown>>({
       }
 
       // Success
+      toast.success(`Imported ${validationResult.summary.valid} row${validationResult.summary.valid !== 1 ? "s" : ""} successfully`);
       if (onImportComplete) {
         onImportComplete();
       }
       handleClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to import data");
+      toast.error(err instanceof Error ? err.message : "Failed to import data");
     } finally {
       setIsImporting(false);
     }
@@ -196,12 +198,6 @@ export function BulkImportDialog<T = Record<string, unknown>>({
         </DialogHeader>
 
         <div className="space-y-4">
-          {error && (
-            <div className="p-3 bg-destructive/10 text-destructive text-sm rounded-md">
-              {error}
-            </div>
-          )}
-
           {/* File Upload */}
           {!validationResult && (
             <div

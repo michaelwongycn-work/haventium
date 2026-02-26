@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { hasAccess, type UserRole } from "@/lib/access-utils";
 import {
@@ -100,9 +101,7 @@ export default function PropertiesClient({ roles }: { roles: UserRole[] }) {
       setTotalItems(data.pagination?.total || 0);
       setTotalPages(data.pagination?.totalPages || 0);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to load properties",
-      );
+      toast.error(err instanceof Error ? err.message : "Failed to load properties");
     } finally {
       setIsLoading(false);
     }
@@ -163,6 +162,7 @@ export default function PropertiesClient({ roles }: { roles: UserRole[] }) {
 
       await fetchProperties();
       handleCloseDialog();
+      toast.success(editingProperty ? "Property updated" : "Property created");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save property");
     } finally {
@@ -197,10 +197,9 @@ export default function PropertiesClient({ roles }: { roles: UserRole[] }) {
 
       await fetchProperties();
       handleCloseDeleteDialog();
+      toast.success("Property deleted");
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to delete property",
-      );
+      toast.error(err instanceof Error ? err.message : "Failed to delete property");
     } finally {
       setIsSaving(false);
     }
@@ -263,9 +262,7 @@ export default function PropertiesClient({ roles }: { roles: UserRole[] }) {
         });
       })
       .catch((err) => {
-        setError(
-          err instanceof Error ? err.message : "Failed to export properties"
-        );
+        toast.error(err instanceof Error ? err.message : "Failed to export properties");
       });
   };
 

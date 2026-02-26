@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { toast } from "sonner";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -224,7 +225,7 @@ export default function UnitDetailClient({
       const result = await response.json();
       setData(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load unit data");
+      toast.error(err instanceof Error ? err.message : "Failed to load unit data");
     } finally {
       setIsLoading(false);
     }
@@ -275,6 +276,7 @@ export default function UnitDetailClient({
 
       setIsEditDialogOpen(false);
       fetchUnitData();
+      toast.success("Unit updated");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update unit");
     } finally {
@@ -296,7 +298,7 @@ export default function UnitDetailClient({
 
       router.push(`/properties/${params.propertyId}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete unit");
+      toast.error(err instanceof Error ? err.message : "Failed to delete unit");
       setIsDeleteDialogOpen(false);
     } finally {
       setIsDeleting(false);

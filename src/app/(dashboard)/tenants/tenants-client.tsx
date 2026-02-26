@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -136,7 +137,7 @@ export default function TenantsClient() {
       setTotalItems(data.pagination?.total || 0);
       setTotalPages(data.pagination?.totalPages || 0);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load tenants");
+      toast.error(err instanceof Error ? err.message : "Failed to load tenants");
     } finally {
       setIsLoading(false);
     }
@@ -264,6 +265,7 @@ export default function TenantsClient() {
 
       await fetchTenants();
       handleCloseDialog();
+      toast.success(editingTenant ? "Tenant updated" : "Tenant created");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save tenant");
     } finally {
@@ -299,7 +301,8 @@ export default function TenantsClient() {
       await fetchTenants();
       handleCloseDeleteDialog();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete tenant");
+      toast.error(err instanceof Error ? err.message : "Failed to delete tenant");
+      handleCloseDeleteDialog();
     } finally {
       setIsSaving(false);
     }

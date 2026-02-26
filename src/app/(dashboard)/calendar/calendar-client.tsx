@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
+import { toast } from "sonner";
 import { Calendar, dateFnsLocalizer } from "react-big-calendar";
 import { format, parse, startOfWeek, getDay, addMonths, subMonths } from "date-fns";
 import { enUS } from "date-fns/locale/en-US";
@@ -82,7 +83,6 @@ type Lease = {
 export default function CalendarClient() {
   const [leases, setLeases] = useState<Lease[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<LeaseEvent | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -103,7 +103,7 @@ export default function CalendarClient() {
       const data = await response.json();
       setLeases(data.items || data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load leases");
+      toast.error(err instanceof Error ? err.message : "Failed to load leases");
     } finally {
       setIsLoading(false);
     }
@@ -243,16 +243,6 @@ export default function CalendarClient() {
     };
   };
 
-
-  if (error) {
-    return (
-      <div className="p-6">
-        <div className="rounded-md bg-destructive/15 p-4 text-destructive">
-          {error}
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { toast } from "sonner";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import {
@@ -125,7 +126,7 @@ export default function DocumentsClient() {
       setTotalItems(data.pagination?.total || 0);
       setTotalPages(data.pagination?.totalPages || 0);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load documents");
+      toast.error(err instanceof Error ? err.message : "Failed to load documents");
     } finally {
       setIsLoading(false);
     }
@@ -250,10 +251,9 @@ export default function DocumentsClient() {
 
       await fetchDocuments();
       handleCloseDialog();
+      toast.success("Document uploaded");
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to upload document",
-      );
+      setError(err instanceof Error ? err.message : "Failed to upload document");
     } finally {
       setIsSaving(false);
     }
@@ -278,10 +278,9 @@ export default function DocumentsClient() {
       await fetchDocuments();
       setIsDeleteDialogOpen(false);
       setDeletingDocument(null);
+      toast.success("Document deleted");
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to delete document",
-      );
+      toast.error(err instanceof Error ? err.message : "Failed to delete document");
     } finally {
       setIsSaving(false);
     }
@@ -371,12 +370,6 @@ export default function DocumentsClient() {
               </SelectContent>
             </Select>
           </div>
-
-          {error && (
-            <div className="mb-4 p-3 bg-destructive/10 text-destructive text-sm rounded-md">
-              {error}
-            </div>
-          )}
 
           <Table>
             <TableHeader>
@@ -508,12 +501,6 @@ export default function DocumentsClient() {
           </DialogHeader>
 
           <div className="space-y-4">
-            {error && (
-              <div className="p-3 bg-destructive/10 text-destructive text-sm rounded-md">
-                {error}
-              </div>
-            )}
-
             <div className="space-y-2">
               <Label htmlFor="file">File *</Label>
               <Input
@@ -604,11 +591,6 @@ export default function DocumentsClient() {
               {deletingDocument?.filename}&rdquo;? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          {error && (
-            <div className="p-3 bg-destructive/10 text-destructive text-sm rounded-md">
-              {error}
-            </div>
-          )}
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isSaving}>Cancel</AlertDialogCancel>
             <AlertDialogAction

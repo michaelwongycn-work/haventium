@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { toast } from "sonner";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -137,7 +138,7 @@ export default function MaintenanceRequestDetailClient({
       const data = await response.json();
       setRequest(data.data || data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load request");
+      toast.error(err instanceof Error ? err.message : "Failed to load request");
     } finally {
       setIsLoading(false);
     }
@@ -199,6 +200,7 @@ export default function MaintenanceRequestDetailClient({
       setIsConfirmDialogOpen(false);
       setConfirmAction(null);
       setActualCost("");
+      toast.success("Status updated");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update status");
     } finally {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { toast } from "sonner";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { DocumentList } from "@/components/document-list";
@@ -185,7 +186,6 @@ export default function LeaseDetailClient({
 }) {
   const [lease, setLease] = useState<Lease | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [leaseId, setLeaseId] = useState<string>("");
   const [isUpdating, setIsUpdating] = useState(false);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
@@ -235,7 +235,7 @@ export default function LeaseDetailClient({
       const data = await response.json();
       setLease(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load lease");
+      toast.error(err instanceof Error ? err.message : "Failed to load lease");
     } finally {
       setIsLoading(false);
     }
@@ -272,7 +272,7 @@ export default function LeaseDetailClient({
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Failed to create payment link");
+        toast.error(data.error || "Failed to create payment link");
         return;
       }
       // Refresh transactions
@@ -282,7 +282,7 @@ export default function LeaseDetailClient({
         setPaymentTransactions(txData.items ?? []);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create payment link");
+      toast.error(err instanceof Error ? err.message : "Failed to create payment link");
     } finally {
       setIsCreatingPaymentLink(false);
     }
@@ -370,12 +370,11 @@ export default function LeaseDetailClient({
     today.setHours(23, 59, 59, 999); // Set to end of today
 
     if (selectedDate > today) {
-      setError("Payment date cannot be in the future");
+      toast.error("Payment date cannot be in the future");
       return;
     }
 
     setIsUpdating(true);
-    setError(null);
 
     try {
       const response = await fetch(`/api/leases/${leaseId}`, {
@@ -397,8 +396,9 @@ export default function LeaseDetailClient({
 
       await fetchLease();
       setIsPaymentDialogOpen(false);
+      toast.success("Payment recorded");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to record payment");
+      toast.error(err instanceof Error ? err.message : "Failed to record payment");
     } finally {
       setIsUpdating(false);
     }
@@ -425,7 +425,6 @@ export default function LeaseDetailClient({
   const handleSaveAutoRenewal = async () => {
     if (!lease) return;
     setIsUpdating(true);
-    setError(null);
 
     try {
       const response = await fetch(`/api/leases/${leaseId}`, {
@@ -450,10 +449,9 @@ export default function LeaseDetailClient({
 
       await fetchLease();
       setIsAutoRenewEditing(false);
+      toast.success("Auto-renewal updated");
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to update auto-renewal",
-      );
+      toast.error(err instanceof Error ? err.message : "Failed to update auto-renewal");
     } finally {
       setIsUpdating(false);
     }
@@ -468,7 +466,6 @@ export default function LeaseDetailClient({
   const handleSaveDepositStatus = async () => {
     if (!lease) return;
     setIsUpdating(true);
-    setError(null);
 
     try {
       const response = await fetch(`/api/leases/${leaseId}`, {
@@ -485,10 +482,9 @@ export default function LeaseDetailClient({
 
       await fetchLease();
       setIsDepositEditing(false);
+      toast.success("Deposit status updated");
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to update deposit status",
-      );
+      toast.error(err instanceof Error ? err.message : "Failed to update deposit status");
     } finally {
       setIsUpdating(false);
     }
@@ -568,12 +564,6 @@ export default function LeaseDetailClient({
           </div>
         )}
       </div>
-
-      {error && (
-        <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-          {error}
-        </div>
-      )}
 
       {isLoading ? (
         <div className="space-y-6">

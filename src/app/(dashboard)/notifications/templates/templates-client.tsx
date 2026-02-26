@@ -140,7 +140,7 @@ export default function NotificationTemplatesClient() {
       const data = await response.json();
       setTemplates(data.items || data);
     } catch {
-      setError("Failed to load notification templates");
+      toast.error("Failed to load notification templates");
     } finally {
       setIsLoading(false);
     }
@@ -212,6 +212,7 @@ export default function NotificationTemplatesClient() {
 
       await fetchTemplates();
       setIsDialogOpen(false);
+      toast.success(editingTemplate ? "Template updated" : "Template created");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save template");
     } finally {
@@ -243,10 +244,9 @@ export default function NotificationTemplatesClient() {
       await fetchTemplates();
       setIsDeleteDialogOpen(false);
       setDeletingTemplate(null);
+      toast.success("Template deleted");
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to delete template",
-      );
+      toast.error(err instanceof Error ? err.message : "Failed to delete template");
     }
   };
 
@@ -259,14 +259,6 @@ export default function NotificationTemplatesClient() {
 
   return (
     <>
-      {error && !isDialogOpen && (
-        <Card className="border-destructive">
-          <CardContent className="pt-6">
-            <p className="text-sm text-destructive">{error}</p>
-          </CardContent>
-        </Card>
-      )}
-
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">

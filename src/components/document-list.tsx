@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -50,7 +51,6 @@ export function DocumentList({ entityType, entityId }: DocumentListProps) {
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deletingDocument, setDeletingDocument] = useState<Document | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   const fetchDocuments = useCallback(async () => {
     try {
@@ -66,7 +66,7 @@ export function DocumentList({ entityType, entityId }: DocumentListProps) {
       const data = await response.json();
       setDocuments(data.items || []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load documents");
+      toast.error(err instanceof Error ? err.message : "Failed to load documents");
     } finally {
       setIsLoading(false);
     }
@@ -92,9 +92,9 @@ export function DocumentList({ entityType, entityId }: DocumentListProps) {
       await fetchDocuments();
       setIsDeleteDialogOpen(false);
       setDeletingDocument(null);
-      setError(null);
+      toast.success("Document deleted");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete document");
+      toast.error(err instanceof Error ? err.message : "Failed to delete document");
     }
   };
 
@@ -122,12 +122,6 @@ export function DocumentList({ entityType, entityId }: DocumentListProps) {
           Upload
         </Button>
       </div>
-
-      {error && (
-        <div className="p-3 bg-destructive/10 text-destructive text-sm rounded-md">
-          {error}
-        </div>
-      )}
 
       {documents.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground text-sm border rounded-md">
@@ -210,11 +204,6 @@ export function DocumentList({ entityType, entityId }: DocumentListProps) {
               This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          {error && (
-            <div className="p-3 bg-destructive/10 text-destructive text-sm rounded-md">
-              {error}
-            </div>
-          )}
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction

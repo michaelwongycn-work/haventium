@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -235,7 +236,7 @@ export default function MaintenanceRequestsClient() {
       setTotalItems(data.pagination?.total || 0);
       setTotalPages(data.pagination?.totalPages || 0);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load requests");
+      toast.error(err instanceof Error ? err.message : "Failed to load requests");
     } finally {
       setIsLoading(false);
     }
@@ -387,6 +388,7 @@ export default function MaintenanceRequestsClient() {
 
       await fetchRequests();
       handleCloseDialog();
+      toast.success(editingRequest ? "Request updated" : "Request created");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save request");
     } finally {
@@ -416,8 +418,9 @@ export default function MaintenanceRequestsClient() {
       await fetchRequests();
       setIsDeleteDialogOpen(false);
       setDeletingRequest(null);
+      toast.success("Request deleted");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete request");
+      toast.error(err instanceof Error ? err.message : "Failed to delete request");
     } finally {
       setIsSaving(false);
     }
@@ -632,12 +635,6 @@ export default function MaintenanceRequestsClient() {
           </div>
         </CardHeader>
         <CardContent>
-          {error && (
-            <div className="mb-4 p-3 bg-destructive/10 text-destructive text-sm rounded-md">
-              {error}
-            </div>
-          )}
-
           <Table>
             <TableHeader>
               <TableRow>
@@ -929,11 +926,6 @@ export default function MaintenanceRequestsClient() {
               &rdquo;? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          {error && (
-            <div className="p-3 bg-destructive/10 text-destructive text-sm rounded-md">
-              {error}
-            </div>
-          )}
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isSaving}>Cancel</AlertDialogCancel>
             <AlertDialogAction

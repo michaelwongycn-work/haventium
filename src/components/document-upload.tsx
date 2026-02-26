@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { toast } from "sonner";
 import { useDropzone } from "react-dropzone";
 import { Button } from "@/components/ui/button";
 import {
@@ -179,6 +180,7 @@ export function DocumentUpload({
       const allSuccess = files.every((f) => f.status === "success");
       if (allSuccess && onUploadComplete) {
         onUploadComplete();
+        toast.success("All files uploaded successfully");
       }
 
       // If any succeeded, close after a short delay
@@ -188,7 +190,7 @@ export function DocumentUpload({
         }, 1000);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed");
+      toast.error(err instanceof Error ? err.message : "Upload failed");
     } finally {
       setIsUploading(false);
     }
@@ -215,12 +217,6 @@ export function DocumentUpload({
         </DialogHeader>
 
         <div className="space-y-4">
-          {error && (
-            <div className="p-3 bg-destructive/10 text-destructive text-sm rounded-md">
-              {error}
-            </div>
-          )}
-
           {/* Dropzone */}
           <div
             {...getRootProps()}

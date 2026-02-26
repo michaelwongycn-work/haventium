@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { toast } from "sonner";
 import {
   Card,
   CardContent,
@@ -87,7 +88,6 @@ const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8", "#82CA9D"
 export default function AnalyticsClient() {
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState<string>("6"); // Last 6 months
 
   const fetchAnalytics = useCallback(async () => {
@@ -102,7 +102,7 @@ export default function AnalyticsClient() {
       const data = await response.json();
       setAnalyticsData(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load analytics");
+      toast.error(err instanceof Error ? err.message : "Failed to load analytics");
     } finally {
       setIsLoading(false);
     }
@@ -112,16 +112,6 @@ export default function AnalyticsClient() {
     fetchAnalytics();
   }, [fetchAnalytics]);
 
-
-  if (error) {
-    return (
-      <div className="p-6">
-        <div className="rounded-md bg-destructive/15 p-4 text-destructive">
-          {error}
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">

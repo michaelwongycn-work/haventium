@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -162,7 +163,7 @@ export default function NotificationRulesClient() {
       const data = await response.json();
       setRules(data.items || data);
     } catch {
-      setError("Failed to load notification rules");
+      toast.error("Failed to load notification rules");
     } finally {
       setIsLoading(false);
     }
@@ -273,6 +274,7 @@ export default function NotificationRulesClient() {
 
       await fetchRules();
       setIsDialogOpen(false);
+      toast.success(editingRule ? "Rule updated" : "Rule created");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save rule");
     } finally {
@@ -304,8 +306,9 @@ export default function NotificationRulesClient() {
       await fetchRules();
       setIsDeleteDialogOpen(false);
       setDeletingRule(null);
+      toast.success("Rule deleted");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete rule");
+      toast.error(err instanceof Error ? err.message : "Failed to delete rule");
     }
   };
 
@@ -333,14 +336,6 @@ export default function NotificationRulesClient() {
 
   return (
     <>
-      {error && !isDialogOpen && (
-        <Card className="border-destructive">
-          <CardContent className="pt-6">
-            <p className="text-sm text-destructive">{error}</p>
-          </CardContent>
-        </Card>
-      )}
-
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
