@@ -12,9 +12,22 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { LockIcon, AlertCircleIcon } from "@hugeicons/core-free-icons";
+import { toast } from "sonner";
 
 type PortalSettings = {
   subdomain: string | null;
+  locked: boolean;
 };
 
 const MAIN_HOSTNAME =
@@ -23,14 +36,11 @@ const MAIN_HOSTNAME =
     : "haventium.com";
 
 export function PortalSettingsClient() {
-  const [, setSettings] = useState<PortalSettings>({
-    subdomain: null,
-  });
+  const [settings, setSettings] = useState<PortalSettings | null>(null);
   const [subdomain, setSubdomain] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
     fetch("/api/organization/portal")
@@ -42,109 +52,133 @@ export function PortalSettingsClient() {
       .finally(() => setLoading(false));
   }, []);
 
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleConfirmSave() {
     setSaving(true);
-    setError(null);
-    setSuccess(false);
+    setConfirmOpen(false);
 
     try {
       const res = await fetch("/api/organization/portal", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          subdomain: subdomain.trim() || null,
-        }),
+        body: JSON.stringify({ subdomain: subdomain.trim() }),
       });
 
       const data = (await res.json()) as PortalSettings & { error?: string };
 
       if (!res.ok) {
-        setError(data.error ?? "Failed to save portal settings");
+        toast.error(data.error ?? "Failed to save portal settings");
         return;
       }
 
       setSettings(data);
       setSubdomain(data.subdomain ?? "");
-      setSuccess(true);
+      toast.success("Portal subdomain set. This cannot be changed.");
     } finally {
       setSaving(false);
     }
   }
 
-  const portalPreviewUrl = subdomain
-    ? `https://${subdomain}.${MAIN_HOSTNAME}`
-    : null;
+  const portalUrl = subdomain ? `https://${subdomain}.${MAIN_HOSTNAME}` : null;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Tenant Portal</CardTitle>
-        <CardDescription>
-          Configure your tenant self-service portal subdomain.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {loading ? (
-          <div className="space-y-4">
-            <Skeleton className="h-10 w-full" />
-          </div>
-        ) : (
-          <form onSubmit={handleSave} className="space-y-5">
-            <div className="space-y-2">
-              <Label htmlFor="subdomain">Subdomain</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="subdomain"
-                  value={subdomain}
-                  onChange={(e) =>
-                    setSubdomain(
-                      e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""),
-                    )
-                  }
-                  placeholder="kos-tosca"
-                  className="max-w-xs"
-                />
-                <span className="text-sm text-muted-foreground">
-                  .{MAIN_HOSTNAME}
-                </span>
-              </div>
-              {portalPreviewUrl && (
-                <p className="text-sm text-muted-foreground">
-                  Preview:{" "}
-                  <a
-                    href={portalPreviewUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:underline"
-                  >
-                    {portalPreviewUrl}
-                  </a>
-                </p>
-              )}
-              <p className="text-xs text-muted-foreground">
-                Only lowercase letters, numbers, and hyphens allowed.
-              </p>
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>Tenant Portal</CardTitle>
+          <CardDescription>
+            Configure your tenant self-service portal subdomain.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-10 w-full" />
             </div>
-
-            {error && (
-              <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-                {error}
+          ) : settings?.locked ? (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Subdomain</Label>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 rounded-md border bg-muted px-3 py-2 text-sm max-w-xs flex-1">
+                    <HugeiconsIcon icon={LockIcon} className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <span className="font-mono">{settings.subdomain}</span>
+                    <span className="text-muted-foreground">.{MAIN_HOSTNAME}</span>
+                  </div>
+                </div>
+                {portalUrl && (
+                  <p className="text-sm text-muted-foreground">
+                    <a
+                      href={portalUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline"
+                    >
+                      {portalUrl}
+                    </a>
+                  </p>
+                )}
               </div>
-            )}
-
-            {success && (
-              <div className="rounded-md bg-green-500/15 p-3 text-sm text-green-700 dark:text-green-400">
-                Portal settings saved.
+              <Alert>
+                <HugeiconsIcon icon={AlertCircleIcon} className="h-4 w-4" />
+                <AlertDescription>
+                  Your portal subdomain is permanent and cannot be changed. Contact support if you need help.
+                </AlertDescription>
+              </Alert>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="subdomain">Subdomain</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="subdomain"
+                    value={subdomain}
+                    onChange={(e) =>
+                      setSubdomain(
+                        e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""),
+                      )
+                    }
+                    placeholder="kos-tosca"
+                    className="max-w-xs"
+                  />
+                  <span className="text-sm text-muted-foreground">
+                    .{MAIN_HOSTNAME}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Only lowercase letters, numbers, and hyphens. Once set, this cannot be changed.
+                </p>
               </div>
-            )}
+              <Button
+                disabled={!subdomain.trim() || saving}
+                onClick={() => setConfirmOpen(true)}
+              >
+                Set subdomain
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-            <Button type="submit" disabled={saving}>
-              {saving ? "Saving…" : "Save changes"}
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle>Confirm subdomain</DialogTitle>
+            <DialogDescription>
+              You are about to set your portal subdomain to{" "}
+              <strong>{subdomain}.{MAIN_HOSTNAME}</strong>. This cannot be changed later without contacting support.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setConfirmOpen(false)}>
+              Cancel
             </Button>
-          </form>
-        )}
-      </CardContent>
-    </Card>
+            <Button onClick={handleConfirmSave} disabled={saving}>
+              {saving ? "Saving…" : "Confirm"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

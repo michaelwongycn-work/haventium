@@ -495,7 +495,6 @@ model ApiKey {
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  name    String
   service ApiKeyService
 
   // Encrypted storage

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { requireAccess, handleApiError, apiSuccess } from "@/lib/api";
+import { requireAccess, handleApiError, apiSuccess, apiError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 
 const updateSchema = z.object({
@@ -25,7 +25,8 @@ export async function GET(): Promise<Response> {
       select: { subdomain: true },
     });
 
-    return apiSuccess(org ?? { subdomain: null });
+    const data = org ?? { subdomain: null };
+    return apiSuccess({ ...data, locked: !!data.subdomain });
   } catch (error) {
     return handleApiError(error, "fetch portal settings");
   }
@@ -43,6 +44,27 @@ export async function PUT(request: Request): Promise<Response> {
     const body = await request.json();
     const { subdomain } = updateSchema.parse(body);
 
+    // Check if subdomain is already set — once set it's permanent
+    const existing = await prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { subdomain: true },
+    });
+
+    if (existing?.subdomain) {
+      return apiSuccess({ subdomain: existing.subdomain, locked: true });
+    }
+
+    // Check uniqueness across all orgs
+    if (subdomain) {
+      const taken = await prisma.organization.findFirst({
+        where: { subdomain, NOT: { id: organizationId } },
+        select: { id: true },
+      });
+      if (taken) {
+        return apiError("This subdomain is already taken", 400);
+      }
+    }
+
     const updated = await prisma.organization.update({
       where: { id: organizationId },
       data: {
@@ -51,7 +73,7 @@ export async function PUT(request: Request): Promise<Response> {
       select: { subdomain: true },
     });
 
-    return apiSuccess(updated);
+    return apiSuccess({ ...updated, locked: !!updated.subdomain });
   } catch (error) {
     return handleApiError(error, "update portal settings");
   }

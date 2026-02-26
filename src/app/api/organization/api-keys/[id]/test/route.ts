@@ -47,7 +47,6 @@ export async function POST(
         return apiError("API key not found", 404);
       }
 
-      // Decrypt the stored key
       apiKeyValue = decrypt(
         apiKey.encryptedValue,
         apiKey.encryptionIv,
@@ -79,7 +78,7 @@ export async function POST(
         return apiError("Unsupported service type", 400);
     }
 
-    // Update lastUsedAt if testing an existing key
+    // Update lastUsedAt if testing an existing key (no value was provided by client)
     if (!validatedData.value) {
       await prisma.apiKey.update({
         where: { id },
@@ -244,25 +243,35 @@ async function testXenditKey(
   apiKey: string,
 ): Promise<{ success: boolean; message: string; error?: string }> {
   try {
+    // Value may be stored as JSON {"secretKey":"...","webhookToken":"..."}
+    let secretKey = apiKey;
+    try {
+      const parsed = JSON.parse(apiKey);
+      if (parsed?.secretKey) secretKey = parsed.secretKey;
+    } catch {
+      // plain key string
+    }
+
     const response = await fetch("https://api.xendit.co/balance", {
       method: "GET",
       headers: {
         Authorization:
-          "Basic " + Buffer.from(apiKey + ":").toString("base64"),
+          "Basic " + Buffer.from(secretKey + ":").toString("base64"),
       },
     });
 
     if (response.ok) {
-      return {
-        success: true,
-        message: "Xendit API key is valid",
-      };
-    } else {
       const data = await response.json();
       return {
+        success: true,
+        message: `Xendit API key is valid (Balance: ${data.balance ?? "N/A"} ${data.currency ?? ""})`.trim(),
+      };
+    } else {
+      const data = await response.json().catch(() => ({}));
+      const detail = data.message || data.error_code || `HTTP ${response.status}`;
+      return {
         success: false,
-        message: "Invalid Xendit API key",
-        error: data.message || "Authentication failed",
+        message: `Xendit authentication failed: ${detail}`,
       };
     }
   } catch (error) {

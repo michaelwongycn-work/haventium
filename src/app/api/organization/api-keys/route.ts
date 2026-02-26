@@ -20,7 +20,6 @@ const API_KEY_SERVICES = [
 ] as const;
 
 const createApiKeySchema = z.object({
-  name: z.string().min(1, "API key name is required"),
   service: z.enum(API_KEY_SERVICES),
   value: z.string().min(1, "API key value is required"),
 });
@@ -43,7 +42,6 @@ export async function GET() {
       },
       select: {
         id: true,
-        name: true,
         service: true,
         lastFourChars: true,
         isActive: true,
@@ -95,11 +93,20 @@ export async function POST(request: Request) {
 
     // Encrypt the API key
     const { encrypted, iv, tag } = encrypt(validatedData.value);
-    const lastFourChars = getLastFourChars(validatedData.value);
+    // For Xendit keys, the value is JSON — extract lastFourChars from secretKey only
+    let lastFourCharsSource = validatedData.value;
+    try {
+      const parsed = JSON.parse(validatedData.value);
+      if (parsed?.secretKey) {
+        lastFourCharsSource = parsed.secretKey;
+      }
+    } catch {
+      // Not JSON — use value directly
+    }
+    const lastFourChars = getLastFourChars(lastFourCharsSource);
 
     const apiKey = await prisma.apiKey.create({
       data: {
-        name: validatedData.name,
         service: validatedData.service as ApiKeyService,
         encryptedValue: encrypted,
         encryptionIv: iv,
@@ -112,14 +119,15 @@ export async function POST(request: Request) {
     // Log activity
     await logActivity(session, {
       type: "API_KEY_CREATED",
-      description: `Created API key: ${validatedData.name} (${validatedData.service})`,
+      description: `Created API key for ${validatedData.service}`,
     });
 
-    // Return full key only once (client should save it)
+    // For display: show the secret key (not the JSON blob for Xendit)
+    const displayKey = lastFourCharsSource; // already extracted secretKey for Xendit
     return apiCreated({
       ...apiKey,
-      fullKey: validatedData.value, // Only shown once!
-      maskedValue: maskApiKey(validatedData.value),
+      fullKey: displayKey,
+      maskedValue: maskApiKey(displayKey),
     });
   } catch (error) {
     return handleApiError(error, "create API key");

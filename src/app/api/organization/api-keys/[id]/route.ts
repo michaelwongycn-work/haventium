@@ -12,7 +12,6 @@ import {
 import { maskApiKey } from "@/lib/encryption";
 
 const updateApiKeySchema = z.object({
-  name: z.string().min(1, "API key name is required").optional(),
   isActive: z.boolean().optional(),
   currentPassword: z.string().optional(),
 });
@@ -44,7 +43,6 @@ export async function GET(
       },
       select: {
         id: true,
-        name: true,
         service: true,
         lastFourChars: true,
         isActive: true,
@@ -111,7 +109,6 @@ export async function PATCH(
     const updatedKey = await prisma.apiKey.update({
       where: { id },
       data: {
-        name: validatedData.name,
         isActive: validatedData.isActive,
       },
     });
@@ -119,7 +116,7 @@ export async function PATCH(
     // Log activity
     await logActivity(session, {
       type: "API_KEY_UPDATED",
-      description: `Updated API key: ${updatedKey.name} (${updatedKey.service})`,
+      description: `Updated API key for ${updatedKey.service}`,
     });
 
     return apiSuccess({
@@ -174,7 +171,7 @@ export async function DELETE(
     // Log activity
     await logActivity(session, {
       type: "API_KEY_DELETED",
-      description: `Deleted API key: ${existingKey.name} (${existingKey.service})`,
+      description: `Deleted API key for ${existingKey.service}`,
     });
 
     return apiSuccess({ message: "API key deleted successfully" });

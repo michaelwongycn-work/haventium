@@ -26,16 +26,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -54,11 +44,14 @@ import {
   Delete02Icon,
   KeyIcon,
   AlertCircleIcon,
-  CheckmarkCircle02Icon,
   Copy01Icon,
   SecurityIcon,
+  Settings01Icon,
+  CheckmarkCircle02Icon,
+  Loading03Icon,
 } from "@hugeicons/core-free-icons";
 import { formatDistanceToNow } from "date-fns";
+import { toast } from "sonner";
 
 type ApiKeyService =
   | "MAILERSEND_EMAIL"
@@ -68,7 +61,6 @@ type ApiKeyService =
 
 type ApiKey = {
   id: string;
-  name: string;
   service: ApiKeyService;
   lastFourChars: string;
   maskedValue: string;
@@ -102,9 +94,11 @@ export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
 
   // Dialog states
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [keyDisplayDialogOpen, setKeyDisplayDialogOpen] = useState(false);
+  const [manageDialogOpen, setManageDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedKey, setSelectedKey] = useState<ApiKey | null>(null);
+
   const [newKeyData, setNewKeyData] = useState<{
     fullKey: string;
     maskedValue: string;
@@ -113,7 +107,6 @@ export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
 
   // Form states
   const [formData, setFormData] = useState({
-    name: "",
     service: "" as ApiKeyService | "",
     value: "",
     webhookToken: "",
@@ -121,10 +114,6 @@ export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
   const [deletePassword, setDeletePassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<{
-    success: boolean;
-    message: string;
-  } | null>(null);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -165,7 +154,6 @@ export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: formData.name,
           service: formData.service,
           value,
         }),
@@ -177,19 +165,26 @@ export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
         throw new Error(data.error || "Failed to create API key");
       }
 
-      // Store the full key to show once
-      setNewKeyData({
-        fullKey: data.data.fullKey,
-        maskedValue: data.data.maskedValue,
-        service: formData.service as ApiKeyService,
-      });
-
-      // Close create dialog and open key display dialog
       setCreateDialogOpen(false);
-      setKeyDisplayDialogOpen(true);
+
+      // Test connection immediately after creation — success/fail shown via toast
+      const testPassed = await handleTestConnection(data.id, formData.service as ApiKeyService);
+      if (!testPassed) {
+        toast.warning("API key saved, but connection test failed. Check your credentials.");
+      }
+
+      // For Xendit, show the webhook URL setup dialog
+      if (formData.service === "XENDIT") {
+        setNewKeyData({
+          fullKey: data.fullKey,
+          maskedValue: data.maskedValue,
+          service: formData.service as ApiKeyService,
+        });
+        setKeyDisplayDialogOpen(true);
+      }
 
       // Reset form
-      setFormData({ name: "", service: "", value: "", webhookToken: "" });
+      setFormData({ service: "", value: "", webhookToken: "" });
 
       // Refresh list
       await fetchApiKeys();
@@ -219,43 +214,47 @@ export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to delete API key");
+        toast.error(data.error || "Failed to delete API key");
+        return;
       }
 
       setDeleteDialogOpen(false);
       setDeletePassword("");
       setSelectedKey(null);
+      toast.success("API key deleted");
       await fetchApiKeys();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete API key");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to delete API key",
+      );
     } finally {
       setSubmitting(false);
     }
   }
 
-  async function handleTestConnection(keyId: string) {
+  async function handleTestConnection(keyId: string, service: ApiKeyService): Promise<boolean> {
     setTesting(true);
-    setTestResult(null);
 
     try {
       const response = await fetch(`/api/organization/api-keys/${keyId}/test`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ service }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Test failed");
+        toast.error(data.error || "Test failed");
+        return false;
+      } else {
+        toast.success(data.data?.message || "Connection successful");
+        await fetchApiKeys();
+        return true;
       }
-
-      setTestResult(data.data);
     } catch (err) {
-      setTestResult({
-        success: false,
-        message: err instanceof Error ? err.message : "Test failed",
-      });
+      toast.error(err instanceof Error ? err.message : "Test failed");
+      return false;
     } finally {
       setTesting(false);
     }
@@ -268,16 +267,19 @@ export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
   }
 
   function openCreateDialog() {
-    setFormData({ name: "", service: "", value: "", webhookToken: "" });
+    setFormData({ service: "", value: "", webhookToken: "" });
     setError(null);
-    setTestResult(null);
     setCreateDialogOpen(true);
+  }
+
+  function openManageDialog(key: ApiKey) {
+    setSelectedKey(key);
+    setManageDialogOpen(true);
   }
 
   function openDeleteDialog(key: ApiKey) {
     setSelectedKey(key);
     setDeletePassword("");
-    setError(null);
     setDeleteDialogOpen(true);
   }
 
@@ -307,33 +309,6 @@ export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
           full key once when created. Make sure to save it in a secure location.
         </AlertDescription>
       </Alert>
-
-      {/* Xendit Webhook Info — shown when a XENDIT key exists */}
-      {apiKeys.some((k) => k.service === "XENDIT") && (
-        <Alert>
-          <HugeiconsIcon icon={KeyIcon} className="h-4 w-4" />
-          <AlertDescription className="space-y-2">
-            <p className="font-medium">Xendit Webhook Setup</p>
-            <p className="text-xs">
-              Register the URL below in your Xendit Dashboard → Settings →
-              Webhooks → Invoice paid:
-            </p>
-            <div className="flex items-center gap-2 mt-1">
-              <code className="flex-1 bg-muted px-2 py-1 rounded text-xs break-all">
-                {webhookUrl}
-              </code>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => copyToClipboard(webhookUrl)}
-              >
-                <HugeiconsIcon icon={Copy01Icon} className="h-4 w-4" />
-                {copied ? "Copied!" : "Copy"}
-              </Button>
-            </div>
-          </AlertDescription>
-        </Alert>
-      )}
 
       {/* API Keys List */}
       <Card>
@@ -379,10 +354,10 @@ export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
                   <TableHead>Service</TableHead>
                   <TableHead>Key</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Added</TableHead>
                   <TableHead>Last Used</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -390,7 +365,6 @@ export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
               <TableBody>
                 {apiKeys.map((key) => (
                   <TableRow key={key.id}>
-                    <TableCell className="font-medium">{key.name}</TableCell>
                     <TableCell>{SERVICE_LABELS[key.service]}</TableCell>
                     <TableCell>
                       <code className="text-xs bg-muted px-2 py-1 rounded">
@@ -405,6 +379,11 @@ export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
                       )}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
+                      {formatDistanceToNow(new Date(key.createdAt), {
+                        addSuffix: true,
+                      })}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
                       {key.lastUsedAt
                         ? formatDistanceToNow(new Date(key.lastUsedAt), {
                             addSuffix: true,
@@ -414,22 +393,18 @@ export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
                         <Button
-                          variant="outline"
+                          variant="ghost"
                           size="sm"
-                          onClick={() => handleTestConnection(key.id)}
-                          disabled={testing}
+                          onClick={() => openManageDialog(key)}
                         >
-                          {testing ? "Testing..." : "Test"}
+                          <HugeiconsIcon icon={Settings01Icon} className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => openDeleteDialog(key)}
                         >
-                          <HugeiconsIcon
-                            icon={Delete02Icon}
-                            className="h-4 w-4 text-destructive"
-                          />
+                          <HugeiconsIcon icon={Delete02Icon} className="h-4 w-4 text-destructive" />
                         </Button>
                       </div>
                     </TableCell>
@@ -437,21 +412,6 @@ export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
                 ))}
               </TableBody>
             </Table>
-          )}
-
-          {testResult && (
-            <Alert
-              variant={testResult.success ? "default" : "destructive"}
-              className="mt-4"
-            >
-              <HugeiconsIcon
-                icon={
-                  testResult.success ? CheckmarkCircle02Icon : AlertCircleIcon
-                }
-                className="h-4 w-4"
-              />
-              <AlertDescription>{testResult.message}</AlertDescription>
-            </Alert>
           )}
         </CardContent>
       </Card>
@@ -469,25 +429,11 @@ export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
-              <Input
-                id="name"
-                placeholder="e.g., Production Email"
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-                autoComplete="off"
-              />
-            </div>
-
-            <div className="space-y-2">
               <Label htmlFor="service">Service</Label>
               <Select
                 value={formData.service}
                 onValueChange={(value) =>
                   setFormData({
-                    ...formData,
                     service: value as ApiKeyService,
                     value: "",
                     webhookToken: "",
@@ -498,11 +444,14 @@ export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
                   <SelectValue placeholder="Select a service" />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(SERVICE_LABELS).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
-                    </SelectItem>
-                  ))}
+                  {Object.entries(SERVICE_LABELS).map(([value, label]) => {
+                    const taken = apiKeys.some((k) => k.service === value);
+                    return (
+                      <SelectItem key={value} value={value} disabled={taken}>
+                        {label}{taken ? " (already added)" : ""}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
               {formData.service && (
@@ -651,7 +600,6 @@ export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
             <Button
               onClick={handleCreate}
               disabled={
-                !formData.name ||
                 !formData.service ||
                 !formData.value ||
                 (formData.service === "XENDIT" && !formData.webhookToken) ||
@@ -673,36 +621,11 @@ export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
           <DialogHeader>
             <DialogTitle>API Key Created Successfully</DialogTitle>
             <DialogDescription>
-              Save this API key now. You won&apos;t be able to see it again!
+              Your API key has been saved. Complete the setup below.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            <Alert>
-              <HugeiconsIcon icon={AlertCircleIcon} className="h-4 w-4" />
-              <AlertDescription>
-                This is the only time you&apos;ll see the full key. Make sure to
-                copy and store it securely.
-              </AlertDescription>
-            </Alert>
-
-            <div className="space-y-2">
-              <Label>Your API Key</Label>
-              <div className="flex items-center gap-2">
-                <code className="flex-1 bg-muted px-3 py-2 rounded text-xs break-all">
-                  {newKeyData?.fullKey}
-                </code>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => copyToClipboard(newKeyData?.fullKey || "")}
-                >
-                  <HugeiconsIcon icon={Copy01Icon} className="h-4 w-4" />
-                  {copied ? "Copied!" : "Copy"}
-                </Button>
-              </div>
-            </div>
-
             {newKeyData?.service === "XENDIT" && (
               <div className="space-y-2">
                 <Label>Xendit Webhook URL</Label>
@@ -732,49 +655,183 @@ export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
               onClick={() => {
                 setKeyDisplayDialogOpen(false);
                 setNewKeyData(null);
+                fetchApiKeys();
               }}
             >
-              I&apos;ve Saved the Key
+              Done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manage Dialog */}
+      <Dialog open={manageDialogOpen} onOpenChange={setManageDialogOpen}>
+        <DialogContent className="sm:max-w-[560px]">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedKey ? SERVICE_LABELS[selectedKey.service] : "Manage Key"}
+            </DialogTitle>
+            <DialogDescription>
+              {selectedKey && (
+                <code className="text-xs bg-muted px-2 py-1 rounded">
+                  {selectedKey.maskedValue}
+                </code>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {selectedKey?.service === "XENDIT" && (
+              <div className="space-y-3">
+                <p className="text-sm font-medium">Webhook Setup</p>
+                <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
+                  <li>Open your Xendit Dashboard</li>
+                  <li>Go to Settings → Webhooks</li>
+                  <li>
+                    Under <strong>Invoice paid</strong>, register this URL:
+                  </li>
+                </ol>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 bg-muted px-2 py-1.5 rounded text-xs break-all">
+                    {webhookUrl}
+                  </code>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => copyToClipboard(webhookUrl)}
+                  >
+                    <HugeiconsIcon icon={Copy01Icon} className="h-4 w-4" />
+                    {copied ? "Copied!" : "Copy"}
+                  </Button>
+                </div>
+                <ol
+                  className="text-sm text-muted-foreground space-y-1 list-decimal list-inside"
+                  start={4}
+                >
+                  <li>
+                    Copy the <strong>Callback Token</strong> from Xendit →
+                    Settings → Webhooks and make sure it matches what you
+                    entered.
+                  </li>
+                </ol>
+              </div>
+            )}
+
+            {selectedKey?.service === "MAILERSEND_EMAIL" && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Setup Guide</p>
+                <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
+                  <li>Log in to MailerSend and go to your domain settings.</li>
+                  <li>Verify your sending domain (add DNS records).</li>
+                  <li>Generate an API token under API Tokens.</li>
+                </ol>
+              </div>
+            )}
+
+            {selectedKey?.service === "TELEGRAM_BOT" && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Setup Guide</p>
+                <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
+                  <li>
+                    Open Telegram and search for <code>@BotFather</code>.
+                  </li>
+                  <li>
+                    Send <code>/newbot</code> and follow the prompts.
+                  </li>
+                  <li>Copy the bot token you receive.</li>
+                  <li>
+                    Tenants must start a chat with your bot before they can
+                    receive notifications.
+                  </li>
+                </ol>
+              </div>
+            )}
+
+            {selectedKey?.service === "WHATSAPP_META" && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Setup Guide</p>
+                <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
+                  <li>Go to Meta for Developers and create a WhatsApp app.</li>
+                  <li>Add a phone number and get it verified.</li>
+                  <li>
+                    Copy the <code>accessToken</code> and{" "}
+                    <code>phoneNumberId</code> from the app dashboard.
+                  </li>
+                </ol>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setManageDialogOpen(false)}
+            >
+              Close
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!selectedKey) return;
+                await handleTestConnection(selectedKey.id, selectedKey.service);
+              }}
+              disabled={testing}
+            >
+              {testing ? (
+                <>
+                  <HugeiconsIcon
+                    icon={Loading03Icon}
+                    className="mr-2 h-4 w-4 animate-spin"
+                  />
+                  Testing...
+                </>
+              ) : (
+                <>
+                  <HugeiconsIcon
+                    icon={CheckmarkCircle02Icon}
+                    className="mr-2 h-4 w-4"
+                  />
+                  Test Connection
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Delete Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete API Key</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete the API key &ldquo;
-              {selectedKey?.name}&rdquo;. Notifications using this key will
-              fail. Enter your password to confirm.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-
-          <div className="py-4">
-            <Label htmlFor="password">Current Password</Label>
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Delete API Key</DialogTitle>
+            <DialogDescription>
+              This will permanently delete the{" "}
+              {selectedKey ? SERVICE_LABELS[selectedKey.service] : "API"} key.
+              Enter your password to confirm.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
             <Input
-              id="password"
               type="password"
+              placeholder="Your password"
               value={deletePassword}
               onChange={(e) => setDeletePassword(e.target.value)}
-              placeholder="Enter your password"
+              onKeyDown={(e) => e.key === "Enter" && handleDelete()}
             />
           </div>
-
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={submitting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={submitting}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
               onClick={handleDelete}
               disabled={!deletePassword || submitting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {submitting ? "Deleting..." : "Delete API Key"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              {submitting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
