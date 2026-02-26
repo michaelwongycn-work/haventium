@@ -5,7 +5,7 @@ import { prisma } from "./prisma";
 import { comparePassword } from "./password";
 import { SUBSCRIPTION_STATUS } from "./constants";
 
-export const { handlers, signIn, signOut, auth } = NextAuth({
+export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
   ...authConfig,
   providers: [
     Credentials({

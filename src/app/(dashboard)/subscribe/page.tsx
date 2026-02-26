@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -11,12 +12,55 @@ import {
 } from "@/components/ui/card";
 
 export default function SubscribePage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const paymentParam = searchParams.get("payment");
+
   const [isLoading, setIsLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [paymentLinkUrl, setPaymentLinkUrl] = useState<string | null>(null);
 
+  // On return from Xendit redirect, refresh session then go to dashboard
   useEffect(() => {
-    // Fetch existing pending payment transaction for this subscription
+    if (paymentParam === "success") {
+      setIsRefreshing(true);
+      fetch("/api/subscribe/refresh-session", { method: "POST" })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.status === "ACTIVE") {
+            router.replace("/");
+          } else {
+            // Webhook may still be processing — retry after a short delay
+            setTimeout(() => {
+              fetch("/api/subscribe/refresh-session", { method: "POST" })
+                .then((r) => r.json())
+                .then((d) => {
+                  if (d.status === "ACTIVE") {
+                    router.replace("/");
+                  } else {
+                    setIsRefreshing(false);
+                    setError(
+                      "Payment received but not yet confirmed. Please wait a moment and try again, or contact support.",
+                    );
+                  }
+                })
+                .catch(() => setIsRefreshing(false));
+            }, 4000);
+          }
+        })
+        .catch(() => setIsRefreshing(false));
+    }
+  }, [paymentParam, router]);
+
+  useEffect(() => {
+    if (paymentParam === "failed") {
+      setError("Payment was not completed. Please try again.");
+    }
+  }, [paymentParam]);
+
+  // Fetch existing pending payment link
+  useEffect(() => {
     const fetchPendingPayment = async () => {
       try {
         const res = await fetch("/api/subscribe/pending-payment");
@@ -30,8 +74,10 @@ export default function SubscribePage() {
         // ignore
       }
     };
-    fetchPendingPayment();
-  }, []);
+    if (!paymentParam) {
+      fetchPendingPayment();
+    }
+  }, [paymentParam]);
 
   const handlePay = async () => {
     if (paymentLinkUrl) {
@@ -58,6 +104,26 @@ export default function SubscribePage() {
       setIsLoading(false);
     }
   };
+
+  if (isRefreshing) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center p-4">
+        <Card className="w-full max-w-md text-center">
+          <CardHeader>
+            <CardTitle className="text-2xl">Confirming Payment...</CardTitle>
+            <CardDescription>
+              Please wait while we verify your payment.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex justify-center">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-[60vh] items-center justify-center p-4">

@@ -49,6 +49,8 @@ export async function POST() {
 
     const externalId = `sub-${subscription.id}-${Date.now()}`;
 
+    const appUrl = process.env.PUBLIC_URL ?? "http://localhost:3000";
+
     const xenditResult = await createXenditPaymentLink({
       apiKey: haventiumXenditKey,
       externalId,
@@ -56,6 +58,8 @@ export async function POST() {
       payerEmail: user?.email ?? undefined,
       description: `Haventium ${subscription.tier.name} subscription (${subscription.billingCycle.toLowerCase()})`,
       currency: "IDR",
+      successRedirectUrl: `${appUrl}/subscribe?payment=success`,
+      failureRedirectUrl: `${appUrl}/subscribe?payment=failed`,
     });
 
     await prisma.paymentTransaction.create({

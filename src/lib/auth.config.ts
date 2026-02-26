@@ -16,13 +16,17 @@ function isUserRoleArray(value: unknown): value is UserRole[] {
 export const authConfig = {
   providers: [],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id as string;
         token.organizationId = user.organizationId;
         token.subscription = user.subscription;
         token.roles = user.roles;
         token.emailVerified = user.emailVerified;
+      }
+      // Handle session update from unstable_update (e.g. after subscription payment)
+      if (trigger === "update" && session?.user?.subscription) {
+        token.subscription = session.user.subscription;
       }
       return token;
     },
