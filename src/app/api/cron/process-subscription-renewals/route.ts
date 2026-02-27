@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     const overdueSubscriptions = await prisma.subscription.findMany({
       where: {
         status: "ACTIVE",
-        currentPeriodEnd: { lt: now },
+        endDate: { lt: now },
         // Exclude FREE tier (endDate = 2099)
         tier: { type: { not: "FREE" } },
       },
@@ -105,7 +105,7 @@ export async function POST(request: Request) {
       const upcomingSubscriptions = await prisma.subscription.findMany({
         where: {
           status: "ACTIVE",
-          currentPeriodEnd: { gte: windowStart, lt: windowEnd },
+          endDate: { gte: windowStart, lt: windowEnd },
           tier: { type: { not: "FREE" } },
         },
         include: {
@@ -135,7 +135,7 @@ export async function POST(request: Request) {
             organizationName: sub.organization.name,
             planName: sub.tier.name,
             billingCycle: sub.billingCycle,
-            currentPeriodEnd: sub.currentPeriodEnd,
+            currentPeriodEnd: sub.endDate,
             daysLeft,
             appUrl,
           });

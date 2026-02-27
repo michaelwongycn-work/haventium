@@ -80,8 +80,6 @@ async function main() {
       status: "ACTIVE",
       startDate: new Date(),
       endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
-      currentPeriodStart: new Date(),
-      currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
     },
   });
   console.log("✓ Created PRO Subscription for Test Org");

@@ -710,12 +710,8 @@ model Subscription {
   status       SubscriptionStatus @default(PENDING_PAYMENT)
   billingCycle BillingCycle       @default(MONTHLY)
 
-  startDate          DateTime
-  endDate            DateTime
-  trialEndsAt        DateTime?
-  cancelledAt        DateTime?
-  currentPeriodStart DateTime
-  currentPeriodEnd   DateTime
+  startDate DateTime
+  endDate   DateTime
 
   externalId       String? @unique
   externalResponse Json?

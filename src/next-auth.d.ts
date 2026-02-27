@@ -9,10 +9,6 @@ interface UserSubscription {
   billingCycle: string;
   startDate: string;
   endDate: string | null;
-  trialEndsAt: string | null;
-  cancelledAt: string | null;
-  currentPeriodStart: string;
-  currentPeriodEnd: string;
   externalId: string | null;
   createdAt: string;
   updatedAt: string;

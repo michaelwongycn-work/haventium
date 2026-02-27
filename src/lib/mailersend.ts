@@ -6,7 +6,7 @@ export async function sendSubscriptionRenewalReminderEmail({
   organizationName,
   planName,
   billingCycle,
-  currentPeriodEnd,
+  endDate,
   daysLeft,
   appUrl,
 }: {
@@ -15,7 +15,7 @@ export async function sendSubscriptionRenewalReminderEmail({
   organizationName: string;
   planName: string;
   billingCycle: string;
-  currentPeriodEnd: Date;
+  endDate: Date;
   daysLeft: number;
   appUrl: string;
 }) {
@@ -24,7 +24,7 @@ export async function sendSubscriptionRenewalReminderEmail({
   });
 
   const renewUrl = `${appUrl}/subscribe`;
-  const expiryDateStr = currentPeriodEnd.toLocaleDateString("id-ID", {
+  const expiryDateStr = endDate.toLocaleDateString("id-ID", {
     day: "numeric",
     month: "long",
     year: "numeric",
@@ -118,7 +118,9 @@ export async function sendSubscriptionRenewalReminderEmail({
       ),
     )
     .setTo([new Recipient(to, toName)])
-    .setSubject(`Langganan ${organizationName} berakhir dalam ${daysLeft} hari — Haventium`)
+    .setSubject(
+      `Langganan ${organizationName} berakhir dalam ${daysLeft} hari — Haventium`,
+    )
     .setHtml(html)
     .setText(
       `Halo ${toName},\n\nLangganan ${planName} (${cycleLabel}) untuk organisasi ${organizationName} akan berakhir pada ${expiryDateStr} (${daysLeft} hari lagi).\n\nPerpanjang sekarang di: ${renewUrl}\n\nJika tidak diperpanjang, akses ke Haventium akan dihentikan sementara setelah tanggal tersebut.`,
@@ -342,7 +344,9 @@ export async function sendVerificationEmail({
     .setTo([new Recipient(to, toName)])
     .setSubject("Verifikasi email kamu — Haventium")
     .setHtml(html)
-    .setText(`Halo ${toName},\n\nVerifikasi email kamu dengan membuka link berikut:\n${verifyUrl}\n\nLink berlaku 24 jam. Jika kamu tidak mendaftar di Haventium, abaikan email ini.`);
+    .setText(
+      `Halo ${toName},\n\nVerifikasi email kamu dengan membuka link berikut:\n${verifyUrl}\n\nLink berlaku 24 jam. Jika kamu tidak mendaftar di Haventium, abaikan email ini.`,
+    );
 
   await mailerSend.email.send(emailParams);
 }

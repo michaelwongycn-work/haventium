@@ -109,8 +109,6 @@ export async function POST(request: NextRequest) {
           billingCycle,
           startDate: now,
           endDate: isPaid ? now : far,
-          currentPeriodStart: now,
-          currentPeriodEnd: isPaid ? now : far,
         },
       });
 

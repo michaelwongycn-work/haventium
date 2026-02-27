@@ -23,13 +23,13 @@ export default async function DashboardLayout({
   const roles = session.user.roles || [];
 
   // Compute days until subscription period ends for expiry warning
-  const currentPeriodEnd = session.user.subscription?.currentPeriodEnd;
+  const endDate = session.user.subscription?.endDate;
   const subscriptionStatus = session.user.subscription?.status;
   const isFree = session.user.subscription?.tier?.type === "FREE";
   const daysUntilExpiry =
-    currentPeriodEnd && !isFree
+    endDate && !isFree
       ? Math.ceil(
-          (new Date(currentPeriodEnd).getTime() - Date.now()) /
+          (new Date(endDate).getTime() - Date.now()) /
             (1000 * 60 * 60 * 24),
         )
       : null;
