@@ -72,7 +72,12 @@ async function handleSubscriptionPayment(
   if (!subscription) return;
 
   const now = new Date();
-  const periodEnd = new Date(now);
+  // If renewing early (still ACTIVE), extend from current period end; otherwise from now
+  const baseDate =
+    subscription.status === "ACTIVE" && subscription.currentPeriodEnd > now
+      ? new Date(subscription.currentPeriodEnd)
+      : new Date(now);
+  const periodEnd = new Date(baseDate);
   if (subscription.billingCycle === "ANNUAL") {
     periodEnd.setFullYear(periodEnd.getFullYear() + 1);
   } else {
@@ -94,9 +99,9 @@ async function handleSubscriptionPayment(
       where: { id: transaction.subscriptionId! },
       data: {
         status: "ACTIVE",
-        currentPeriodStart: now,
+        currentPeriodStart: baseDate,
         currentPeriodEnd: periodEnd,
-        startDate: now,
+        startDate: baseDate,
         endDate: periodEnd,
       },
     });

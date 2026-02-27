@@ -12,6 +12,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
+type SubscriptionStatus = "PENDING_PAYMENT" | "EXPIRED" | "ACTIVE" | string;
+
 export default function SubscribePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -20,6 +22,8 @@ export default function SubscribePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [paymentLinkUrl, setPaymentLinkUrl] = useState<string | null>(null);
+  const [subscriptionStatus, setSubscriptionStatus] =
+    useState<SubscriptionStatus | null>(null);
 
   // On return from Xendit redirect, refresh session then go to dashboard
   useEffect(() => {
@@ -40,7 +44,9 @@ export default function SubscribePage() {
                     router.replace("/");
                   } else {
                     setIsRefreshing(false);
-                    toast.error("Payment received but not yet confirmed. Please wait a moment and try again, or contact support.");
+                    toast.error(
+                      "Payment received but not yet confirmed. Please wait a moment and try again, or contact support.",
+                    );
                   }
                 })
                 .catch(() => setIsRefreshing(false));
@@ -57,13 +63,25 @@ export default function SubscribePage() {
     }
   }, [paymentParam]);
 
-  // Fetch existing pending payment link
+  // Fetch current subscription status and existing pending payment link
   useEffect(() => {
-    const fetchPendingPayment = async () => {
+    if (paymentParam) return;
+
+    const init = async () => {
       try {
-        const res = await fetch("/api/subscribe/pending-payment");
-        if (res.ok) {
-          const data = await res.json();
+        // Get current status from session
+        const sessionRes = await fetch("/api/subscribe/refresh-session", {
+          method: "POST",
+        });
+        if (sessionRes.ok) {
+          const data = await sessionRes.json();
+          setSubscriptionStatus(data.status ?? null);
+        }
+
+        // For PENDING_PAYMENT, reuse an existing link if available
+        const pendingRes = await fetch("/api/subscribe/pending-payment");
+        if (pendingRes.ok) {
+          const data = await pendingRes.json();
           if (data.paymentLinkUrl) {
             setPaymentLinkUrl(data.paymentLinkUrl);
           }
@@ -72,10 +90,9 @@ export default function SubscribePage() {
         // ignore
       }
     };
-    if (!paymentParam) {
-      fetchPendingPayment();
-    }
-  }, [paymentParam]);
+
+    init();
+  }, [paymentParam, router]);
 
   const handlePay = async () => {
     if (paymentLinkUrl) {
@@ -122,14 +139,19 @@ export default function SubscribePage() {
     );
   }
 
+  const isExpired = subscriptionStatus === "EXPIRED";
+
   return (
     <div className="flex min-h-[60vh] items-center justify-center p-4">
       <Card className="w-full max-w-md text-center">
         <CardHeader>
-          <CardTitle className="text-2xl">Complete Your Subscription</CardTitle>
+          <CardTitle className="text-2xl">
+            {isExpired ? "Subscription Expired" : "Complete Your Subscription"}
+          </CardTitle>
           <CardDescription>
-            Your subscription payment is pending. Please complete payment to
-            access all features.
+            {isExpired
+              ? "Your subscription has expired. Renew now to restore full access to Haventium. Your data is safe and intact."
+              : "Your subscription payment is pending. Please complete payment to access all features."}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -138,7 +160,11 @@ export default function SubscribePage() {
             onClick={handlePay}
             disabled={isLoading}
           >
-            {isLoading ? "Loading..." : "Pay Now"}
+            {isLoading
+              ? "Loading..."
+              : isExpired
+                ? "Renew Subscription"
+                : "Pay Now"}
           </Button>
           <p className="text-xs text-muted-foreground">
             You will be redirected to the secure Xendit payment page.

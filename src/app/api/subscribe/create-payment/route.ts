@@ -15,21 +15,29 @@ export async function POST() {
       include: { tier: true },
     });
 
-    if (!subscription || subscription.status !== "PENDING_PAYMENT") {
-      return apiError("No pending subscription found", 400);
+    const renewableStatuses = ["PENDING_PAYMENT", "ACTIVE", "EXPIRED"] as const;
+    if (
+      !subscription ||
+      !renewableStatuses.includes(
+        subscription.status as (typeof renewableStatuses)[number],
+      )
+    ) {
+      return apiError("No renewable subscription found", 400);
     }
 
-    // Check for existing pending transaction
-    const existing = await prisma.paymentTransaction.findFirst({
-      where: {
-        subscriptionId: subscription.id,
-        type: "SUBSCRIPTION",
-        status: "PENDING",
-      },
-    });
-
-    if (existing?.paymentLinkUrl) {
-      return apiSuccess({ paymentLinkUrl: existing.paymentLinkUrl });
+    // For PENDING_PAYMENT, reuse an existing pending link if available.
+    // For ACTIVE/EXPIRED, always create a fresh payment link for the next period.
+    if (subscription.status === "PENDING_PAYMENT") {
+      const existing = await prisma.paymentTransaction.findFirst({
+        where: {
+          subscriptionId: subscription.id,
+          type: "SUBSCRIPTION",
+          status: "PENDING",
+        },
+      });
+      if (existing?.paymentLinkUrl) {
+        return apiSuccess({ paymentLinkUrl: existing.paymentLinkUrl });
+      }
     }
 
     const haventiumXenditKey = process.env.HAVENTIUM_XENDIT_SECRET_KEY;

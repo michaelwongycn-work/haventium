@@ -6,6 +6,7 @@ import { UserNav } from "@/components/user-nav";
 import { NavLinks } from "./nav-links";
 import { FormatProvider } from "@/components/format-provider";
 import { prisma } from "@/lib/prisma";
+import { SubscriptionExpiryBanner } from "@/components/subscription-expiry-banner";
 
 export default async function DashboardLayout({
   children,
@@ -20,6 +21,18 @@ export default async function DashboardLayout({
 
   const tierName = session.user.subscription?.tier?.name || "Free Plan";
   const roles = session.user.roles || [];
+
+  // Compute days until subscription period ends for expiry warning
+  const currentPeriodEnd = session.user.subscription?.currentPeriodEnd;
+  const subscriptionStatus = session.user.subscription?.status;
+  const isFree = session.user.subscription?.tier?.type === "FREE";
+  const daysUntilExpiry =
+    currentPeriodEnd && !isFree
+      ? Math.ceil(
+          (new Date(currentPeriodEnd).getTime() - Date.now()) /
+            (1000 * 60 * 60 * 24),
+        )
+      : null;
 
   // Fetch organization format preferences
   const organization = await prisma.organization.findUnique({
@@ -58,6 +71,12 @@ export default async function DashboardLayout({
             </div>
           </div>
         </header>
+
+        {/* Subscription expiry warning banner */}
+        <SubscriptionExpiryBanner
+          daysUntilExpiry={daysUntilExpiry}
+          subscriptionStatus={subscriptionStatus ?? null}
+        />
 
         {/* Main Content */}
         <main className="flex-1 p-8">{children}</main>

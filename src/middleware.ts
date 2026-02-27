@@ -181,12 +181,14 @@ export default auth(async (req: NextRequest & { auth: unknown }) => {
     }
   }
 
-  // PENDING_PAYMENT gate
+  // PENDING_PAYMENT / EXPIRED gate — redirect to /subscribe until they pay
   const subscriptionStatus = (
     adminAuth as { user?: { subscription?: { status?: SubscriptionStatus } } }
   )?.user?.subscription?.status;
-  const PENDING_PAYMENT: SubscriptionStatus = "PENDING_PAYMENT";
-  if (subscriptionStatus === PENDING_PAYMENT) {
+  const isPaymentRequired =
+    subscriptionStatus === ("PENDING_PAYMENT" as SubscriptionStatus) ||
+    subscriptionStatus === ("EXPIRED" as SubscriptionStatus);
+  if (isPaymentRequired) {
     const isAllowed =
       pathname.startsWith("/subscribe") ||
       pathname.startsWith("/api/") ||

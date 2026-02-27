@@ -70,13 +70,10 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
 
         // Check subscription status
         const subscription = user.organization.subscription;
-        if (
-          subscription?.status === SUBSCRIPTION_STATUS.EXPIRED ||
-          subscription?.status === SUBSCRIPTION_STATUS.CANCELLED
-        ) {
-          throw new Error("Subscription expired or cancelled");
+        if (subscription?.status === SUBSCRIPTION_STATUS.CANCELLED) {
+          throw new Error("Subscription cancelled");
         }
-        // PENDING_PAYMENT users can log in — middleware will redirect them to /subscribe
+        // PENDING_PAYMENT and EXPIRED users can log in — middleware will redirect them to /subscribe
 
         // Map roles directly without JSON hacks
         // We ensure we maintain the structure needed by access-utils
