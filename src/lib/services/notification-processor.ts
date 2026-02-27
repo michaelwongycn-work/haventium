@@ -53,7 +53,7 @@ async function getOrganizationApiKeys(organizationId: string): Promise<{
         key.encryptionTag
       )
 
-      if (key.service === "MAILERSEND_EMAIL") {
+      if (key.service === "RESEND_EMAIL") {
         result.emailApiKey = decryptedValue
       } else if (key.service === "WHATSAPP_META") {
         result.whatsappCredentials = JSON.parse(decryptedValue)

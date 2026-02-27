@@ -54,7 +54,7 @@ import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 
 type ApiKeyService =
-  | "MAILERSEND_EMAIL"
+  | "RESEND_EMAIL"
   | "WHATSAPP_META"
   | "TELEGRAM_BOT"
   | "XENDIT";
@@ -71,14 +71,14 @@ type ApiKey = {
 };
 
 const SERVICE_LABELS: Record<ApiKeyService, string> = {
-  MAILERSEND_EMAIL: "MailerSend Email",
+  RESEND_EMAIL: "Resend Email",
   WHATSAPP_META: "WhatsApp (Meta Cloud API)",
   TELEGRAM_BOT: "Telegram Bot",
   XENDIT: "Xendit Payment Gateway",
 };
 
 const SERVICE_DESCRIPTIONS: Record<ApiKeyService, string> = {
-  MAILERSEND_EMAIL: "Email delivery via MailerSend API",
+  RESEND_EMAIL: "Email delivery via Resend API",
   WHATSAPP_META:
     "WhatsApp messaging via Meta Cloud API (requires JSON with accessToken and phoneNumberId)",
   TELEGRAM_BOT:
@@ -510,7 +510,7 @@ export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
               <>
                 <div className="space-y-2">
                   <Label htmlFor="value">
-                    {formData.service === "MAILERSEND_EMAIL"
+                    {formData.service === "RESEND_EMAIL"
                       ? "API Key"
                       : formData.service === "WHATSAPP_META"
                         ? "Credentials (JSON)"
@@ -535,8 +535,8 @@ export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
                       id="value"
                       type="password"
                       placeholder={
-                        formData.service === "MAILERSEND_EMAIL"
-                          ? "mlsn...."
+                        formData.service === "RESEND_EMAIL"
+                          ? "re_..."
                           : formData.service === "TELEGRAM_BOT"
                             ? "123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
                             : ""
@@ -549,6 +549,21 @@ export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
                     />
                   )}
                 </div>
+
+                {formData.service === "RESEND_EMAIL" && (
+                  <Alert>
+                    <HugeiconsIcon icon={AlertCircleIcon} className="h-4 w-4" />
+                    <AlertDescription className="text-xs space-y-2">
+                      <p className="font-medium text-foreground">How to get your Resend API key:</p>
+                      <ol className="space-y-1 list-decimal list-inside">
+                        <li>Sign in at <strong>resend.com</strong> (create a free account if needed).</li>
+                        <li>Go to <strong>Domains</strong> → <strong>Add Domain</strong>, enter your sending domain, and add the DNS records they provide to your registrar. Wait for the status to turn green.</li>
+                        <li>Go to <strong>API Keys</strong> → <strong>Create API Key</strong>. Set permission to <em>Sending access</em> and restrict it to your verified domain.</li>
+                        <li>Copy the key — it starts with <code>re_</code> and won&apos;t be shown again.</li>
+                      </ol>
+                    </AlertDescription>
+                  </Alert>
+                )}
 
                 {formData.service === "WHATSAPP_META" && (
                   <Alert>
@@ -705,33 +720,21 @@ export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
               </div>
             )}
 
-            {selectedKey?.service === "MAILERSEND_EMAIL" && (
+            {selectedKey?.service === "RESEND_EMAIL" && (
               <div className="space-y-2">
-                <p className="text-sm font-medium">Setup Guide</p>
-                <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
-                  <li>Log in to MailerSend and go to your domain settings.</li>
-                  <li>Verify your sending domain (add DNS records).</li>
-                  <li>Generate an API token under API Tokens.</li>
-                </ol>
+                <p className="text-sm font-medium">How it&apos;s used</p>
+                <p className="text-sm text-muted-foreground">
+                  This key is used to send emails to your tenants — including OTP login codes for the tenant portal and any email notifications you configure. Emails are sent from the platform&apos;s verified sender address.
+                </p>
               </div>
             )}
 
             {selectedKey?.service === "TELEGRAM_BOT" && (
               <div className="space-y-2">
-                <p className="text-sm font-medium">Setup Guide</p>
-                <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
-                  <li>
-                    Open Telegram and search for <code>@BotFather</code>.
-                  </li>
-                  <li>
-                    Send <code>/newbot</code> and follow the prompts.
-                  </li>
-                  <li>Copy the bot token you receive.</li>
-                  <li>
-                    Tenants must start a chat with your bot before they can
-                    receive notifications.
-                  </li>
-                </ol>
+                <p className="text-sm font-medium">How it&apos;s used</p>
+                <p className="text-sm text-muted-foreground">
+                  Your Telegram bot sends notification messages to tenants who have linked their Telegram account in the tenant portal. Tenants must start a chat with your bot first before they can receive messages.
+                </p>
               </div>
             )}
 

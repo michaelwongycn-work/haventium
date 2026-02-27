@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { MailerSend, EmailParams, Sender, Recipient } from "mailersend";
+import { Resend } from "resend";
 import { prisma } from "@/lib/prisma";
 import { decrypt } from "@/lib/encryption";
 import { logger } from "@/lib/logger";
@@ -38,14 +38,14 @@ export async function sendOtpEmail({
   toName: string;
   otp: string;
 }): Promise<void> {
-  // Try org's own MailerSend key first, fall back to platform key
-  let apiKey = process.env.MAILERSEND_API_KEY!;
+  // Try org's own Resend key first, fall back to platform key
+  let apiKey = process.env.RESEND_API_KEY!;
   try {
     const orgKey = await prisma.apiKey.findUnique({
       where: {
         organizationId_service: {
           organizationId,
-          service: "MAILERSEND_EMAIL",
+          service: "RESEND_EMAIL",
         },
       },
     });
@@ -60,7 +60,8 @@ export async function sendOtpEmail({
     // Fall back to platform key silently
   }
 
-  const mailerSend = new MailerSend({ apiKey });
+  const resend = new Resend(apiKey);
+  const from = `${process.env.RESEND_FROM_NAME ?? "Haventium"} <${process.env.RESEND_FROM_EMAIL!}>`;
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -110,21 +111,13 @@ export async function sendOtpEmail({
 </body>
 </html>`;
 
-  const emailParams = new EmailParams()
-    .setFrom(
-      new Sender(
-        process.env.MAILERSEND_FROM_EMAIL!,
-        process.env.MAILERSEND_FROM_NAME ?? "Haventium",
-      ),
-    )
-    .setTo([new Recipient(to, toName)])
-    .setSubject(`${otp} — Your login code for ${orgName}`)
-    .setHtml(html)
-    .setText(
-      `Hi ${toName},\n\nYour login code for ${orgName} tenant portal: ${otp}\n\nThis code expires in ${OTP_EXPIRY_MINUTES} minutes.`,
-    );
-
-  await mailerSend.email.send(emailParams);
+  await resend.emails.send({
+    from,
+    to,
+    subject: `${otp} — Your login code for ${orgName}`,
+    html,
+    text: `Hi ${toName},\n\nYour login code for ${orgName} tenant portal: ${otp}\n\nThis code expires in ${OTP_EXPIRY_MINUTES} minutes.`,
+  });
 }
 
 /**

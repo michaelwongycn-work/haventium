@@ -13,7 +13,7 @@ import {
 import { encrypt, getLastFourChars, maskApiKey } from "@/lib/encryption";
 
 const API_KEY_SERVICES = [
-  "MAILERSEND_EMAIL",
+  "RESEND_EMAIL",
   "WHATSAPP_META",
   "TELEGRAM_BOT",
   "XENDIT",

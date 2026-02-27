@@ -243,17 +243,17 @@ async function main() {
   // ─── API Keys ─────────────────────────────────────────────────────────────
   const { encrypt, getLastFourChars } = await import("../src/lib/encryption.js");
 
-  const testMailerSendKey =
-    process.env.MAILERSEND_API_KEY || "mlsn.test_key_12345678";
-  const mailerSendEncrypted = encrypt(testMailerSendKey);
+  const testResendKey =
+    process.env.RESEND_API_KEY || "re_test_key_12345678";
+  const resendEncrypted = encrypt(testResendKey);
   await prisma.apiKey.create({
     data: {
       organizationId: org.id,
-      service: "MAILERSEND_EMAIL",
-      encryptedValue: mailerSendEncrypted.encrypted,
-      encryptionIv: mailerSendEncrypted.iv,
-      encryptionTag: mailerSendEncrypted.tag,
-      lastFourChars: getLastFourChars(testMailerSendKey),
+      service: "RESEND_EMAIL",
+      encryptedValue: resendEncrypted.encrypted,
+      encryptionIv: resendEncrypted.iv,
+      encryptionTag: resendEncrypted.tag,
+      lastFourChars: getLastFourChars(testResendKey),
       isActive: true,
     },
   });

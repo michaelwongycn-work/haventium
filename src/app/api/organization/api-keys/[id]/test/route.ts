@@ -10,7 +10,7 @@ import {
 import { decrypt } from "@/lib/encryption";
 
 const testApiKeySchema = z.object({
-  service: z.enum(["MAILERSEND_EMAIL", "WHATSAPP_META", "TELEGRAM_BOT", "XENDIT"]),
+  service: z.enum(["RESEND_EMAIL", "WHATSAPP_META", "TELEGRAM_BOT", "XENDIT"]),
   value: z.string().min(1, "API key value is required").optional(),
 });
 
@@ -58,8 +58,8 @@ export async function POST(
     let testResult: { success: boolean; message: string; error?: string };
 
     switch (validatedData.service) {
-      case "MAILERSEND_EMAIL":
-        testResult = await testMailerSendKey(apiKeyValue);
+      case "RESEND_EMAIL":
+        testResult = await testResendKey(apiKeyValue);
         break;
 
       case "WHATSAPP_META":
@@ -100,13 +100,13 @@ export async function POST(
 }
 
 /**
- * Test MailerSend API key by calling their API
+ * Test Resend API key by calling their API
  */
-async function testMailerSendKey(
+async function testResendKey(
   apiKey: string,
 ): Promise<{ success: boolean; message: string; error?: string }> {
   try {
-    const response = await fetch("https://api.mailersend.com/v1/api-tokens", {
+    const response = await fetch("https://api.resend.com/domains", {
       method: "GET",
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -116,20 +116,20 @@ async function testMailerSendKey(
     if (response.ok) {
       return {
         success: true,
-        message: "MailerSend API key is valid",
+        message: "Resend API key is valid",
       };
     } else {
       const data = await response.json();
       return {
         success: false,
-        message: "Invalid MailerSend API key",
+        message: "Invalid Resend API key",
         error: data.message || "Authentication failed",
       };
     }
   } catch (error) {
     return {
       success: false,
-      message: "Failed to test MailerSend API key",
+      message: "Failed to test Resend API key",
       error: error instanceof Error ? error.message : "Unknown error",
     };
   }

@@ -5,7 +5,7 @@ import { logger } from "@/lib/logger";
 import {
   sendSubscriptionRenewalReminderEmail,
   sendSubscriptionExpiredEmail,
-} from "@/lib/mailersend";
+} from "@/lib/resend";
 
 // Reminder thresholds in days — sends one email per threshold crossing
 const REMINDER_DAYS = [7, 3, 1];

@@ -3,7 +3,7 @@ import { randomBytes } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { hashPassword, validatePassword } from "@/lib/password";
 import { handleApiError, logger } from "@/lib/api";
-import { sendVerificationEmail } from "@/lib/mailersend";
+import { sendVerificationEmail } from "@/lib/resend";
 import { z } from "zod";
 
 const signupSchema = z.object({
