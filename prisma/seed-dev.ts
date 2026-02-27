@@ -9,7 +9,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient, Prisma } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import "dotenv/config";
-import { seedConstants } from "./seed.js";
+import { seedConstants, seedSystemRoles } from "./seed.js";
 
 const connectionString = `${process.env.DATABASE_URL}`;
 const adapter = new PrismaPg({ connectionString });
@@ -85,79 +85,13 @@ async function main() {
   console.log("✓ Created PRO Subscription for Test Org");
 
   // ─── Roles ───────────────────────────────────────────────────────────────
-  const ownerRole = await prisma.role.create({
-    data: { name: "Owner", isSystem: true, organizationId: org.id },
-  });
+  // Seed all predefined system roles (Owner, Property Manager, etc.)
+  await seedSystemRoles(prisma, org.id, accesses);
+  console.log("✓ Created system roles");
 
-  for (const access of accesses) {
-    await prisma.roleAccess.create({
-      data: { roleId: ownerRole.id, accessId: access.id },
-    });
-  }
-  console.log("✓ Created Owner Role");
-
-  const propertyManagerRole = await prisma.role.create({
-    data: { name: "Property Manager", isSystem: false, organizationId: org.id },
+  const ownerRole = await prisma.role.findFirstOrThrow({
+    where: { organizationId: org.id, name: "Owner" },
   });
-  const propertyManagerResources = [
-    "properties",
-    "tenants",
-    "leases",
-    "payments",
-    "notifications",
-  ];
-  for (const access of accesses) {
-    if (propertyManagerResources.includes(access.resource)) {
-      await prisma.roleAccess.create({
-        data: { roleId: propertyManagerRole.id, accessId: access.id },
-      });
-    }
-  }
-  console.log("✓ Created Property Manager Role");
-
-  const notificationManagerRole = await prisma.role.create({
-    data: {
-      name: "Notification Manager",
-      isSystem: false,
-      organizationId: org.id,
-    },
-  });
-  for (const access of accesses) {
-    if (access.resource === "notifications") {
-      await prisma.roleAccess.create({
-        data: { roleId: notificationManagerRole.id, accessId: access.id },
-      });
-    }
-  }
-  console.log("✓ Created Notification Manager Role");
-
-  const maintenanceStaffRole = await prisma.role.create({
-    data: {
-      name: "Maintenance Staff",
-      isSystem: false,
-      organizationId: org.id,
-    },
-  });
-  for (const access of accesses) {
-    if (["maintenance", "properties"].includes(access.resource)) {
-      await prisma.roleAccess.create({
-        data: { roleId: maintenanceStaffRole.id, accessId: access.id },
-      });
-    }
-  }
-  console.log("✓ Created Maintenance Staff Role");
-
-  const viewerRole = await prisma.role.create({
-    data: { name: "Viewer", isSystem: false, organizationId: org.id },
-  });
-  for (const access of accesses) {
-    if (access.action === "read") {
-      await prisma.roleAccess.create({
-        data: { roleId: viewerRole.id, accessId: access.id },
-      });
-    }
-  }
-  console.log("✓ Created Viewer Role");
 
   // ─── Users ───────────────────────────────────────────────────────────────
   const hashedPassword = await bcrypt.hash("Password1!", 10);

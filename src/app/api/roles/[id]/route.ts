@@ -85,15 +85,16 @@ export async function PATCH(
     // Block editing system roles
     if (existingRole.isSystem) {
       return NextResponse.json(
-        { error: "Cannot modify the Owner role" },
+        { error: `"${existingRole.name}" is a system role and cannot be modified` },
         { status: 400 },
       );
     }
 
-    // Block renaming to "Owner" (reserved)
-    if (validatedData.name && validatedData.name.toLowerCase() === "owner") {
+    // Block renaming to any system role name (reserved)
+    const systemRoleNames = ["Owner", "Property Manager", "Maintenance Staff", "Notification Manager", "Viewer"];
+    if (validatedData.name && systemRoleNames.map(n => n.toLowerCase()).includes(validatedData.name.toLowerCase())) {
       return NextResponse.json(
-        { error: 'The role name "Owner" is reserved' },
+        { error: `The role name "${validatedData.name}" is reserved` },
         { status: 400 },
       );
     }
@@ -198,7 +199,7 @@ export async function DELETE(
     // Block deletion of system roles
     if (existingRole.isSystem) {
       return NextResponse.json(
-        { error: "Cannot delete the Owner role" },
+        { error: `"${existingRole.name}" is a system role and cannot be deleted` },
         { status: 400 },
       );
     }

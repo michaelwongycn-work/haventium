@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { hashPassword, validatePassword } from "@/lib/password";
 import { handleApiError, logger } from "@/lib/api";
 import { sendVerificationEmail } from "@/lib/resend";
+import { seedSystemRoles } from "@/../prisma/seed";
 import { z } from "zod";
 
 const signupSchema = z.object({
@@ -143,6 +144,10 @@ export async function POST(request: NextRequest) {
 
       return { user, organization, subscription };
     });
+
+    // Create predefined system roles for the new org (Owner was already created above)
+    const allAccesses = await prisma.access.findMany();
+    await seedSystemRoles(prisma, result.organization.id, allAccesses);
 
     // Generate email verification token
     const token = randomBytes(32).toString("hex");

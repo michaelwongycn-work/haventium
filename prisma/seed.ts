@@ -102,10 +102,40 @@ export async function seedConstants(db: PrismaClient) {
     },
   });
 
-  const dashboard = await db.feature.upsert({
-    where: { code: "DASHBOARD" },
-    update: { name: "Dashboard" },
-    create: { code: "DASHBOARD", name: "Dashboard" },
+  const tenantPortal = await db.feature.upsert({
+    where: { code: "TENANT_PORTAL" },
+    update: { name: "Tenant Portal" },
+    create: { code: "TENANT_PORTAL", name: "Tenant Portal" },
+  });
+
+  const analytics = await db.feature.upsert({
+    where: { code: "ANALYTICS" },
+    update: { name: "Analytics & Reports" },
+    create: { code: "ANALYTICS", name: "Analytics & Reports" },
+  });
+
+  const bulkImport = await db.feature.upsert({
+    where: { code: "BULK_IMPORT" },
+    update: { name: "Bulk Import" },
+    create: { code: "BULK_IMPORT", name: "Bulk Import" },
+  });
+
+  const calendar = await db.feature.upsert({
+    where: { code: "CALENDAR" },
+    update: { name: "Calendar View" },
+    create: { code: "CALENDAR", name: "Calendar View" },
+  });
+
+  const activityLog = await db.feature.upsert({
+    where: { code: "ACTIVITY_LOG" },
+    update: { name: "Activity Log" },
+    create: { code: "ACTIVITY_LOG", name: "Activity Log" },
+  });
+
+  const customRoles = await db.feature.upsert({
+    where: { code: "CUSTOM_ROLES" },
+    update: { name: "Custom Roles" },
+    create: { code: "CUSTOM_ROLES", name: "Custom Roles" },
   });
 
   console.log("✓ Upserted features");
@@ -117,20 +147,32 @@ export async function seedConstants(db: PrismaClient) {
   });
 
   // FREE: no features
-  // STANDARD: doc, maintenance, reminder
-  for (const feature of [docManagement, maintenanceMgmt, reminder]) {
+  // STANDARD: doc, maintenance, reminder, tenant portal, bulk import, calendar
+  for (const feature of [
+    docManagement,
+    maintenanceMgmt,
+    reminder,
+    tenantPortal,
+    bulkImport,
+    calendar,
+  ]) {
     await db.tierFeature.create({
       data: { tierId: normalTier.id, featureId: feature.id },
     });
   }
 
-  // PRO: all features
+  // PRO: all features including custom roles
   for (const feature of [
     docManagement,
     maintenanceMgmt,
     reminder,
     paymentGateway,
-    dashboard,
+    tenantPortal,
+    analytics,
+    bulkImport,
+    calendar,
+    activityLog,
+    customRoles,
   ]) {
     await db.tierFeature.create({
       data: { tierId: proTier.id, featureId: feature.id },
@@ -188,6 +230,64 @@ export async function seedConstants(db: PrismaClient) {
   console.log("✓ Upserted default accesses");
 
   return { freeTier, normalTier, proTier, accesses };
+}
+
+// Predefined system roles for Standard (non-PRO) orgs.
+// These are immutable — users cannot edit or delete them.
+export async function seedSystemRoles(
+  db: PrismaClient,
+  organizationId: string,
+  accesses: { id: string; resource: string; action: string }[],
+) {
+  const definitions = [
+    {
+      name: "Owner",
+      resources: null, // all
+      actions: null,   // all
+    },
+    {
+      name: "Property Manager",
+      resources: ["properties", "tenants", "leases", "payments", "notifications"],
+      actions: null,
+    },
+    {
+      name: "Maintenance Staff",
+      resources: ["maintenance", "properties"],
+      actions: null,
+    },
+    {
+      name: "Notification Manager",
+      resources: ["notifications"],
+      actions: null,
+    },
+    {
+      name: "Viewer",
+      resources: null,
+      actions: ["read"],
+    },
+  ];
+
+  for (const def of definitions) {
+    const role = await db.role.upsert({
+      where: { organizationId_name: { organizationId, name: def.name } },
+      update: { isSystem: true },
+      create: { name: def.name, isSystem: true, organizationId },
+    });
+
+    const filteredAccesses = accesses.filter((a) => {
+      const resourceMatch = !def.resources || def.resources.includes(a.resource);
+      const actionMatch = !def.actions || def.actions.includes(a.action);
+      return resourceMatch && actionMatch;
+    });
+
+    for (const access of filteredAccesses) {
+      await db.roleAccess.upsert({
+        where: { roleId_accessId: { roleId: role.id, accessId: access.id } },
+        update: {},
+        create: { roleId: role.id, accessId: access.id },
+      });
+    }
+  }
 }
 
 async function main() {
