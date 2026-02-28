@@ -12,6 +12,30 @@ import { processNotifications } from "@/lib/services/notification-processor";
 // Token verified against the org's Xendit webhook token stored in the ApiKey table (service = XENDIT).
 // The org is identified via the external_id, used to look up the PaymentTransaction → organizationId.
 
+// In-memory rate limiter: max 30 verification failures per IP per minute.
+// Use Redis in production for distributed deployments.
+const failureTracker = new Map<string, { count: number; resetAt: number }>();
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const entry = failureTracker.get(ip);
+  if (!entry || entry.resetAt < now) {
+    failureTracker.set(ip, { count: 0, resetAt: now + 60_000 });
+    return false;
+  }
+  return entry.count >= 30;
+}
+
+function recordFailure(ip: string): void {
+  const now = Date.now();
+  const entry = failureTracker.get(ip);
+  if (!entry || entry.resetAt < now) {
+    failureTracker.set(ip, { count: 1, resetAt: now + 60_000 });
+  } else {
+    entry.count++;
+  }
+}
+
 function mapPaymentMethod(
   xenditMethod?: string,
 ): "CASH" | "BANK_TRANSFER" | "VIRTUAL_ACCOUNT" | "QRIS" | "MANUAL" {
@@ -25,6 +49,13 @@ function mapPaymentMethod(
 
 export async function POST(request: NextRequest) {
   try {
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+
+    if (isRateLimited(ip)) {
+      logger.error("Xendit rent webhook: rate limit exceeded", null, { ip });
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    }
+
     const body = await request.json();
     const { status, external_id, payment_method } = body;
 
@@ -68,6 +99,7 @@ export async function POST(request: NextRequest) {
     const { webhookToken } = JSON.parse(storedJson) as { secretKey: string; webhookToken: string };
 
     if (!verifyXenditWebhook(callbackToken, webhookToken)) {
+      recordFailure(ip);
       logger.error("Xendit rent webhook: invalid callback token", null, {
         organizationId: transaction.organizationId,
       });

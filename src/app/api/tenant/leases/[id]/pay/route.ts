@@ -6,6 +6,22 @@ import { createXenditPaymentLink } from "@/lib/payment-gateways/xendit";
 import { logger } from "@/lib/logger";
 import crypto from "crypto";
 
+/**
+ * Validates that a redirect URL is on the same origin as the app.
+ * Returns the URL if valid, undefined otherwise.
+ */
+function validateRedirectUrl(url: string | undefined, requestUrl: string): string | undefined {
+  if (!url) return undefined;
+  try {
+    const parsed = new URL(url);
+    const origin = new URL(requestUrl).origin;
+    if (parsed.origin !== origin) return undefined;
+    return url;
+  } catch {
+    return undefined;
+  }
+}
+
 const schema = z.object({
   successRedirectUrl: z.string().url().optional(),
   failureRedirectUrl: z.string().url().optional(),
@@ -15,6 +31,7 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<Response> {
+  const requestUrl = request.url;
   try {
     const auth = await requireTenantAuth();
     if (!auth.authorized) return auth.response;
@@ -59,9 +76,11 @@ export async function POST(
       apiKeyRecord.encryptionTag,
     );
 
-    // Parse optional redirect URLs
+    // Parse optional redirect URLs and validate they're same-origin
     const body = await request.json().catch(() => ({}));
-    const { successRedirectUrl, failureRedirectUrl } = schema.parse(body);
+    const parsed = schema.parse(body);
+    const successRedirectUrl = validateRedirectUrl(parsed.successRedirectUrl, requestUrl);
+    const failureRedirectUrl = validateRedirectUrl(parsed.failureRedirectUrl, requestUrl);
 
     const externalId = `tenant-portal-${id}-${crypto.randomBytes(6).toString("hex")}`;
     const description = `Rent — ${lease.unit.property.name} ${lease.unit.name} — ${lease.tenant.fullName}`;

@@ -30,7 +30,12 @@ async function resolveOrgFromHost(host: string): Promise<string | null> {
     const baseUrl = process.env.PUBLIC_URL ?? "http://localhost:3000";
     const response = await fetch(
       `${baseUrl}/api/internal/resolve-org?host=${encodeURIComponent(host)}`,
-      { cache: "no-store" },
+      {
+        cache: "no-store",
+        headers: {
+          "x-internal-secret": process.env.INTERNAL_API_SECRET ?? "",
+        },
+      },
     );
     if (!response.ok) {
       orgCache.set(host, { orgId: null, expiresAt: Date.now() + CACHE_TTL_MS });

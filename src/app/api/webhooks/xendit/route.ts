@@ -7,12 +7,44 @@ import { verifyXenditWebhook } from "@/lib/payment-gateways/xendit";
 // Handles Xendit webhooks for SUBSCRIPTION payments only.
 // Token verified against HAVENTIUM_XENDIT_WEBHOOK_TOKEN env var.
 
+// In-memory rate limiter: max 30 verification failures per IP per minute.
+// Use Redis in production for distributed deployments.
+const failureTracker = new Map<string, { count: number; resetAt: number }>();
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const entry = failureTracker.get(ip);
+  if (!entry || entry.resetAt < now) {
+    failureTracker.set(ip, { count: 0, resetAt: now + 60_000 });
+    return false;
+  }
+  return entry.count >= 30;
+}
+
+function recordFailure(ip: string): void {
+  const now = Date.now();
+  const entry = failureTracker.get(ip);
+  if (!entry || entry.resetAt < now) {
+    failureTracker.set(ip, { count: 1, resetAt: now + 60_000 });
+  } else {
+    entry.count++;
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+
+    if (isRateLimited(ip)) {
+      logger.error("Xendit subscription webhook: rate limit exceeded", null, { ip });
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    }
+
     const callbackToken = request.headers.get("x-callback-token") ?? "";
     const webhookToken = process.env.HAVENTIUM_XENDIT_WEBHOOK_TOKEN ?? "";
 
     if (!verifyXenditWebhook(callbackToken, webhookToken)) {
+      recordFailure(ip);
       logger.error("Xendit subscription webhook: invalid callback token", null, {});
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

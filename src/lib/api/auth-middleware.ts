@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { hasAccess } from "@/lib/access-utils";
 import { apiForbidden, apiUnauthorized } from "./response";
 import { prisma } from "@/lib/prisma";
+import crypto from "crypto";
 
 /**
  * Authentication Middleware Utilities
@@ -129,8 +130,26 @@ export function verifyCronAuth(request: Request): {
     };
   }
 
-  // Verify authorization header matches the secret
-  if (authHeader !== `Bearer ${cronSecret}`) {
+  // Verify authorization header using timing-safe comparison
+  if (!authHeader) {
+    return {
+      authorized: false,
+      response: apiUnauthorized("Invalid cron secret"),
+    };
+  }
+  const expected = `Bearer ${cronSecret}`;
+  let tokensMatch = false;
+  try {
+    tokensMatch = crypto.timingSafeEqual(
+      Buffer.from(authHeader),
+      Buffer.from(expected),
+    );
+  } catch {
+    // Different lengths — tokens don't match
+    tokensMatch = false;
+  }
+
+  if (!tokensMatch) {
     return {
       authorized: false,
       response: apiUnauthorized("Invalid cron secret"),
