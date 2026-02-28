@@ -6,12 +6,12 @@ export default async function PropertyDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { authorized, roles } = await checkPageAccess("properties", "read");
+  const { authorized, roles, features } = await checkPageAccess("properties", "read");
 
   if (!authorized) {
     return <AccessDenied resource="Property Details" />;
   }
 
   const { id } = await params;
-  return <PropertyDetailClient params={{ id }} roles={roles} />;
+  return <PropertyDetailClient params={{ id }} roles={roles} features={features} />;
 }

@@ -37,7 +37,24 @@ export async function checkPageAccess(resource: string, action: string) {
   const roles = session.user.roles || [];
   const authorized = hasAccess(roles, resource, action);
 
-  return { authorized, session, roles };
+  // Fetch the org's active feature codes from the DB
+  const { prisma } = await import("@/lib/prisma");
+  const tierFeatures = await prisma.tierFeature.findMany({
+    where: {
+      tier: {
+        subscriptions: {
+          some: {
+            organizationId: session.user.organizationId,
+            status: "ACTIVE",
+          },
+        },
+      },
+    },
+    select: { feature: { select: { code: true } } },
+  });
+  const features = tierFeatures.map((tf) => tf.feature.code);
+
+  return { authorized, session, roles, features };
 }
 
 // ========================================

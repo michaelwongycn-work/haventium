@@ -1,4 +1,4 @@
-import { requireAccess, handleApiError, apiSuccess } from "@/lib/api";
+import { requireAccess, requireFeature, handleApiError, apiSuccess } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { subMonths, format, startOfMonth, endOfMonth, addMonths } from "date-fns";
 
@@ -10,6 +10,9 @@ export async function GET(request: Request) {
       "read"
     );
     if (!authorized) return response;
+
+    const { allowed, response: featureResponse } = await requireFeature(session.user.organizationId, "ANALYTICS");
+    if (!allowed) return featureResponse;
 
     const { searchParams } = new URL(request.url);
     const monthsParam = searchParams.get("months") || "6";

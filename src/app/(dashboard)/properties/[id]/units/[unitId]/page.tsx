@@ -8,7 +8,7 @@ export default async function UnitDetailPage({
 }) {
   const { id, unitId } = await params;
 
-  const { authorized, roles } = await checkPageAccess(
+  const { authorized, roles, features } = await checkPageAccess(
     "properties",
     "read",
   );
@@ -17,5 +17,5 @@ export default async function UnitDetailPage({
     return <AccessDenied resource="properties" />;
   }
 
-  return <UnitDetailClient params={{ propertyId: id, unitId }} roles={roles} />;
+  return <UnitDetailClient params={{ propertyId: id, unitId }} roles={roles} features={features} />;
 }

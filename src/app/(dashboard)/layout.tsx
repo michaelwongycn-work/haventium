@@ -23,11 +23,12 @@ export default async function DashboardLayout({
   const roles = session.user.roles || [];
 
   // Compute days until subscription period ends for expiry warning
+  // Use monthlyPrice = 0 to detect free/no-cost tiers instead of hardcoded type check
   const endDate = session.user.subscription?.endDate;
   const subscriptionStatus = session.user.subscription?.status;
-  const isFree = session.user.subscription?.tier?.type === "FREE";
+  const isPaidTier = (session.user.subscription?.tier?.monthlyPrice ?? 0) > 0;
   const daysUntilExpiry =
-    endDate && !isFree
+    endDate && isPaidTier
       ? Math.ceil(
           (new Date(endDate).getTime() - Date.now()) /
             (1000 * 60 * 60 * 24),

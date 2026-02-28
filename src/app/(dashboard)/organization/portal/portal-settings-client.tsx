@@ -35,7 +35,8 @@ const MAIN_HOSTNAME =
     ? (process.env.PUBLIC_HOSTNAME ?? "haventium.com")
     : "haventium.com";
 
-export function PortalSettingsClient() {
+export function PortalSettingsClient({ hasFeature }: { hasFeature: boolean }) {
+  const hasPortalFeature = hasFeature;
   const [settings, setSettings] = useState<PortalSettings | null>(null);
   const [subdomain, setSubdomain] = useState("");
   const [loading, setLoading] = useState(true);
@@ -79,6 +80,31 @@ export function PortalSettingsClient() {
   }
 
   const portalUrl = subdomain ? `https://${subdomain}.${MAIN_HOSTNAME}` : null;
+
+  if (!hasPortalFeature) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Tenant Portal</CardTitle>
+          <CardDescription>
+            Configure your tenant self-service portal subdomain.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center justify-center py-10 text-center space-y-3">
+            <HugeiconsIcon icon={LockIcon} className="h-8 w-8 text-muted-foreground" />
+            <p className="font-medium">Feature not available</p>
+            <p className="text-sm text-muted-foreground max-w-sm">
+              The tenant portal is not included in your current plan. Upgrade your subscription to enable it.
+            </p>
+            <Button onClick={() => window.location.href = "/subscribe"}>
+              Upgrade Plan
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <>

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import {
   requireAccess,
+  requireFeature,
   apiSuccess,
   apiError,
   handleApiError,
@@ -28,6 +29,9 @@ export async function POST(
       "manage",
     );
     if (!authorized) return response;
+
+    const { allowed, response: featureResponse } = await requireFeature(session.user.organizationId, "PAYMENT_GATEWAY");
+    if (!allowed) return featureResponse;
 
     const { id } = await params;
     const validatedData = await validateRequest(request, testApiKeySchema);

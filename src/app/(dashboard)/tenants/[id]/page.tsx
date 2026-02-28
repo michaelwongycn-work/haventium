@@ -6,7 +6,7 @@ export default async function TenantDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { authorized } = await checkPageAccess("tenants", "read");
+  const { authorized, features } = await checkPageAccess("tenants", "read");
 
   if (!authorized) {
     return <AccessDenied resource="Tenant Details" />;
@@ -14,5 +14,5 @@ export default async function TenantDetailPage({
 
   const { id } = await params;
 
-  return <TenantDetailClient params={{ id }} />;
+  return <TenantDetailClient params={{ id }} features={features} />;
 }

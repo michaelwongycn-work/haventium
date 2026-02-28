@@ -52,6 +52,7 @@ import {
   MoreHorizontalIcon,
   CheckmarkCircle01Icon,
   ArrowRight01Icon,
+  LockIcon,
 } from "@hugeicons/core-free-icons";
 import { formatCurrency, formatDate } from "@/lib/format";
 
@@ -187,9 +188,11 @@ type UnitData = {
 export default function UnitDetailClient({
   params,
   roles,
+  features = [],
 }: {
   params: { propertyId: string; unitId: string };
   roles: UserRole[];
+  features?: string[];
 }) {
   const router = useRouter();
   const [data, setData] = useState<UnitData | null>(null);
@@ -611,7 +614,12 @@ export default function UnitDetailClient({
           <CardDescription>Recent activity for this unit</CardDescription>
         </CardHeader>
         <CardContent>
-          {activities.length === 0 ? (
+          {!features.includes("ACTIVITY_LOG") ? (
+            <div className="flex flex-col items-center justify-center py-10 gap-3 text-muted-foreground">
+              <HugeiconsIcon icon={LockIcon} size={24} />
+              <p className="text-sm">Activity log is not available on your current plan.</p>
+            </div>
+          ) : activities.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               No activity yet
             </div>

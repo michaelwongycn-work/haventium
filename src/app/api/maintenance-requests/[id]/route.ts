@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   requireAccess,
+  requireFeature,
   handleApiError,
   ActivityLogger,
   apiSuccess,
@@ -31,6 +32,9 @@ export async function GET(
       "read",
     );
     if (!authorized) return response;
+
+    const { allowed, response: featureResponse } = await requireFeature(session.user.organizationId, "MAINTENANCE_MANAGEMENT");
+    if (!allowed) return featureResponse;
 
     organizationId = session.user.organizationId;
     const { id } = await params;
@@ -88,6 +92,9 @@ export async function PATCH(
       "update",
     );
     if (!authorized) return response;
+
+    const { allowed, response: featureResponse } = await requireFeature(session.user.organizationId, "MAINTENANCE_MANAGEMENT");
+    if (!allowed) return featureResponse;
 
     const { id } = await params;
     const body = await request.json();
@@ -222,6 +229,9 @@ export async function DELETE(
       "delete",
     );
     if (!authorized) return response;
+
+    const { allowed, response: featureResponse } = await requireFeature(session.user.organizationId, "MAINTENANCE_MANAGEMENT");
+    if (!allowed) return featureResponse;
 
     const { id } = await params;
 

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { requireAccess, handleApiError, apiSuccess, apiError } from "@/lib/api";
+import { requireAccess, requireFeature, handleApiError, apiSuccess, apiError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 
 const updateSchema = z.object({
@@ -39,6 +39,9 @@ export async function PUT(request: Request): Promise<Response> {
       "manage",
     );
     if (!authorized) return response;
+
+    const { allowed, response: featureResponse } = await requireFeature(session.user.organizationId, "TENANT_PORTAL");
+    if (!allowed) return featureResponse;
 
     const organizationId = session.user.organizationId;
     const body = await request.json();

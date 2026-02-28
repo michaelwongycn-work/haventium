@@ -87,7 +87,20 @@ const SERVICE_DESCRIPTIONS: Record<ApiKeyService, string> = {
     "Accept rent payments via Xendit. Provide your Xendit secret key and webhook token.",
 };
 
-export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
+const SERVICE_REQUIRED_FEATURE: Record<ApiKeyService, string> = {
+  RESEND_EMAIL: "REMINDER",
+  WHATSAPP_META: "REMINDER",
+  TELEGRAM_BOT: "REMINDER",
+  XENDIT: "PAYMENT_GATEWAY",
+};
+
+export default function ApiKeysClient({
+  webhookUrl,
+  features,
+}: {
+  webhookUrl: string;
+  features: string[];
+}) {
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -129,7 +142,9 @@ export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
       const data = await response.json();
       setApiKeys(data.items || []);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to fetch API keys");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to fetch API keys",
+      );
     } finally {
       setLoading(false);
     }
@@ -165,9 +180,14 @@ export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
       setCreateDialogOpen(false);
 
       // Test connection immediately after creation — success/fail shown via toast
-      const testPassed = await handleTestConnection(data.id, formData.service as ApiKeyService);
+      const testPassed = await handleTestConnection(
+        data.id,
+        formData.service as ApiKeyService,
+      );
       if (!testPassed) {
-        toast.warning("API key saved, but connection test failed. Check your credentials.");
+        toast.warning(
+          "API key saved, but connection test failed. Check your credentials.",
+        );
       }
 
       // For Xendit, show the webhook URL setup dialog
@@ -186,7 +206,9 @@ export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
       // Refresh list
       await fetchApiKeys();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to create API key");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to create API key",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -228,7 +250,10 @@ export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
     }
   }
 
-  async function handleTestConnection(keyId: string, service: ApiKeyService): Promise<boolean> {
+  async function handleTestConnection(
+    keyId: string,
+    service: ApiKeyService,
+  ): Promise<boolean> {
     setTesting(true);
 
     try {
@@ -385,14 +410,20 @@ export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
                           size="sm"
                           onClick={() => openManageDialog(key)}
                         >
-                          <HugeiconsIcon icon={Settings01Icon} className="h-4 w-4" />
+                          <HugeiconsIcon
+                            icon={Settings01Icon}
+                            className="h-4 w-4"
+                          />
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => openDeleteDialog(key)}
                         >
-                          <HugeiconsIcon icon={Delete02Icon} className="h-4 w-4 text-destructive" />
+                          <HugeiconsIcon
+                            icon={Delete02Icon}
+                            className="h-4 w-4 text-destructive"
+                          />
                         </Button>
                       </div>
                     </TableCell>
@@ -434,9 +465,13 @@ export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
                 <SelectContent>
                   {Object.entries(SERVICE_LABELS).map(([value, label]) => {
                     const taken = apiKeys.some((k) => k.service === value);
+                    const requiredFeature =
+                      SERVICE_REQUIRED_FEATURE[value as ApiKeyService];
+                    const locked = !features.includes(requiredFeature);
                     return (
                       <SelectItem key={value} value={value} disabled={taken}>
-                        {label}{taken ? " (already added)" : ""}
+                        {label}
+                        {taken ? " (already added)" : ""}
                       </SelectItem>
                     );
                   })}
@@ -449,147 +484,211 @@ export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
               )}
             </div>
 
-            {formData.service === "XENDIT" ? (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="value">Secret Key</Label>
-                  <Input
-                    id="value"
-                    type="password"
-                    placeholder="xnd_..."
-                    value={formData.value}
-                    onChange={(e) =>
-                      setFormData({ ...formData, value: e.target.value })
-                    }
-                    autoComplete="off"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="webhookToken">Webhook Token</Label>
-                  <Input
-                    id="webhookToken"
-                    type="password"
-                    placeholder="Your Xendit callback token"
-                    value={formData.webhookToken}
-                    onChange={(e) =>
-                      setFormData({ ...formData, webhookToken: e.target.value })
-                    }
-                    autoComplete="off"
-                  />
-                </div>
-                <Alert>
-                  <HugeiconsIcon icon={AlertCircleIcon} className="h-4 w-4" />
-                  <AlertDescription className="text-xs space-y-2">
-                    <p>
-                      Find your <strong>Secret Key</strong> in Xendit Dashboard
-                      → Settings → API Keys. Find your{" "}
-                      <strong>Webhook Token</strong> in Xendit Dashboard →
-                      Settings → Webhooks → Callback Token.
-                    </p>
-                    <p>
-                      Register this webhook URL in Xendit Dashboard → Settings →
-                      Webhooks → Invoice paid:
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <code className="flex-1 bg-muted px-2 py-1 rounded break-all">
-                        {webhookUrl}
-                      </code>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => copyToClipboard(webhookUrl)}
-                      >
-                        <HugeiconsIcon icon={Copy01Icon} className="h-4 w-4" />
-                        {copied ? "Copied!" : "Copy"}
-                      </Button>
+            {formData.service &&
+              (() => {
+                const isLocked = !features.includes(
+                  SERVICE_REQUIRED_FEATURE[formData.service],
+                );
+
+                if (isLocked) {
+                  return (
+                    <Alert>
+                      <HugeiconsIcon
+                        icon={AlertCircleIcon}
+                        className="h-4 w-4"
+                      />
+                      <AlertDescription className="text-xs">
+                        This integration is not available on your current plan.
+                        Upgrade to unlock it.
+                      </AlertDescription>
+                    </Alert>
+                  );
+                }
+
+                if (formData.service === "XENDIT") {
+                  return (
+                    <>
+                      <div className="space-y-2">
+                        <Label htmlFor="value">Secret Key</Label>
+                        <Input
+                          id="value"
+                          type="password"
+                          placeholder="xnd_..."
+                          value={formData.value}
+                          onChange={(e) =>
+                            setFormData({ ...formData, value: e.target.value })
+                          }
+                          autoComplete="off"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="webhookToken">Webhook Token</Label>
+                        <Input
+                          id="webhookToken"
+                          type="password"
+                          placeholder="Your Xendit callback token"
+                          value={formData.webhookToken}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              webhookToken: e.target.value,
+                            })
+                          }
+                          autoComplete="off"
+                        />
+                      </div>
+                      <Alert>
+                        <HugeiconsIcon
+                          icon={AlertCircleIcon}
+                          className="h-4 w-4"
+                        />
+                        <AlertDescription className="text-xs space-y-2">
+                          <p>
+                            Find your <strong>Secret Key</strong> in Xendit
+                            Dashboard → Settings → API Keys. Find your{" "}
+                            <strong>Webhook Token</strong> in Xendit Dashboard →
+                            Settings → Webhooks → Callback Token.
+                          </p>
+                          <p>
+                            Register this webhook URL in Xendit Dashboard →
+                            Settings → Webhooks → Invoice paid:
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <code className="flex-1 bg-muted px-2 py-1 rounded break-all">
+                              {webhookUrl}
+                            </code>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => copyToClipboard(webhookUrl)}
+                            >
+                              <HugeiconsIcon
+                                icon={Copy01Icon}
+                                className="h-4 w-4"
+                              />
+                              {copied ? "Copied!" : "Copy"}
+                            </Button>
+                          </div>
+                        </AlertDescription>
+                      </Alert>
+                    </>
+                  );
+                }
+
+                return (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="value">
+                        {formData.service === "RESEND_EMAIL"
+                          ? "API Key"
+                          : formData.service === "WHATSAPP_META"
+                            ? "Credentials (JSON)"
+                            : formData.service === "TELEGRAM_BOT"
+                              ? "Bot Token"
+                              : "API Key / Credentials"}
+                      </Label>
+                      {formData.service === "WHATSAPP_META" ? (
+                        <Textarea
+                          id="value"
+                          placeholder='{"accessToken":"EAA...", "phoneNumberId":"123..."}'
+                          value={formData.value}
+                          onChange={(e) =>
+                            setFormData({ ...formData, value: e.target.value })
+                          }
+                          rows={4}
+                          className="font-mono text-xs"
+                          autoComplete="off"
+                        />
+                      ) : (
+                        <Input
+                          id="value"
+                          type="password"
+                          placeholder={
+                            formData.service === "RESEND_EMAIL"
+                              ? "re_..."
+                              : formData.service === "TELEGRAM_BOT"
+                                ? "123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
+                                : ""
+                          }
+                          value={formData.value}
+                          onChange={(e) =>
+                            setFormData({ ...formData, value: e.target.value })
+                          }
+                          autoComplete="off"
+                        />
+                      )}
                     </div>
-                  </AlertDescription>
-                </Alert>
-              </>
-            ) : (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="value">
-                    {formData.service === "RESEND_EMAIL"
-                      ? "API Key"
-                      : formData.service === "WHATSAPP_META"
-                        ? "Credentials (JSON)"
-                        : formData.service === "TELEGRAM_BOT"
-                          ? "Bot Token"
-                          : "API Key / Credentials"}
-                  </Label>
-                  {formData.service === "WHATSAPP_META" ? (
-                    <Textarea
-                      id="value"
-                      placeholder='{"accessToken":"EAA...", "phoneNumberId":"123..."}'
-                      value={formData.value}
-                      onChange={(e) =>
-                        setFormData({ ...formData, value: e.target.value })
-                      }
-                      rows={4}
-                      className="font-mono text-xs"
-                      autoComplete="off"
-                    />
-                  ) : (
-                    <Input
-                      id="value"
-                      type="password"
-                      placeholder={
-                        formData.service === "RESEND_EMAIL"
-                          ? "re_..."
-                          : formData.service === "TELEGRAM_BOT"
-                            ? "123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
-                            : ""
-                      }
-                      value={formData.value}
-                      onChange={(e) =>
-                        setFormData({ ...formData, value: e.target.value })
-                      }
-                      autoComplete="off"
-                    />
-                  )}
-                </div>
 
-                {formData.service === "RESEND_EMAIL" && (
-                  <Alert>
-                    <HugeiconsIcon icon={AlertCircleIcon} className="h-4 w-4" />
-                    <AlertDescription className="text-xs space-y-2">
-                      <p className="font-medium text-foreground">How to get your Resend API key:</p>
-                      <ol className="space-y-1 list-decimal list-inside">
-                        <li>Sign in at <strong>resend.com</strong> (create a free account if needed).</li>
-                        <li>Go to <strong>Domains</strong> → <strong>Add Domain</strong>, enter your sending domain, and add the DNS records they provide to your registrar. Wait for the status to turn green.</li>
-                        <li>Go to <strong>API Keys</strong> → <strong>Create API Key</strong>. Set permission to <em>Sending access</em> and restrict it to your verified domain.</li>
-                        <li>Copy the key — it starts with <code>re_</code> and won&apos;t be shown again.</li>
-                      </ol>
-                    </AlertDescription>
-                  </Alert>
-                )}
+                    {formData.service === "RESEND_EMAIL" && (
+                      <Alert>
+                        <HugeiconsIcon
+                          icon={AlertCircleIcon}
+                          className="h-4 w-4"
+                        />
+                        <AlertDescription className="text-xs space-y-2">
+                          <p className="font-medium text-foreground">
+                            How to get your Resend API key:
+                          </p>
+                          <ol className="space-y-1 list-decimal list-inside">
+                            <li>
+                              Sign in at <strong>resend.com</strong> (create a
+                              free account if needed).
+                            </li>
+                            <li>
+                              Go to <strong>Domains</strong> →{" "}
+                              <strong>Add Domain</strong>, enter your sending
+                              domain, and add the DNS records they provide to
+                              your registrar. Wait for the status to turn green.
+                            </li>
+                            <li>
+                              Go to <strong>API Keys</strong> →{" "}
+                              <strong>Create API Key</strong>. Set permission to{" "}
+                              <em>Sending access</em> and restrict it to your
+                              verified domain.
+                            </li>
+                            <li>
+                              Copy the key — it starts with <code>re_</code> and
+                              won&apos;t be shown again.
+                            </li>
+                          </ol>
+                        </AlertDescription>
+                      </Alert>
+                    )}
 
-                {formData.service === "WHATSAPP_META" && (
-                  <Alert>
-                    <HugeiconsIcon icon={AlertCircleIcon} className="h-4 w-4" />
-                    <AlertDescription className="text-xs">
-                      For WhatsApp Meta Cloud API, provide a JSON object with{" "}
-                      <code>accessToken</code> and <code>phoneNumberId</code>{" "}
-                      from your Meta Business account.
-                    </AlertDescription>
-                  </Alert>
-                )}
+                    {formData.service === "WHATSAPP_META" && (
+                      <Alert>
+                        <HugeiconsIcon
+                          icon={AlertCircleIcon}
+                          className="h-4 w-4"
+                        />
+                        <AlertDescription className="text-xs">
+                          For WhatsApp Meta Cloud API, provide a JSON object
+                          with <code>accessToken</code> and{" "}
+                          <code>phoneNumberId</code> from your Meta Business
+                          account.
+                        </AlertDescription>
+                      </Alert>
+                    )}
 
-                {formData.service === "TELEGRAM_BOT" && (
-                  <Alert>
-                    <HugeiconsIcon icon={AlertCircleIcon} className="h-4 w-4" />
-                    <AlertDescription className="text-xs">
-                      To create a Telegram bot: Open Telegram, search for{" "}
-                      <code>@BotFather</code>, send <code>/newbot</code>, and
-                      follow the instructions. You&apos;ll receive a bot token
-                      that looks like <code>123456789:ABCdef...</code>. Tenants
-                      will use their phone numbers for Telegram notifications.
-                    </AlertDescription>
-                  </Alert>
-                )}
-              </>
-            )}
+                    {formData.service === "TELEGRAM_BOT" && (
+                      <Alert>
+                        <HugeiconsIcon
+                          icon={AlertCircleIcon}
+                          className="h-4 w-4"
+                        />
+                        <AlertDescription className="text-xs">
+                          To create a Telegram bot: Open Telegram, search for{" "}
+                          <code>@BotFather</code>, send <code>/newbot</code>,
+                          and follow the instructions. You&apos;ll receive a bot
+                          token that looks like <code>123456789:ABCdef...</code>
+                          . Tenants will use their phone numbers for Telegram
+                          notifications.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                  </>
+                );
+              })()}
           </div>
 
           <DialogFooter>
@@ -606,6 +705,10 @@ export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
                 !formData.service ||
                 !formData.value ||
                 (formData.service === "XENDIT" && !formData.webhookToken) ||
+                (!!formData.service &&
+                  !features.includes(
+                    SERVICE_REQUIRED_FEATURE[formData.service],
+                  )) ||
                 submitting
               }
             >
@@ -724,7 +827,10 @@ export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
               <div className="space-y-2">
                 <p className="text-sm font-medium">How it&apos;s used</p>
                 <p className="text-sm text-muted-foreground">
-                  This key is used to send emails to your tenants — including OTP login codes for the tenant portal and any email notifications you configure. Emails are sent from the platform&apos;s verified sender address.
+                  This key is used to send emails to your tenants — including
+                  OTP login codes for the tenant portal and any email
+                  notifications you configure. Emails are sent from the
+                  platform&apos;s verified sender address.
                 </p>
               </div>
             )}
@@ -733,7 +839,10 @@ export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
               <div className="space-y-2">
                 <p className="text-sm font-medium">How it&apos;s used</p>
                 <p className="text-sm text-muted-foreground">
-                  Your Telegram bot sends notification messages to tenants who have linked their Telegram account in the tenant portal. Tenants must start a chat with your bot first before they can receive messages.
+                  Your Telegram bot sends notification messages to tenants who
+                  have linked their Telegram account in the tenant portal.
+                  Tenants must start a chat with your bot first before they can
+                  receive messages.
                 </p>
               </div>
             )}
@@ -810,7 +919,11 @@ export default function ApiKeysClient({ webhookUrl }: { webhookUrl: string }) {
             />
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={submitting}>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+              disabled={submitting}
+            >
               Cancel
             </Button>
             <Button

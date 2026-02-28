@@ -55,6 +55,7 @@ import {
   Search01Icon,
   ViewIcon,
   File01Icon,
+  LockIcon,
 } from "@hugeicons/core-free-icons";
 import { formatDate } from "@/lib/format";
 import { Pagination } from "@/components/pagination";
@@ -82,7 +83,28 @@ type Tenant = {
   fullName: string;
 };
 
-export default function DocumentsClient() {
+export default function DocumentsClient({ features }: { features: string[] }) {
+  if (!features.includes("DOCUMENT_MANAGEMENT")) {
+    return (
+      <Card className="max-w-md mx-auto mt-12">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <HugeiconsIcon icon={LockIcon} className="h-5 w-5 text-muted-foreground" />
+            <CardTitle>Document Management</CardTitle>
+          </div>
+          <CardDescription>
+            Document management is not included in your current plan.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            Upgrade your subscription to upload and manage documents for your properties, units, tenants, and leases.
+          </p>
+          <Button onClick={() => window.location.href = "/subscribe"}>Upgrade Plan</Button>
+        </CardContent>
+      </Card>
+    );
+  }
   const [documents, setDocuments] = useState<Document[]>([]);
   const [filteredDocuments, setFilteredDocuments] = useState<Document[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);

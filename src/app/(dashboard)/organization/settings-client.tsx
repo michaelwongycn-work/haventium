@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useState, useCallback } from "react";
+import { toast } from "sonner";
 import { useSearchParams } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -106,6 +107,7 @@ type SettingsClientProps = {
   hasSettingsManage: boolean;
   hasUsersManage: boolean;
   xenditWebhookUrl: string;
+  features: string[];
 };
 
 // ========================================
@@ -131,7 +133,11 @@ function SettingsContent({
   hasSettingsManage,
   hasUsersManage,
   xenditWebhookUrl,
+  features,
 }: SettingsClientProps) {
+  const hasCustomRoles = features.includes("CUSTOM_ROLES");
+  const handleCustomRolesUpgradeToast = () =>
+    toast.info("Custom roles are not available on your current plan. Upgrade to create and edit roles.");
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab");
 
@@ -553,7 +559,7 @@ function SettingsContent({
                       Manage roles and their permissions
                     </CardDescription>
                   </div>
-                  <Button onClick={() => handleOpenRoleDialog()}>
+                  <Button onClick={hasCustomRoles ? () => handleOpenRoleDialog() : handleCustomRolesUpgradeToast}>
                     <HugeiconsIcon
                       icon={PlusSignIcon}
                       strokeWidth={2}
@@ -602,7 +608,7 @@ function SettingsContent({
                     <p className="text-muted-foreground mb-6">
                       Create your first role to assign permissions
                     </p>
-                    <Button onClick={() => handleOpenRoleDialog()}>
+                    <Button onClick={hasCustomRoles ? () => handleOpenRoleDialog() : handleCustomRolesUpgradeToast}>
                       <HugeiconsIcon
                         icon={PlusSignIcon}
                         strokeWidth={2}
@@ -637,7 +643,7 @@ function SettingsContent({
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  onClick={() => handleOpenRoleDialog(role)}
+                                  onClick={hasCustomRoles ? () => handleOpenRoleDialog(role) : handleCustomRolesUpgradeToast}
                                 >
                                   <HugeiconsIcon
                                     icon={PencilEdit02Icon}
@@ -649,7 +655,7 @@ function SettingsContent({
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  onClick={() => handleOpenDeleteRoleDialog(role)}
+                                  onClick={hasCustomRoles ? () => handleOpenDeleteRoleDialog(role) : handleCustomRolesUpgradeToast}
                                 >
                                   <HugeiconsIcon
                                     icon={Delete02Icon}
@@ -833,7 +839,7 @@ function SettingsContent({
         {/* ======================================== */}
         {hasSettingsManage && (
           <TabsContent value="api-keys" className="mt-6">
-            <ApiKeysClient webhookUrl={xenditWebhookUrl} />
+            <ApiKeysClient webhookUrl={xenditWebhookUrl} features={features} />
           </TabsContent>
         )}
 
@@ -851,7 +857,7 @@ function SettingsContent({
         {/* ======================================== */}
         {hasSettingsManage && (
           <TabsContent value="portal" className="mt-6">
-            <PortalSettingsClient />
+            <PortalSettingsClient hasFeature={features.includes("TENANT_PORTAL")} />
           </TabsContent>
         )}
       </Tabs>
@@ -1147,6 +1153,7 @@ export default function SettingsClient({
   hasSettingsManage,
   hasUsersManage,
   xenditWebhookUrl,
+  features,
 }: SettingsClientProps) {
   return (
     <Suspense fallback={<div>Loading...</div>}>
@@ -1154,6 +1161,7 @@ export default function SettingsClient({
         hasSettingsManage={hasSettingsManage}
         hasUsersManage={hasUsersManage}
         xenditWebhookUrl={xenditWebhookUrl}
+        features={features}
       />
     </Suspense>
   );

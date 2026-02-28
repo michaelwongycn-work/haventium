@@ -1,6 +1,7 @@
 import { put } from "@vercel/blob";
 import {
   requireAccess,
+  requireFeature,
   handleApiError,
   ActivityLogger,
   apiCreated,
@@ -30,6 +31,9 @@ export async function POST(request: Request) {
       "create",
     );
     if (!authorized) return response;
+
+    const { allowed, response: featureResponse } = await requireFeature(session.user.organizationId, "DOCUMENT_MANAGEMENT");
+    if (!allowed) return featureResponse;
 
     const formData = await request.formData();
     const file = formData.get("file") as File | null;

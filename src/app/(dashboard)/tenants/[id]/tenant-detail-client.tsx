@@ -28,6 +28,7 @@ import {
   ShieldEnergyIcon,
   Notification01Icon,
   MoreHorizontalIcon,
+  LockIcon,
 } from "@hugeicons/core-free-icons";
 import { formatDate, formatCurrency } from "@/lib/format";
 
@@ -180,8 +181,10 @@ type Tenant = {
 
 export default function TenantDetailClient({
   params,
+  features = [],
 }: {
   params: { id: string };
+  features?: string[];
 }) {
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -494,7 +497,7 @@ export default function TenantDetailClient({
           {/* Documents */}
           <Card>
             <CardContent className="pt-6">
-              <DocumentList entityType="tenant" entityId={params.id} />
+              <DocumentList entityType="tenant" entityId={params.id} hasFeature={features.includes("DOCUMENT_MANAGEMENT")} />
             </CardContent>
           </Card>
 
@@ -505,7 +508,12 @@ export default function TenantDetailClient({
               <CardDescription>Recent activity for this tenant</CardDescription>
             </CardHeader>
             <CardContent>
-              {!tenant?.activities || tenant.activities.length === 0 ? (
+              {!features.includes("ACTIVITY_LOG") ? (
+                <div className="flex flex-col items-center justify-center py-10 gap-3 text-muted-foreground">
+                  <HugeiconsIcon icon={LockIcon} size={24} />
+                  <p className="text-sm">Activity log is not available on your current plan.</p>
+                </div>
+              ) : !tenant?.activities || tenant.activities.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   No activity yet
                 </div>

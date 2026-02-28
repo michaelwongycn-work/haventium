@@ -52,6 +52,7 @@ import {
   ShieldEnergyIcon,
   Notification01Icon,
   MoreHorizontalIcon,
+  LockIcon,
 } from "@hugeicons/core-free-icons";
 import { formatDate, formatCurrency } from "@/lib/format";
 
@@ -181,8 +182,10 @@ type Lease = {
 
 export default function LeaseDetailClient({
   params,
+  features = [],
 }: {
   params: { id: string };
+  features?: string[];
 }) {
   const [lease, setLease] = useState<Lease | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -1118,11 +1121,12 @@ export default function LeaseDetailClient({
                 }
 
                 if (!lease?.paidAt && lease?.status === "DRAFT") {
+                  const hasPaymentGateway = features.includes("PAYMENT_GATEWAY");
                   return (
                     <Button
                       variant="outline"
                       className="w-full"
-                      onClick={handleCreatePaymentLink}
+                      onClick={hasPaymentGateway ? handleCreatePaymentLink : () => toast.info("Payment gateway is not available on your current plan. Upgrade to unlock it.")}
                       disabled={isCreatingPaymentLink}
                     >
                       {isCreatingPaymentLink
@@ -1140,7 +1144,7 @@ export default function LeaseDetailClient({
           {/* Documents */}
           <Card>
             <CardContent className="pt-6">
-              <DocumentList entityType="lease" entityId={params.id} />
+              <DocumentList entityType="lease" entityId={params.id} hasFeature={features.includes("DOCUMENT_MANAGEMENT")} />
             </CardContent>
           </Card>
 
@@ -1153,7 +1157,12 @@ export default function LeaseDetailClient({
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {!lease?.activities || lease.activities.length === 0 ? (
+              {!features.includes("ACTIVITY_LOG") ? (
+                <div className="flex flex-col items-center justify-center py-10 gap-3 text-muted-foreground">
+                  <HugeiconsIcon icon={LockIcon} size={24} />
+                  <p className="text-sm">Activity log is not available on your current plan.</p>
+                </div>
+              ) : !lease?.activities || lease.activities.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   No activity yet
                 </div>

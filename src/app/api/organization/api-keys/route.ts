@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import type { ApiKeyService } from "@prisma/client";
 import {
   requireAccess,
+  requireFeature,
   apiSuccess,
   apiCreated,
   apiError,
@@ -71,6 +72,9 @@ export async function POST(request: Request) {
       "manage",
     );
     if (!authorized) return response;
+
+    const { allowed, response: featureResponse } = await requireFeature(session.user.organizationId, "PAYMENT_GATEWAY");
+    if (!allowed) return featureResponse;
 
     const validatedData = await validateRequest(request, createApiKeySchema);
 

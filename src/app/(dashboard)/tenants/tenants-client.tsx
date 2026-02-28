@@ -81,7 +81,10 @@ type Tenant = {
   };
 };
 
-export default function TenantsClient() {
+export default function TenantsClient({ features }: { features: string[] }) {
+  const hasBulkImport = features.includes("BULK_IMPORT");
+  const handleUpgradeToast = () =>
+    toast.info("Bulk import is not available on your current plan. Upgrade to unlock it.");
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [filteredTenants, setFilteredTenants] = useState<Tenant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -352,7 +355,7 @@ export default function TenantsClient() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleDownloadTemplate}>
+          <Button variant="outline" size="sm" onClick={hasBulkImport ? handleDownloadTemplate : handleUpgradeToast}>
             <HugeiconsIcon
               icon={FileDownloadIcon}
               strokeWidth={2}
@@ -368,7 +371,7 @@ export default function TenantsClient() {
             />
             Export to Excel
           </Button>
-          <Button variant="outline" onClick={() => setIsBulkImportOpen(true)}>
+          <Button variant="outline" onClick={hasBulkImport ? () => setIsBulkImportOpen(true) : handleUpgradeToast}>
             <HugeiconsIcon
               icon={Upload04Icon}
               strokeWidth={2}

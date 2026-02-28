@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAccess, handleApiError } from "@/lib/api";
+import { requireAccess, requireFeature, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 
 const updateRoleSchema = z.object({
@@ -22,6 +22,9 @@ export async function GET(
       "manage",
     );
     if (!authorized) return response;
+
+    const { allowed, response: featureResponse } = await requireFeature(session.user.organizationId, "CUSTOM_ROLES");
+    if (!allowed) return featureResponse;
 
     const { id } = await params;
 
@@ -65,6 +68,9 @@ export async function PATCH(
       "manage",
     );
     if (!authorized) return response;
+
+    const { allowed, response: featureResponse } = await requireFeature(session.user.organizationId, "CUSTOM_ROLES");
+    if (!allowed) return featureResponse;
 
     const { id } = await params;
     const body = await request.json();
@@ -174,6 +180,9 @@ export async function DELETE(
       "manage",
     );
     if (!authorized) return response;
+
+    const { allowed, response: featureResponse } = await requireFeature(session.user.organizationId, "CUSTOM_ROLES");
+    if (!allowed) return featureResponse;
 
     const { id } = await params;
 

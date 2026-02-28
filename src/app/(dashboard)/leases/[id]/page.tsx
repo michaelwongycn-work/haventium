@@ -6,7 +6,7 @@ export default async function LeaseDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { authorized } = await checkPageAccess("leases", "read");
+  const { authorized, features } = await checkPageAccess("leases", "read");
 
   if (!authorized) {
     return <AccessDenied resource="Lease Details" />;
@@ -14,5 +14,5 @@ export default async function LeaseDetailPage({
 
   const { id } = await params;
 
-  return <LeaseDetailClient params={{ id }} />;
+  return <LeaseDetailClient params={{ id }} features={features} />;
 }

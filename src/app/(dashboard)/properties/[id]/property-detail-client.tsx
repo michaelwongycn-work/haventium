@@ -58,6 +58,7 @@ import {
   ShieldEnergyIcon,
   Notification01Icon,
   MoreHorizontalIcon,
+  LockIcon,
 } from "@hugeicons/core-free-icons";
 import { formatCurrency } from "@/lib/format";
 
@@ -155,9 +156,11 @@ type Unit = {
 export default function PropertyDetailClient({
   params,
   roles,
+  features = [],
 }: {
   params: { id: string };
   roles: UserRole[];
+  features?: string[];
 }) {
   const [property, setProperty] = useState<Property | null>(null);
   const [units, setUnits] = useState<Unit[]>([]);
@@ -582,7 +585,7 @@ export default function PropertyDetailClient({
       {/* Documents */}
       <Card>
         <CardContent className="pt-6">
-          <DocumentList entityType="property" entityId={params.id} />
+          <DocumentList entityType="property" entityId={params.id} hasFeature={features.includes("DOCUMENT_MANAGEMENT")} />
         </CardContent>
       </Card>
 
@@ -593,7 +596,12 @@ export default function PropertyDetailClient({
           <CardDescription>Recent activity for this property</CardDescription>
         </CardHeader>
         <CardContent>
-          {!property?.activities || property.activities.length === 0 ? (
+          {!features.includes("ACTIVITY_LOG") ? (
+            <div className="flex flex-col items-center justify-center py-10 gap-3 text-muted-foreground">
+              <HugeiconsIcon icon={LockIcon} size={24} />
+              <p className="text-sm">Activity log is not available on your current plan.</p>
+            </div>
+          ) : !property?.activities || property.activities.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               No activity yet
             </div>

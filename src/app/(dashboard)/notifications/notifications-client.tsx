@@ -3,6 +3,10 @@
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { LockIcon } from "@hugeicons/core-free-icons";
 import NotificationTemplatesClient from "./templates/templates-client";
 import NotificationRulesClient from "./rules/rules-client";
 import NotificationLogsClient from "./logs/logs-client";
@@ -48,7 +52,29 @@ function NotificationsContent() {
   );
 }
 
-export default function NotificationsClient() {
+export default function NotificationsClient({ features }: { features: string[] }) {
+  if (!features.includes("REMINDER")) {
+    return (
+      <Card className="max-w-md mx-auto mt-12">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <HugeiconsIcon icon={LockIcon} className="h-5 w-5 text-muted-foreground" />
+            <CardTitle>Notifications</CardTitle>
+          </div>
+          <CardDescription>
+            Notifications are not included in your current plan.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            Upgrade your subscription to send automated notifications to your tenants via email, WhatsApp, and Telegram.
+          </p>
+          <Button onClick={() => window.location.href = "/subscribe"}>Upgrade Plan</Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Suspense fallback={<div>Loading...</div>}>
       <NotificationsContent />

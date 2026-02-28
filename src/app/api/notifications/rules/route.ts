@@ -7,6 +7,7 @@ import type {
 } from "@prisma/client";
 import {
   requireAccess,
+  requireFeature,
   apiSuccess,
   apiCreated,
   apiError,
@@ -66,6 +67,9 @@ export async function GET(request: Request) {
       "read",
     );
     if (!authorized) return response;
+
+    const { allowed, response: featureResponse } = await requireFeature(session.user.organizationId, "REMINDER");
+    if (!allowed) return featureResponse;
 
     const { searchParams } = new URL(request.url);
     const trigger = parseEnumParam(
@@ -132,6 +136,9 @@ export async function POST(request: Request) {
       "create",
     );
     if (!authorized) return response;
+
+    const { allowed, response: featureResponse } = await requireFeature(session.user.organizationId, "REMINDER");
+    if (!allowed) return featureResponse;
 
     const validatedData = await validateRequest(request, createRuleSchema);
 

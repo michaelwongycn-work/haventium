@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import {
   requireAccess,
+  requireFeature,
   apiSuccess,
   apiCreated,
   apiError,
@@ -20,6 +21,9 @@ export async function POST(
       "update",
     );
     if (!authorized) return response;
+
+    const { allowed, response: featureResponse } = await requireFeature(session.user.organizationId, "PAYMENT_GATEWAY");
+    if (!allowed) return featureResponse;
 
     const { id } = await params;
     const organizationId = session.user.organizationId;

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   requireAccess,
+  requireFeature,
   handleApiError,
   ActivityLogger,
   apiSuccess,
@@ -112,6 +113,9 @@ export async function POST(request: Request) {
       "create"
     );
     if (!authorized) return response;
+
+    const { allowed, response: featureResponse } = await requireFeature(session.user.organizationId, "BULK_IMPORT");
+    if (!allowed) return featureResponse;
 
     const body = await request.json();
     const { dryRun, rows } = requestSchema.parse(body);

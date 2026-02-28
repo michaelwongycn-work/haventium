@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAccess, handleApiError, parsePaginationParams, createPaginatedResponse } from "@/lib/api";
+import { requireAccess, requireFeature, handleApiError, parsePaginationParams, createPaginatedResponse } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 
 const createRoleSchema = z.object({
@@ -62,6 +62,9 @@ export async function POST(request: Request) {
       "manage",
     );
     if (!authorized) return response;
+
+    const { allowed, response: featureResponse } = await requireFeature(session.user.organizationId, "CUSTOM_ROLES");
+    if (!allowed) return featureResponse;
 
     const body = await request.json();
     const validatedData = createRoleSchema.parse(body);

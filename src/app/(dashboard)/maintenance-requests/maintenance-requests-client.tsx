@@ -57,6 +57,7 @@ import {
   Download04Icon,
   Upload04Icon,
   FileDownloadIcon,
+  LockIcon,
 } from "@hugeicons/core-free-icons";
 import { formatDate } from "@/lib/format";
 import { Pagination } from "@/components/pagination";
@@ -114,7 +115,32 @@ type Unit = {
   propertyId: string;
 };
 
-export default function MaintenanceRequestsClient() {
+export default function MaintenanceRequestsClient({ features }: { features: string[] }) {
+  if (!features.includes("MAINTENANCE_MANAGEMENT")) {
+    return (
+      <Card className="max-w-md mx-auto mt-12">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <HugeiconsIcon icon={LockIcon} className="h-5 w-5 text-muted-foreground" />
+            <CardTitle>Maintenance Management</CardTitle>
+          </div>
+          <CardDescription>
+            Maintenance management is not included in your current plan.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            Upgrade your subscription to track and manage maintenance requests for your properties.
+          </p>
+          <Button onClick={() => window.location.href = "/subscribe"}>Upgrade Plan</Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const hasBulkImport = features.includes("BULK_IMPORT");
+  const handleUpgradeToast = () =>
+    toast.info("Bulk import is not available on your current plan. Upgrade to unlock it.");
   const [requests, setRequests] = useState<MaintenanceRequest[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
@@ -515,7 +541,7 @@ export default function MaintenanceRequestsClient() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleDownloadTemplate}>
+          <Button variant="outline" size="sm" onClick={hasBulkImport ? handleDownloadTemplate : handleUpgradeToast}>
             <HugeiconsIcon
               icon={FileDownloadIcon}
               strokeWidth={2}
@@ -531,7 +557,7 @@ export default function MaintenanceRequestsClient() {
             />
             Export to Excel
           </Button>
-          <Button variant="outline" onClick={() => setIsBulkImportOpen(true)}>
+          <Button variant="outline" onClick={hasBulkImport ? () => setIsBulkImportOpen(true) : handleUpgradeToast}>
             <HugeiconsIcon
               icon={Upload04Icon}
               strokeWidth={2}

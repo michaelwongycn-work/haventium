@@ -2,6 +2,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import {
   requireAccess,
+  requireFeature,
   apiSuccess,
   apiError,
   handleApiError,
@@ -35,6 +36,9 @@ export async function POST(request: Request) {
       "create"
     );
     if (!authorized) return response;
+
+    const { allowed, response: featureResponse } = await requireFeature(session.user.organizationId, "MAINTENANCE_MANAGEMENT");
+    if (!allowed) return featureResponse;
 
     const body = await request.json();
     const validatedData = bulkImportSchema.parse(body);

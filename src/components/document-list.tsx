@@ -27,6 +27,7 @@ import {
   Delete02Icon,
   ViewIcon,
   PlusSignIcon,
+  LockIcon,
 } from "@hugeicons/core-free-icons";
 import { DocumentUpload } from "./document-upload";
 import { formatDate } from "@/lib/format";
@@ -43,16 +44,18 @@ type Document = {
 interface DocumentListProps {
   entityType: "property" | "unit" | "tenant" | "lease";
   entityId: string;
+  hasFeature?: boolean;
 }
 
-export function DocumentList({ entityType, entityId }: DocumentListProps) {
+export function DocumentList({ entityType, entityId, hasFeature = true }: DocumentListProps) {
   const [documents, setDocuments] = useState<Document[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(hasFeature);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deletingDocument, setDeletingDocument] = useState<Document | null>(null);
 
   const fetchDocuments = useCallback(async () => {
+    if (!hasFeature) return;
     try {
       setIsLoading(true);
       const response = await fetch(
@@ -103,6 +106,23 @@ export function DocumentList({ entityType, entityId }: DocumentListProps) {
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
+
+  if (!hasFeature) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold">Documents</h3>
+            <p className="text-sm text-muted-foreground">Uploaded files and attachments</p>
+          </div>
+        </div>
+        <div className="flex flex-col items-center justify-center py-10 gap-3 border rounded-md text-muted-foreground">
+          <HugeiconsIcon icon={LockIcon} size={24} />
+          <p className="text-sm">Document management is not available on your current plan.</p>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return <div className="text-sm text-muted-foreground">Loading documents...</div>;

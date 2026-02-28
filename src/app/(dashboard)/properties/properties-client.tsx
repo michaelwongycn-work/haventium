@@ -65,7 +65,10 @@ type Property = {
   };
 };
 
-export default function PropertiesClient({ roles }: { roles: UserRole[] }) {
+export default function PropertiesClient({ roles, features }: { roles: UserRole[]; features: string[] }) {
+  const hasBulkImport = features.includes("BULK_IMPORT");
+  const handleUpgradeToast = () =>
+    toast.info("Bulk import is not available on your current plan. Upgrade to unlock it.");
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -295,7 +298,7 @@ export default function PropertiesClient({ roles }: { roles: UserRole[] }) {
         <div className="flex items-center gap-2">
           {hasAccess(roles, "properties", "create") && (
             <>
-              <Button variant="outline" size="sm" onClick={handleDownloadTemplate}>
+              <Button variant="outline" size="sm" onClick={hasBulkImport ? handleDownloadTemplate : handleUpgradeToast}>
                 <HugeiconsIcon
                   icon={FileDownloadIcon}
                   strokeWidth={2}
@@ -311,7 +314,7 @@ export default function PropertiesClient({ roles }: { roles: UserRole[] }) {
                 />
                 Export to Excel
               </Button>
-              <Button variant="outline" onClick={() => setIsBulkImportOpen(true)}>
+              <Button variant="outline" onClick={hasBulkImport ? () => setIsBulkImportOpen(true) : handleUpgradeToast}>
                 <HugeiconsIcon
                   icon={Upload04Icon}
                   strokeWidth={2}

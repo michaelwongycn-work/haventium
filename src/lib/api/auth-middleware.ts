@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { hasAccess } from "@/lib/access-utils";
 import { apiForbidden, apiUnauthorized } from "./response";
+import { prisma } from "@/lib/prisma";
 
 /**
  * Authentication Middleware Utilities
@@ -60,6 +61,38 @@ export async function requireAccess(resource: string, action: string) {
     response: null,
     session,
   };
+}
+
+/**
+ * Check if the org's subscription tier includes a specific feature.
+ * Call after requireAccess/requireAuth — pass the session from those.
+ */
+export async function requireFeature(
+  organizationId: string,
+  featureCode: string,
+) {
+  const tierFeature = await prisma.tierFeature.findFirst({
+    where: {
+      feature: { code: featureCode },
+      tier: {
+        subscriptions: {
+          some: { organizationId, status: "ACTIVE" },
+        },
+      },
+    },
+  });
+
+  if (!tierFeature) {
+    return {
+      allowed: false as const,
+      response: NextResponse.json(
+        { error: "Your current plan does not include this feature" },
+        { status: 403 },
+      ),
+    };
+  }
+
+  return { allowed: true as const, response: null };
 }
 
 /**

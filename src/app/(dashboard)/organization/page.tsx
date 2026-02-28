@@ -1,14 +1,10 @@
-import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { AccessDenied, hasAccess } from "@/lib/guards";
+import { AccessDenied, hasAccess, checkPageAccess } from "@/lib/guards";
 import SettingsClient from "./settings-client";
 
 export default async function SettingsPage() {
-  const session = await auth();
-
-  if (!session?.user) {
-    redirect("/login");
-  }
+  // Use checkPageAccess for any settings/users resource to get features
+  const { session, features } = await checkPageAccess("settings", "manage");
 
   const roles = session.user.roles || [];
   const hasSettingsManage = hasAccess(roles, "settings", "manage");
@@ -26,6 +22,7 @@ export default async function SettingsPage() {
       hasSettingsManage={hasSettingsManage}
       hasUsersManage={hasUsersManage}
       xenditWebhookUrl={`${baseUrl}/api/webhooks/xendit/rent`}
+      features={features}
     />
   );
 }
