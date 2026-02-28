@@ -8,6 +8,12 @@ import { logger } from "@/lib/logger"
 import { sendNotification } from "./notification-service"
 import { replaceTemplateVariables } from "./template-utils"
 import type { NotificationTrigger, NotificationChannel } from "../constants"
+
+function jitteredDelay(minMs: number, maxMs: number): Promise<void> {
+  return new Promise((resolve) =>
+    setTimeout(resolve, minMs + Math.random() * (maxMs - minMs))
+  )
+}
 import { decrypt } from "@/lib/encryption"
 import type { WhatsAppMetaCredentials } from "./whatsapp-meta-service"
 
@@ -313,6 +319,10 @@ export async function processNotifications({
             result.errors.push(
               `Failed to send ${channel} to ${recipientContact}: ${sendResult.error}`
             )
+          }
+
+          if (channel === "WHATSAPP") {
+            await jitteredDelay(1000, 4000)
           }
         }
       }

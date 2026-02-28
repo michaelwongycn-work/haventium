@@ -21,7 +21,7 @@ export function handleApiError(
   // Prisma unique constraint violations
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     if (error.code === "P2002") {
-      const field = (error.meta?.target as string[])?.[0] || "field";
+      const field = Array.isArray(error.meta?.target) ? (error.meta.target as string[])[0] : "field";
       return apiError(`A record with this ${field} already exists`, 400);
     }
 

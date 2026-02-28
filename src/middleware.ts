@@ -42,7 +42,8 @@ async function resolveOrgFromHost(host: string): Promise<string | null> {
       expiresAt: Date.now() + CACHE_TTL_MS,
     });
     return data.orgId;
-  } catch {
+  } catch (err) {
+    console.error("[middleware] Failed to resolve org from host", host, err);
     return null;
   }
 }

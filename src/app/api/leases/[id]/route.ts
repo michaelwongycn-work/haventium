@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { requireAccess, handleApiError, logger, apiSuccess, apiNotFound, apiError, logActivity } from "@/lib/api";
+import { validateLeaseAvailability } from "@/lib/api/lease-validation";
 import { prisma } from "@/lib/prisma";
 import { processNotifications } from "@/lib/services/notification-processor";
 import { NOTIFICATION_TRIGGER } from "@/lib/constants";
@@ -236,42 +237,13 @@ export async function PATCH(
       }
 
       // Check for overlapping leases when updating dates
-      // First, check if there's an auto-renewal lease that would block this
-      const autoRenewalLease = await prisma.leaseAgreement.findFirst({
-        where: {
-          unitId: existingLease.unitId,
-          id: { not: id }, // Exclude current lease
-          status: {
-            in: ["DRAFT", "ACTIVE"],
-          },
-          isAutoRenew: true,
-          startDate: { lte: endDate }, // Auto-renewal lease starts before or during our end date
-        },
+      const availabilityCheck = await validateLeaseAvailability({
+        unitId: existingLease.unitId,
+        startDate,
+        endDate,
+        excludeLeaseId: id,
       });
-
-      if (autoRenewalLease) {
-        return apiError("Unit has an active auto-renewal lease. The lease must be ended before booking future dates.", 400);
-      }
-
-      // Check for regular overlapping leases (non-auto-renewal)
-      const overlappingLease = await prisma.leaseAgreement.findFirst({
-        where: {
-          unitId: existingLease.unitId,
-          id: { not: id }, // Exclude current lease
-          status: {
-            in: ["DRAFT", "ACTIVE"],
-          },
-          isAutoRenew: false,
-          AND: [
-            { startDate: { lte: endDate } },
-            { endDate: { gte: startDate } },
-          ],
-        },
-      });
-
-      if (overlappingLease) {
-        return apiError("Unit already has an overlapping lease for these dates", 400);
-      }
+      if (!availabilityCheck.valid) return availabilityCheck.error!;
     }
 
     const updateData: Record<string, string | number | boolean | Date | null> =

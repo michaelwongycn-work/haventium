@@ -204,39 +204,36 @@ export async function POST(request: Request) {
       return now >= deadline;
     });
 
-    for (const lease of eligibleLeases) {
-      summary.processed++;
+    summary.processed = eligibleLeases.length;
 
-      try {
-        const result = await createRenewalLease(lease);
+    const results = await Promise.allSettled(
+      eligibleLeases.map((lease) => createRenewalLease(lease)),
+    );
 
-        if (result) {
-          summary.succeeded++;
-          summary.details.push({
-            leaseId: lease.id,
-            tenantName: lease.tenant.fullName,
-            unitName: `${lease.unit.property.name} - ${lease.unit.name}`,
-            success: true,
-          });
-        } else {
-          // Validation failed (unit not available)
-          summary.failed++;
-          summary.details.push({
-            leaseId: lease.id,
-            tenantName: lease.tenant.fullName,
-            unitName: `${lease.unit.property.name} - ${lease.unit.name}`,
-            success: false,
-            error: "Unit not available for renewal (overlapping lease exists)",
-          });
-        }
-      } catch (error) {
+    for (let i = 0; i < eligibleLeases.length; i++) {
+      const lease = eligibleLeases[i];
+      const outcome = results[i];
+      const unitName = `${lease.unit.property.name} - ${lease.unit.name}`;
+
+      if (outcome.status === "fulfilled" && outcome.value) {
+        summary.succeeded++;
+        summary.details.push({
+          leaseId: lease.id,
+          tenantName: lease.tenant.fullName,
+          unitName,
+          success: true,
+        });
+      } else {
         summary.failed++;
         summary.details.push({
           leaseId: lease.id,
           tenantName: lease.tenant.fullName,
-          unitName: `${lease.unit.property.name} - ${lease.unit.name}`,
+          unitName,
           success: false,
-          error: error instanceof Error ? error.message : "Unknown error",
+          error:
+            outcome.status === "rejected"
+              ? (outcome.reason instanceof Error ? outcome.reason.message : "Unknown error")
+              : "Unit not available for renewal (overlapping lease exists)",
         });
       }
     }

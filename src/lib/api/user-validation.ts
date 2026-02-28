@@ -16,9 +16,10 @@ export interface RoleValidationResult {
  */
 export async function ensureNotLastOwner(
   userId: string,
+  organizationId: string,
 ): Promise<RoleValidationResult> {
   const user = await prisma.user.findUnique({
-    where: { id: userId },
+    where: { id: userId, organizationId },
     include: {
       userRoles: {
         include: {
@@ -103,7 +104,7 @@ export async function validateRoleChange(
 
   // Check if changing from Owner role
   const user = await prisma.user.findUnique({
-    where: { id: userId },
+    where: { id: userId, organizationId },
     include: {
       userRoles: {
         include: {

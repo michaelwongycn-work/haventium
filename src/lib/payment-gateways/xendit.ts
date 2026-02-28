@@ -58,7 +58,10 @@ export function verifyXenditWebhook(
   if (!callbackToken || !webhookToken) return false;
   try {
     return crypto.timingSafeEqual(Buffer.from(callbackToken), Buffer.from(webhookToken));
-  } catch {
-    return false;
+  } catch (err) {
+    // timingSafeEqual throws TypeError when buffers have different lengths —
+    // that means tokens don't match, so return false. Re-throw anything unexpected.
+    if (err instanceof TypeError) return false;
+    throw err;
   }
 }

@@ -71,14 +71,28 @@ export async function requireFeature(
   organizationId: string,
   featureCode: string,
 ) {
+  // Verify org has an active subscription on a tier that includes this feature.
+  // We first look up the org's active subscription tier, then check feature inclusion —
+  // this makes the org scope explicit rather than relying on nested relationship filtering.
+  const activeSubscription = await prisma.subscription.findFirst({
+    where: { organizationId, status: "ACTIVE" },
+    select: { tierId: true },
+  });
+
+  if (!activeSubscription) {
+    return {
+      allowed: false as const,
+      response: NextResponse.json(
+        { error: "Your current plan does not include this feature" },
+        { status: 403 },
+      ),
+    };
+  }
+
   const tierFeature = await prisma.tierFeature.findFirst({
     where: {
+      tierId: activeSubscription.tierId,
       feature: { code: featureCode },
-      tier: {
-        subscriptions: {
-          some: { organizationId, status: "ACTIVE" },
-        },
-      },
     },
   });
 

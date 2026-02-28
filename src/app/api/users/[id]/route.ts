@@ -206,7 +206,7 @@ export async function DELETE(
     );
     if (!notLastUserCheck.valid) return notLastUserCheck.error!;
 
-    const notLastOwnerCheck = await ensureNotLastOwner(id);
+    const notLastOwnerCheck = await ensureNotLastOwner(id, session.user.organizationId);
     if (!notLastOwnerCheck.valid) return notLastOwnerCheck.error!;
 
     await prisma.user.delete({
