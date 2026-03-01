@@ -31,6 +31,9 @@ model Organization {
   // Tenant portal
   subdomain String? @unique // e.g. "kos-tosca" → kos-tosca.haventium.com
 
+  // Lease agreement
+  leaseAgreementTemplate String? // Custom clauses body for PDF
+
   users                 User[]
   properties            Property[]
   tenants               Tenant[]

@@ -53,6 +53,7 @@ import {
   Notification01Icon,
   MoreHorizontalIcon,
   LockIcon,
+  FileDownloadIcon,
 } from "@hugeicons/core-free-icons";
 import { formatDate, formatCurrency } from "@/lib/format";
 
@@ -206,6 +207,9 @@ export default function LeaseDetailClient({
   const [depositStatusForm, setDepositStatusForm] =
     useState<DepositStatus>("HELD");
 
+  const [isGeneratingAgreement, setIsGeneratingAgreement] = useState(false);
+  const [isDownloadingReceipt, setIsDownloadingReceipt] = useState(false);
+
   // Payment link state
   const [paymentTransactions, setPaymentTransactions] = useState<
     Array<{
@@ -265,6 +269,56 @@ export default function LeaseDetailClient({
     };
     fetchPayments();
   }, [leaseId]);
+
+  const handleDownloadAgreement = async () => {
+    setIsGeneratingAgreement(true);
+    try {
+      const res = await fetch(`/api/leases/${leaseId}/generate-agreement`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || "Failed to generate agreement");
+        return;
+      }
+      const a = document.createElement("a");
+      a.href = data.url;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch {
+      toast.error("Failed to generate agreement");
+    } finally {
+      setIsGeneratingAgreement(false);
+    }
+  };
+
+  const handleDownloadReceipt = async () => {
+    setIsDownloadingReceipt(true);
+    try {
+      const res = await fetch(`/api/leases/${leaseId}/download-receipt`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || "Receipt unavailable — payment has not been completed yet.");
+        return;
+      }
+      const a = document.createElement("a");
+      a.href = data.url;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch {
+      toast.error("Failed to download receipt");
+    } finally {
+      setIsDownloadingReceipt(false);
+    }
+  };
 
   const handleCreatePaymentLink = async () => {
     if (!leaseId) return;
@@ -560,6 +614,34 @@ export default function LeaseDetailClient({
           </h1>
           <p className="text-muted-foreground mt-1">Lease agreement details</p>
         </div>
+        {lease && (
+          <>
+            <Button
+              variant="outline"
+              onClick={handleDownloadAgreement}
+              disabled={isGeneratingAgreement}
+            >
+              <HugeiconsIcon
+                icon={FileDownloadIcon}
+                strokeWidth={2}
+                data-icon="inline-start"
+              />
+              {isGeneratingAgreement ? "Loading..." : "Download Agreement"}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleDownloadReceipt}
+              disabled={isDownloadingReceipt}
+            >
+              <HugeiconsIcon
+                icon={FileDownloadIcon}
+                strokeWidth={2}
+                data-icon="inline-start"
+              />
+              {isDownloadingReceipt ? "Loading..." : "Download Receipt"}
+            </Button>
+          </>
+        )}
         {lease && lease.status === "ACTIVE" && daysRemaining > 0 && (
           <div className="text-right">
             <p className="text-sm text-muted-foreground">Days Remaining</p>

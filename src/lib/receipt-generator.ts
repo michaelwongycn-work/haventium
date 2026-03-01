@@ -1,5 +1,6 @@
 import { jsPDF } from "jspdf";
 import { put } from "@vercel/blob";
+import { fetchLogoBase64, drawHeader, drawFooter, FOOTER_H } from "./pdf-template";
 
 export interface ReceiptData {
   transactionId: string;
@@ -28,70 +29,78 @@ export async function generateReceipt(
   data: ReceiptData,
 ): Promise<ReceiptResult> {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
-
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 20;
-  let y = 20;
+  const labelX = margin;
+  const valueX = margin + 50;
 
-  // Header
+  const logo = await fetchLogoBase64();
+  const generatedAt = new Date().toISOString().replace("T", " ").slice(0, 19) + " UTC";
+  const docId = `RCP-${data.transactionId.slice(-8).toUpperCase()}`;
+
+  let y = drawHeader(doc, logo, data.organizationName);
+  drawFooter(doc, generatedAt, docId, data.tenantName, data.organizationName, "This is an automatically generated payment receipt.");
+
+  // Title
   doc.setFontSize(20);
   doc.setFont("helvetica", "bold");
-  doc.text(data.organizationName, margin, y);
-  y += 8;
-
-  doc.setFontSize(12);
-  doc.setFont("helvetica", "normal");
+  doc.setTextColor(20, 20, 20);
   doc.text("Payment Receipt", margin, y);
-  y += 15;
+  y += 12;
+  doc.setTextColor(0, 0, 0);
+
+  // Transaction Details
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "bold");
+  doc.text("Transaction Details", margin, y);
+  y += 6;
+
+  const infoRows: [string, string][] = [
+    ["Transaction ID:", data.transactionId],
+    ["Payment Date:", data.paidAt],
+  ];
+
+  doc.setFontSize(9);
+  for (const [label, value] of infoRows) {
+    doc.setFont("helvetica", "bold");
+    doc.text(label, labelX, y);
+    doc.setFont("helvetica", "normal");
+    doc.text(value, valueX, y);
+    y += 5;
+  }
+  y += 7;
+
+  // Tenant & Property
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "bold");
+  doc.text("Tenant & Property", margin, y);
+  y += 6;
+
+  const partyRows: [string, string][] = [
+    ["Tenant:", data.tenantName],
+    ["Property / Unit:", `${data.propertyName} / ${data.unitName}`],
+    ["Lease Period:", `${data.leaseStartDate} – ${data.leaseEndDate}`],
+  ];
+
+  doc.setFontSize(9);
+  for (const [label, value] of partyRows) {
+    doc.setFont("helvetica", "bold");
+    doc.text(label, labelX, y);
+    doc.setFont("helvetica", "normal");
+    doc.text(value, valueX, y);
+    y += 5;
+  }
+  y += 7;
 
   // Divider
-  doc.setDrawColor(200, 200, 200);
-  doc.line(margin, y, pageWidth - margin, y);
-  y += 8;
-
-  // Transaction ID
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "bold");
-  doc.text("Transaction ID:", margin, y);
-  doc.setFont("helvetica", "normal");
-  doc.text(data.transactionId, margin + 40, y);
-  y += 6;
-
-  // Paid At
-  doc.setFont("helvetica", "bold");
-  doc.text("Payment Date:", margin, y);
-  doc.setFont("helvetica", "normal");
-  doc.text(data.paidAt, margin + 40, y);
-  y += 12;
-
-  // Tenant
-  doc.setFont("helvetica", "bold");
-  doc.text("Tenant:", margin, y);
-  doc.setFont("helvetica", "normal");
-  doc.text(data.tenantName, margin + 40, y);
-  y += 6;
-
-  // Property / Unit
-  doc.setFont("helvetica", "bold");
-  doc.text("Property / Unit:", margin, y);
-  doc.setFont("helvetica", "normal");
-  doc.text(`${data.propertyName} / ${data.unitName}`, margin + 40, y);
-  y += 6;
-
-  // Lease Period
-  doc.setFont("helvetica", "bold");
-  doc.text("Lease Period:", margin, y);
-  doc.setFont("helvetica", "normal");
-  doc.text(`${data.leaseStartDate} – ${data.leaseEndDate}`, margin + 40, y);
-  y += 12;
-
-  // Divider
+  doc.setDrawColor(220, 220, 220);
   doc.line(margin, y, pageWidth - margin, y);
   y += 8;
 
   // Amount
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
+  doc.setTextColor(20, 20, 20);
   doc.text("Amount Paid:", margin, y);
   doc.text(
     `${data.currency} ${data.amount}`,
@@ -99,17 +108,7 @@ export async function generateReceipt(
     y,
     { align: "right" },
   );
-  y += 12;
-
-  // Footer
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(150, 150, 150);
-  doc.text(
-    "This is an automatically generated receipt.",
-    margin,
-    y,
-  );
+  doc.setTextColor(0, 0, 0);
 
   const pdfBuffer = Buffer.from(doc.output("arraybuffer"));
   const storageKey = `receipts/rent-${data.transactionId}.pdf`;
@@ -119,8 +118,5 @@ export async function generateReceipt(
     contentType: "application/pdf",
   });
 
-  return {
-    url: blob.url,
-    storageKey,
-  };
+  return { url: blob.url, storageKey };
 }

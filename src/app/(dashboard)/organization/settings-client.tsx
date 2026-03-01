@@ -60,6 +60,7 @@ import {
 import ApiKeysClient from "./api-keys/api-keys-client";
 import { FormatsClient } from "./formats/formats-client";
 import { PortalSettingsClient } from "./portal/portal-settings-client";
+import { LeaseTemplateClient } from "./lease-template/lease-template-client";
 
 // ========================================
 // Types
@@ -143,7 +144,7 @@ function SettingsContent({
 
   // Determine default tab based on permissions
   const getDefaultTab = () => {
-    if (tabParam && ["roles", "users", "api-keys", "formats", "portal"].includes(tabParam)) {
+    if (tabParam && ["roles", "users", "api-keys", "formats", "portal", "lease-template"].includes(tabParam)) {
       return tabParam;
     }
     return hasUsersManage ? "users" : "roles";
@@ -519,9 +520,9 @@ function SettingsContent({
   // Determine grid class based on available tabs
   const getGridClass = () => {
     if (hasSettingsManage && hasUsersManage) {
-      return "grid-cols-5"; // All 5 tabs: Roles, Users, API Keys, Formats, Portal
+      return "grid-cols-6"; // All 6 tabs: Roles, Users, API Keys, Formats, Portal, Template
     } else if (hasSettingsManage) {
-      return "grid-cols-4"; // Roles, API Keys, Formats, Portal
+      return "grid-cols-5"; // Roles, API Keys, Formats, Portal, Template
     } else {
       return "grid-cols-1"; // Only Users
     }
@@ -543,6 +544,7 @@ function SettingsContent({
           {hasSettingsManage && <TabsTrigger value="api-keys">API Keys</TabsTrigger>}
           {hasSettingsManage && <TabsTrigger value="formats">Formats</TabsTrigger>}
           {hasSettingsManage && <TabsTrigger value="portal">Portal</TabsTrigger>}
+          {hasSettingsManage && <TabsTrigger value="lease-template">Template</TabsTrigger>}
         </TabsList>
 
         {/* ======================================== */}
@@ -858,6 +860,15 @@ function SettingsContent({
         {hasSettingsManage && (
           <TabsContent value="portal" className="mt-6">
             <PortalSettingsClient hasFeature={features.includes("TENANT_PORTAL")} />
+          </TabsContent>
+        )}
+
+        {/* ======================================== */}
+        {/* LEASE TEMPLATE TAB */}
+        {/* ======================================== */}
+        {hasSettingsManage && (
+          <TabsContent value="lease-template" className="mt-6">
+            <LeaseTemplateClient />
           </TabsContent>
         )}
       </Tabs>

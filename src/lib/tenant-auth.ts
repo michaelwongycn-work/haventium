@@ -1,5 +1,4 @@
 import { SignJWT, jwtVerify } from "jose";
-import crypto from "crypto";
 
 export const TENANT_SESSION_COOKIE = "tenant-session";
 const SESSION_EXPIRY = "7d";
@@ -40,7 +39,7 @@ export function revokeTenantSession(jti: string, expiresAt: number): void {
 export async function createTenantSession(
   payload: Omit<TenantSessionPayload, "jti">,
 ): Promise<string> {
-  const jti = crypto.randomUUID();
+  const jti = globalThis.crypto.randomUUID();
   return new SignJWT({ ...payload, jti })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
