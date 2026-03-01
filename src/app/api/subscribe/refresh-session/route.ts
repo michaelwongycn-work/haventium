@@ -49,7 +49,7 @@ export async function POST() {
 
     await unstable_update({ user: { subscription: safeSubscription } });
 
-    return apiSuccess({ status: subscription.status });
+    return apiSuccess({ status: subscription.status, subscription: safeSubscription });
   } catch (error) {
     return handleApiError(error, "refresh session");
   }

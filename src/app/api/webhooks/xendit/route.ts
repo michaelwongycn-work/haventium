@@ -58,6 +58,15 @@ export async function POST(request: NextRequest) {
 
     const transaction = await prisma.paymentTransaction.findUnique({
       where: { externalId: external_id },
+      select: {
+        id: true,
+        subscriptionId: true,
+        organizationId: true,
+        status: true,
+        type: true,
+        newTierId: true,
+        newBillingCycle: true,
+      },
     });
 
     if (!transaction) {
@@ -91,6 +100,8 @@ async function handleSubscriptionPayment(
     id: string;
     subscriptionId: string | null;
     organizationId: string;
+    newTierId: string | null;
+    newBillingCycle: string | null;
   },
   body: Record<string, unknown>,
 ) {
@@ -98,19 +109,31 @@ async function handleSubscriptionPayment(
 
   const subscription = await prisma.subscription.findUnique({
     where: { id: transaction.subscriptionId },
-    include: { tier: true },
   });
 
   if (!subscription) return;
 
   const now = new Date();
-  // If renewing early (still ACTIVE), extend from current period end; otherwise from now
-  const baseDate =
-    subscription.status === "ACTIVE" && subscription.endDate > now
-      ? new Date(subscription.endDate)
-      : new Date(now);
+
+  // Tier change (prorated): new period starts today
+  // Plain renewal: extend from current period end if still active, otherwise from now
+  const isTierChange = !!transaction.newTierId;
+  const effectiveBillingCycle =
+    (transaction.newBillingCycle as "MONTHLY" | "ANNUAL" | null) ??
+    subscription.billingCycle;
+
+  let baseDate: Date;
+  if (isTierChange) {
+    baseDate = new Date(now);
+  } else {
+    baseDate =
+      subscription.status === "ACTIVE" && subscription.endDate > now
+        ? new Date(subscription.endDate)
+        : new Date(now);
+  }
+
   const periodEnd = new Date(baseDate);
-  if (subscription.billingCycle === "ANNUAL") {
+  if (effectiveBillingCycle === "ANNUAL") {
     periodEnd.setFullYear(periodEnd.getFullYear() + 1);
   } else {
     periodEnd.setMonth(periodEnd.getMonth() + 1);
@@ -133,6 +156,8 @@ async function handleSubscriptionPayment(
         status: "ACTIVE",
         startDate: baseDate,
         endDate: periodEnd,
+        billingCycle: effectiveBillingCycle,
+        ...(isTierChange ? { tierId: transaction.newTierId! } : {}),
       },
     });
   });

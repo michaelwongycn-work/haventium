@@ -40,6 +40,7 @@
     "**/*.mts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "prisma/seed-dev.ts"
   ],
 }

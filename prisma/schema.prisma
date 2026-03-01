@@ -773,6 +773,9 @@ model PaymentTransaction {
   receiptStorageKey String?
   webhookReceivedAt DateTime?
   paidAt            DateTime?
+  newTierId         String?   // target tier for upgrade/downgrade payment
+  newBillingCycle   String?   // billing cycle for the new tier period
+  proratedCredit    Decimal?  @db.Decimal(12, 2) // credit amount applied
   createdAt         DateTime               @default(now())
   updatedAt         DateTime               @updatedAt
 

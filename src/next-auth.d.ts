@@ -1,6 +1,18 @@
 import { DefaultSession } from "next-auth";
 import { UserRole } from "@/lib/access-utils";
 
+interface UserSubscriptionTier {
+  id: string;
+  type: string;
+  name: string;
+  monthlyPrice: number;
+  annualPrice: number;
+  maxUsers: number | null;
+  maxProperties: number | null;
+  maxUnits: number | null;
+  maxTenants: number | null;
+}
+
 interface UserSubscription {
   id: string;
   organizationId: string;
@@ -12,17 +24,7 @@ interface UserSubscription {
   externalId: string | null;
   createdAt: string;
   updatedAt: string;
-  tier: {
-    id: string;
-    type: string;
-    name: string;
-    monthlyPrice: number;
-    annualPrice: number;
-    maxUsers: number | null;
-    maxProperties: number | null;
-    maxUnits: number | null;
-    maxTenants: number | null;
-  } | null;
+  tier: UserSubscriptionTier | null;
 }
 
 declare module "next-auth" {

@@ -67,7 +67,11 @@ export default async function DashboardLayout({
             </nav>
 
             <div className="flex items-center gap-4">
-              <Badge variant="secondary">{tierName}</Badge>
+              <Link href="/subscribe">
+                <Badge variant="secondary" className="cursor-pointer transition-colors hover:bg-primary hover:text-primary-foreground">
+                  {tierName}
+                </Badge>
+              </Link>
               <UserNav user={session.user} roles={roles} />
             </div>
           </div>
