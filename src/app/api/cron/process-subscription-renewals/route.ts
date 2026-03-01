@@ -135,7 +135,7 @@ export async function POST(request: Request) {
             organizationName: sub.organization.name,
             planName: sub.tier.name,
             billingCycle: sub.billingCycle,
-            currentPeriodEnd: sub.endDate,
+            endDate: sub.endDate,
             daysLeft,
             appUrl,
           });
