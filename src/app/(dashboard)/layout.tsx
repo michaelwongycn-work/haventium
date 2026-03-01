@@ -19,7 +19,6 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
-  const tierName = session.user.subscription?.tier?.name || "Free Plan";
   const roles = session.user.roles || [];
 
   // Compute days until subscription period ends for expiry warning
@@ -35,12 +34,17 @@ export default async function DashboardLayout({
         )
       : null;
 
-  // Fetch organization format preferences
+  // Fetch organization format preferences and live subscription tier
   const organization = await prisma.organization.findUnique({
     where: { id: session.user.organizationId },
     select: {
       dateFormat: true,
       currency: true,
+      subscription: {
+        select: {
+          tier: { select: { name: true } },
+        },
+      },
     },
   });
 
@@ -48,6 +52,8 @@ export default async function DashboardLayout({
     dateFormat: organization?.dateFormat || "dd/MM/yyyy",
     currency: organization?.currency || "USD",
   };
+
+  const tierName = organization?.subscription?.tier?.name || session.user.subscription?.tier?.name || "Free Plan";
 
   return (
     <FormatProvider
